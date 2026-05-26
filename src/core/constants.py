@@ -35,3 +35,5 @@ MAX_LLM_RETRIES = 3
 MIN_IMPORTANCE_FOR_STORAGE = 5  # importance >= 此值才真正写入长期记忆
 MAX_CONTEXT_CHARS = 8000  # 记忆文本硬限制，防止 token 爆炸
 MAX_SAME_TOOL_CALLS = 3  # 同一工具连续调用上限，防止死循环
+TOOL_TIMEOUT_SECONDS = 30  # 单次工具执行超时
+DEDUP_SIMILARITY_THRESHOLD = 0.92  # 记忆去重：相似度超过此值拒绝写入
