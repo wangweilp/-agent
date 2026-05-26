@@ -1,126 +1,213 @@
-﻿# CLAUDE.md — 项目运行时规则
+﻿# CLAUDE.md — 记忆进化型个人知识助手
 
-> 本文件由 Claude Code 在每次对话启动时自动加载。
-> 以下规则优先级从高到低排列。当规则冲突时，编号小的优先。
+> 本文件在每次对话启动时由 Claude Code 自动加载。
+> 规则按优先级排列。编号越小，优先级越高。冲突时以低编号为准。
 
 ---
 
-## 1. 绝对红线（不可违反）
+## 1. 绝对红线
 
-### 1.1 架构隔离
-- `src/core/` **禁止** 导入 `src/adapters/`、`src/api/`、`src/tools/`，也禁止导入任何第三方库（`openai`、`chromadb`、`sqlite_utils` 等）。
-- `src/core/` 只能使用标准库和自身定义的 Protocol/ABC 抽象。
-- 任何跨层依赖都通过 `main.py` 的依赖注入完成，不在模块内部 new 具体实现。
+### 1.1 架构隔离（最高优先级）
+```
+src/core/       → 只能使用标准库 + 自身定义的 Protocol/ABC
+                  禁止: import openai / chromadb / sqlite_utils / fastapi
+                  禁止: import src.adapters / src.api
+src/adapters/   → 实现 core 定义的协议，封装所有外部 I/O
+                  禁止: 包含业务判断逻辑（if-else 业务规则放 core）
+src/tools/      → 纯函数，输入→输出，无副作用
+                  禁止: 持有状态、直接调用外部 API（通过 adapter 协议）
+src/api/        → 请求解析 + 响应格式化
+                  禁止: 业务逻辑、直接访问数据库
+```
 
-### 1.2 文件修改隔离
-- **每次只改一个模块**。如果你需要同时动 `core/` 和 `adapters/`，先完成一个、确认无误，再动下一个。
-- 修改前先用 `rg` 搜索该符号的所有引用，确保理解影响面。
-- 修改后立即运行相关测试，不通过不进入下一步。
+- 所有跨层依赖通过 `main.py` 的依赖注入完成，模块内部不 `new` 具体实现。
+- 检查命令：`rg -n "from openai|from chromadb|from sqlite_utils|from fastapi" src/core/`
 
-### 1.3 Git 提交纪律
-- 每完成一个独立功能点立即提交，不要攒一堆文件一次性提交。
-- 提交信息严格遵循 `type(scope): subject` 格式（详见 `docs/DEV_GUIDE.md`）。
-- 不提交 `.env`、`chroma_db/`、`*.db`、`data/` 等运行时产物。
-- 每次提交前执行 `git diff --staged` 确认改动内容与意图一致。
+### 1.2 修改隔离
+- **每次只改一个模块**。`core/` 和 `adapters/` 同时改时，先完成一个再动下一个。
+- 修改前 `rg` 搜索该符号所有引用，确认影响面。
+- 修改后立即跑测试。
+
+### 1.3 Git 纪律
+- 从 `develop` 切 `feature/xxx` 分支开发。
+- 每完成一个独立功能点立即提交，不攒着一堆文件一次交。
+- 提交格式：`type(scope): subject`（`feat(core): ...` / `fix(adapters): ...` / `docs: ...`）
+- scope 必须是: `core` `adapters` `api` `tools` `docs` `config` `tests`
+- 不提交 `.env`、`*.db`、`data/`、`chroma_db/`。
 
 ### 1.4 禁止沉默破坏
-- 如果发现现有代码的问题，**先报告，后修改**。不要静默重写你认为"不对"的代码。
-- 如果必须破坏性变更，在提交信息中标注 `BREAKING CHANGE:` 并在 `docs/adr/` 中记录。
+- 发现现有代码问题：**先报告，后修改**。不静默重写。
+- 破坏性变更标注 `BREAKING CHANGE:` 并写入 `docs/adr/`。
 
 ---
 
-## 2. 开发流程规则
+## 2. 开发流程
 
 ### 2.1 开始任何功能前（5 分钟检视）
 ```
-1. 读取 docs/ROADMAP.md，确认当前版本目标
-2. 读取 docs/ARCHITECTURE.md 中相关模块的边界定义
-3. 检查 git status，确认当前分支和未提交改动
-4. 如果是新功能，从 develop 切 feature/xxx 分支
+1. 读 docs/ROADMAP.md → 确认当前版本目标 (当前: v0.1 MVP)
+2. 读 docs/ARCHITECTURE.md 相关模块边界
+3. git status → 确认分支和未提交改动
+4. 新功能从 develop 切 feature/xxx 分支
 ```
 
-### 2.2 编写代码时（持续检查）
-- **先写类型签名，再写实现**。所有公共函数的参数和返回值必须有 type hints。
-- 新增的类/函数必须有 docstring（Google 风格，至少一行描述）。
-- 不写超过 50 行的函数。超过就拆分。
-- 不写超过 3 层的缩进。超过就提取。
-- 不引入新的第三方依赖，除非给出明确理由并在 commit body 中说明。
-
-### 2.3 编写测试时
-- 每个新模块必须有一个对应的 `tests/test_<module>.py`。
-- 测试文件放在镜像路径下：`src/core/memory.py` → `tests/test_core/test_memory.py`。
-- 至少覆盖：正常路径、边界值、异常路径。
-- 测试函数命名：`test_<被测方法>_<条件>_<期望结果>`。
-
-### 2.4 完成功能后（提交前检查清单）
+### 2.2 v0.1 当前任务（按顺序执行）
 ```
-[ ] 所有测试通过（python -m pytest tests/ -v）
-[ ] core/ 无违规导入（rg "from openai|from chromadb|from sqlite_utils" src/core/）
-[ ] 无 print 残留（rg "print\(" src/）
-[ ] 提交信息符合规范
-[ ] 无敏感信息（rg "sk-" . 不含 .env）
+[ ] core/types.py           — Memory, Entity, ToolCall, ToolResult 数据类
+[ ] core/memory.py          — 记忆管理抽象（协议定义）
+[ ] core/agent.py           — Agent 循环 Think→Act→Observe
+[ ] adapters/llm.py         — DeepSeek chat adapter
+[ ] adapters/sqlite_store.py — SQLite 适配器（notes 表）
+[ ] tools/remember.py       — 记忆存储工具
+[ ] tools/recall.py         — 记忆检索工具（关键词）
+[ ] tools/registry.py       — 工具注册表 + JSON 解析
+[ ] api/routes.py           — /chat 端点 + SSE 流式
+[ ] tools/cli.py            — 终端交互入口
+[ ] tests/                  — 对应测试
+```
+
+**v0.1 验收标准**：
+- 终端能与 Agent 对话
+- Agent 能判断何时调用 remember / recall
+- 记忆存入 SQLite，能关键词检索
+- 对话上下文保留最近 20 轮
+- 流式输出
+
+**v0.1 不做的**：向量存储、Web UI、周报、知识图谱
+
+### 2.3 编写代码时
+- **先写类型签名，再写实现**。所有公共函数必须有 type hints。
+- Google 风格 docstring，至少一行描述。
+- 函数不超过 50 行，缩进不超过 3 层。
+- 不引入新依赖，除非在 commit body 中说明理由。
+
+### 2.4 编写测试时
+- 镜像路径：`src/core/memory.py` → `tests/test_core/test_memory.py`
+- 覆盖：正常路径 + 边界值 + 异常路径
+- 命名：`test_<方法>_<条件>_<期望>`
+
+### 2.5 提交前自查
+```
+[ ] python -m pytest tests/ -v 全部通过
+[ ] rg "from openai|from chromadb|from sqlite_utils" src/core/ 无输出
+[ ] rg "print\(" src/ 无输出
+[ ] 提交信息符合 Conventional Commits
+[ ] 无敏感信息泄露
 ```
 
 ---
 
-## 3. 模块职责速查
+## 3. 领域知识速查
 
-| 模块 | 可以做的事 | 禁止做的事 |
-|------|----------|-----------|
-| `src/core/` | 定义抽象、纯逻辑算法、数据模型 | 不能 import 第三方库、不能访问文件系统 |
-| `src/adapters/` | 实现 core 定义的协议，封装外部 API | 不能包含业务逻辑判断 |
-| `src/tools/` | 纯函数，接收输入返回输出 | 不能持有状态、不能直接调用外部 API（通过 adapter） |
-| `src/api/` | 请求解析、路由、响应格式化 | 不能包含业务逻辑、不能直接访问数据库 |
+### 3.1 记忆系统（详见 DESIGN.md §1）
+```
+Working Memory   → list[Message]，当前对话，最多 20 轮
+Semantic Memory  → ChromaDB 向量库，语义检索 (v0.2)
+Episodic Memory  → SQLite notes 表，原始文本+时间戳
+Conceptual Memory → SQLite entities/relations 表 (v0.3)
+```
+
+v0.1 只用 Working Memory + Episodic Memory (SQLite)。
+
+### 3.2 Agent 循环（详见 DESIGN.md §2）
+```
+用户输入 → Agent.run()
+  for round in 1..5:
+    LLM 生成回复
+    若有工具调用 JSON → 执行工具 → 结果喂回 LLM → 继续
+    若无工具调用 → 返回最终回复
+```
+
+工具调用协议：`{"tool": "remember", "args": {...}}`
+解析：扫描回复中第一个完整 JSON → 校验 tool 名 → 校验 args schema。
+
+### 3.3 System Prompt 位置
+统一在 `src/core/agent.py` 中定义为常量 `SYSTEM_PROMPT`。
+
+### 3.4 数据模型（详见 DESIGN.md §5）
+```python
+Memory:    {id, content, timestamp, entities}
+Entity:    {id, name, entity_type, first_seen, mention_count}
+ToolCall:  {tool, args}
+ToolResult:{tool, success, data, error}
+```
+
+### 3.5 错误处理
+| 错误 | 处理 |
+|------|------|
+| DeepSeek API 不可用 | 返回友好提示，不崩溃，记日志 |
+| SQLite 写失败 | 记日志，返回错误 |
+| JSON 解析失败 | 当普通回复，不调工具 |
+| Agent 循环超限 | 返回当前最佳回复 |
+
+### 3.6 关键决策
+- Agent 循环上限：5 轮
+- 短对话窗口：20 条
+- LLM：DeepSeek V3 (`deepseek-chat`)
+- Embedding：v0.1 不引入，用 SQLite LIKE 关键词匹配
+- 前端：v0.1 终端 CLI，不做 Web UI
 
 ---
 
-## 4. 遇到不确定时
+## 4. 不确定时
 
 ### 4.1 技术选型
-- 不要自己拍板。去搜索业界最佳实践（例如 "RAG hybrid search best practice 2025"），给出 2-3 个方案对比，再让用户决策。
-- 用 `docs/adr/` 记录所有非平凡的架构决策。
+不要自己拍板。搜索业界最佳实践，给 2-3 个方案对比让用户决策。记录到 `docs/adr/`。
 
 ### 4.2 产品方向
-- 如果发现自己在做用户没要求的功能，立即停止并确认。
-- 每完成一个 milestone 的 50%，停下来让用户验收一次，不要闷头做到 100%。
+- 发现自己在做用户没要求的功能 → 立即停止确认。
+- 每个 milestone 完成 50% 时停下来让用户验收。
 
-### 4.3 Bug 修复
-- 先写复现测试，再修代码。不要跳过复现直接改。
-- 修复后检查：这个 bug 的同类型问题在代码库其他位置是否存在？
-
----
-
-## 5. 对话行为规则
-
-- 每次回复用户前，先完成正在进行的文件操作和测试验证。
-- 提供状态更新时，「已完成 X / 总数 Y」格式简洁汇报。
-- 如果遇到权限错误、环境问题，直接说明需要什么权限，不绕过。
-- 不要过度解释代码。解释只写在 docstring 和必要注释（`# NOTE:` 或 `# BUG:` 风格）里。
+### 4.3 Bug
+- 先写复现测试，再修。
+- 修复后检查同类问题在代码库其他位置是否存在。
 
 ---
 
-## 6. 特定技术约束
+## 5. 对话行为
 
-- 数据库 schema 变更必须写在 `src/adapters/sqlite_store.py` 的 migration 段落，并加版本号注释。
-- 所有 LLM prompt 模板集中在 `src/core/agent.py` 和 `src/core/report.py`，不在其他文件散落 prompt 字符串。
-- 日志统一用 `logging.getLogger(__name__)`，不使用 `print`。
-- 配置项统一在 `src/adapters/config.py` 中定义 pydantic `Settings` 类，其他地方只引用该实例。
+- 回复前先完成文件操作和测试验证。
+- 状态更新用「已完成 X / 总数 Y」格式。
+- 不过度解释代码。解释写在 docstring 里。
+- 遇到权限/环境问题直接说明，不绕过。
 
 ---
 
-## 7. 快速自检命令
+## 6. 技术约束
+
+- Schema 变更写在 `adapters/sqlite_store.py` migration 段落。
+- Prompt 模板集中在 `core/agent.py` 和 `core/report.py`。
+- 日志用 `logging.getLogger(__name__)`，不用 `print`。
+- 配置统一在 `adapters/config.py` 的 pydantic `Settings` 类。
+
+---
+
+## 7. 快速命令
 
 ```bash
 # 运行测试
 python -m pytest tests/ -v --tb=short
 
 # 检查 core 层违规导入
-rg -n "from openai|from chromadb|from sqlite_utils|from fastapi" src/core/
+rg -n "from openai|from chromadb|from sqlite_utils|from fastapi|from src\.adapters|from src\.api" src/core/
 
 # 检查 print 残留
 rg -n "print\(" src/
 
-# 检查提交状态
-git status
-git log --oneline -5
+# 检查 git 状态
+git status; git log --oneline -5
 ```
+
+---
+
+## 8. 项目文件索引
+
+| 文件 | 内容 |
+|------|------|
+| `CLAUDE.md` | 本文档，开发规则 |
+| `docs/ARCHITECTURE.md` | 架构图、模块依赖、数据流 |
+| `docs/DESIGN.md` | 记忆系统、Agent 循环、RAG、周报详细设计 |
+| `docs/ROADMAP.md` | 版本路线图、每版验收标准 |
+| `docs/DEV_GUIDE.md` | Git 规范、代码风格、测试规范、检查清单 |
+| `config/.env.template` | 环境变量模板 |
+| `requirements.txt` | Python 依赖 |
