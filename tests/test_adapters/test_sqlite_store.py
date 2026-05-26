@@ -1,10 +1,9 @@
 """SQLiteStoreAdapter 单元测试。"""
 import pytest
 from datetime import datetime
-from unittest.mock import MagicMock
 
 from src.adapters.config import Settings
-from src.core.types import Memory, Entity
+from src.core.types import Memory
 
 
 @pytest.fixture
@@ -13,24 +12,10 @@ def settings():
 
 
 @pytest.fixture
-def mock_embedding():
-    mock = MagicMock()
-    mock.get_embedding.return_value = [0.1, 0.2, 0.3]
-    return mock
-
-
-@pytest.fixture
-def mock_vector_store():
-    return MagicMock()
-
-
-@pytest.fixture
-def store(settings, mock_embedding, mock_vector_store):
+def store(settings):
     from src.adapters.sqlite_store import SQLiteStoreAdapter
     store = SQLiteStoreAdapter(
         config=settings,
-        embedding_provider=mock_embedding,
-        vector_store=mock_vector_store,
         db_path=":memory:",
     )
     yield store
@@ -44,7 +29,6 @@ def _make_memory(
     source="user",
     entities=None,
     relations=None,
-    embedding=None,
     timestamp=None,
 ):
     return Memory(
@@ -56,7 +40,6 @@ def _make_memory(
         importance=7,
         entities=entities or ["测试实体"],
         relations=relations or [{"s": "张三", "p": "认识", "o": "李四"}],
-        embedding=embedding,
         memory_type="episodic",
     )
 
@@ -76,22 +59,6 @@ class TestStore:
         assert retrieved.id == "mem_001"
         assert retrieved.content == "这是一条测试记忆"
         assert retrieved.importance == 7
-
-    def test_store_with_embedding_calls_vector_store(self, store, mock_vector_store):
-        memory = _make_memory(embedding=[0.5, 0.6, 0.7])
-        store.store(memory)
-
-        mock_vector_store.store.assert_called_once()
-        kwargs = mock_vector_store.store.call_args.kwargs
-        assert kwargs["doc_id"] == "mem_001"
-        assert kwargs["embedding"] == [0.5, 0.6, 0.7]
-
-    def test_store_without_embedding_computes_it(self, store, mock_embedding, mock_vector_store):
-        memory = _make_memory(embedding=None)
-        store.store(memory)
-
-        mock_embedding.get_embedding.assert_called_once_with("这是一条测试记忆")
-        mock_vector_store.store.assert_called_once()
 
     def test_entity_upsert_increments_mention_count(self, store):
         mem1 = _make_memory(id="mem_001", entities=["张三"])
@@ -151,36 +118,6 @@ class TestGetRecent:
 
         recent = store.get_recent(limit=3)
         assert len(recent) == 3
-
-
-class TestSearchSemantic:
-    def test_embeds_query_and_searches_vector_store(self, store, mock_embedding, mock_vector_store):
-        mock_vector_store.search.return_value = [
-            {"id": "mem_001", "metadata": {}, "distance": 0.1},
-        ]
-        store.store(_make_memory(id="mem_001"))
-
-        mock_embedding.get_embedding.reset_mock()
-        results = store.search_semantic("查询文本", top_k=5)
-
-        mock_embedding.get_embedding.assert_called_once_with("查询文本")
-        mock_vector_store.search.assert_called_once()
-        assert len(results) == 1
-        assert results[0].id == "mem_001"
-
-    def test_orphan_vector_skipped(self, store, mock_vector_store):
-        """ChromaDB 返回了 SQLite 中不存在的 doc_id，应该跳过。"""
-        mock_vector_store.search.return_value = [
-            {"id": "orphan_id", "metadata": {}, "distance": 0.05},
-        ]
-
-        results = store.search_semantic("查询", top_k=5)
-        assert results == []
-
-    def test_empty_search_returns_empty(self, store, mock_vector_store):
-        mock_vector_store.search.return_value = []
-        results = store.search_semantic("查询", top_k=5)
-        assert results == []
 
 
 class TestGetById:

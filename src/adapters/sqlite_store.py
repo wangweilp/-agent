@@ -1,7 +1,7 @@
 """SQLite 记忆存储适配器 — 实现 MemoryStore 协议。
 
-组合 embedding_provider 和 vector_store 实现语义搜索。
 管理 notes / entities / memory_entities / relations 四张表。
+语义搜索职责由上层 Retriever 编排，不在此层实现。
 """
 import json
 import logging
@@ -70,17 +70,13 @@ class MemoryStoreError(Exception):
 
 
 class SQLiteStoreAdapter:
-    """完整的 MemoryStore 实现，组合 SQLite + VectorStore + EmbeddingProvider。"""
+    """MemoryStore 的 SQLite 实现。"""
 
     def __init__(
         self,
         config: Settings,
-        embedding_provider: Any,
-        vector_store: Any,
         db_path: str | None = None,
     ) -> None:
-        self._embedding_provider = embedding_provider
-        self._vector_store = vector_store
         self._write_lock = threading.Lock()
 
         path = db_path or config.sqlite_db_path
@@ -101,24 +97,6 @@ class SQLiteStoreAdapter:
     # ── MemoryStore 协议 ──────────────────────────────────────────────
 
     def store(self, memory: Memory) -> str:
-        embedding = memory.embedding
-        if embedding is None:
-            embedding = self._embedding_provider.get_embedding(memory.content)
-
-        # 先写向量存储（避免 SQL 成功但向量失败的幽灵记录）
-        try:
-            self._vector_store.store(
-                doc_id=memory.id,
-                embedding=embedding,
-                metadata={
-                    "memory_type": memory.memory_type,
-                    "summary": memory.summary or "",
-                    "source": memory.source,
-                },
-            )
-        except Exception:
-            logger.exception("向量存储写入失败: %s", memory.id)
-
         with self._write_lock:
             with self._db.conn:
                 self._db.execute(
@@ -141,7 +119,6 @@ class SQLiteStoreAdapter:
                     ),
                 )
 
-                # 删除旧的关联记录，重新插入
                 self._db.execute(
                     "DELETE FROM memory_entities WHERE memory_id = ?", (memory.id,)
                 )
@@ -164,17 +141,6 @@ class SQLiteStoreAdapter:
                     )
 
         return memory.id
-
-    def search_semantic(self, query: str, top_k: int) -> list[Memory]:
-        query_embedding = self._embedding_provider.get_embedding(query)
-        candidates = self._vector_store.search(query_embedding, top_k)
-
-        results: list[Memory] = []
-        for candidate in candidates:
-            memory = self.get_by_id(candidate["id"])
-            if memory is not None:
-                results.append(memory)
-        return results
 
     def search_by_entity(self, entity_name: str) -> list[Memory]:
         rows = self._db.execute(
@@ -200,7 +166,6 @@ class SQLiteStoreAdapter:
                last_accessed = ? WHERE id = ?""",
             (datetime.now().isoformat(), memory_id),
         )
-        # 重新读取以获取更新后的 access_count
         row = self._db.execute(
             "SELECT * FROM notes WHERE id = ?", (memory_id,)
         ).fetchone()

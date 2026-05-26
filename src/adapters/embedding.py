@@ -23,7 +23,7 @@ class EmbeddingError(Exception):
 class LocalEmbeddingProvider:
     """使用本地 sentence-transformers 模型生成文本 Embedding。
 
-    延迟加载模型，首次调用 get_embedding() 时加载，节省启动时间。
+    延迟加载模型，首次调用 encode() 时加载，节省启动时间。
     双重检查锁定保证多线程安全。
     """
 
@@ -43,7 +43,7 @@ class LocalEmbeddingProvider:
                     self._model = SentenceTransformer(self._model_name)
         return self._model
 
-    def get_embedding(self, text: str) -> list[float]:
+    def encode(self, text: str) -> list[float]:
         text = text.strip()
         if not text:
             raise ValueError("输入文本不能为空")

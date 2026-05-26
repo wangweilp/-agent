@@ -12,7 +12,6 @@ class Memory:
     importance: int = 5  # 1-10
     entities: list[str] = field(default_factory=list)
     relations: list[dict] = field(default_factory=list)  # [{s:"", p:"", o:""}]
-    embedding: list[float] | None = None
     memory_type: str = "episodic"
     access_count: int = 0
     last_accessed: datetime | None = None
@@ -32,6 +31,9 @@ class ToolCall:
     tool_name: str
     arguments: dict
     call_id: str = ""
+    status: str = "pending"  # pending | running | success | failed
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
 
 @dataclass

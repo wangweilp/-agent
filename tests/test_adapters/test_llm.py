@@ -1,6 +1,6 @@
 """DeepSeekAdapter 单元测试。"""
 import pytest
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock
 
 from src.adapters.config import Settings
 from src.adapters.llm import DeepSeekAdapter
@@ -91,25 +91,8 @@ class TestChat:
         assert call_kwargs["max_tokens"] == 100
 
 
-class TestGetEmbedding:
-    def test_calls_embeddings_api(self, settings):
-        adapter = DeepSeekAdapter(settings)
-        adapter._client = MagicMock()
-        mock_embedding = MagicMock()
-        mock_embedding.data = [MagicMock(embedding=[0.1, 0.2, 0.3])]
-        adapter._client.embeddings.create.return_value = mock_embedding
-
-        result = adapter.get_embedding("测试文本")
-
-        adapter._client.embeddings.create.assert_called_once_with(
-            model=ANY,
-            input="测试文本",
-        )
-        assert result == [0.1, 0.2, 0.3]
-
-
 class TestProtocolCompliance:
-    def test_is_llm_provider(self, settings):
-        from src.core.memory import LLMProvider
+    def test_is_chat_model(self, settings):
+        from src.core.memory import ChatModel
         adapter = DeepSeekAdapter(settings)
-        assert isinstance(adapter, LLMProvider)
+        assert isinstance(adapter, ChatModel)

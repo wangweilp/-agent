@@ -9,10 +9,6 @@ class MemoryStore(Protocol):
         """存储一条记忆，返回 memory_id。"""
         ...
 
-    def search_semantic(self, query: str, top_k: int) -> list[Memory]:
-        """语义搜索（不是 keyword 搜索）。"""
-        ...
-
     def search_by_entity(self, entity_name: str) -> list[Memory]:
         """按实体名称检索关联记忆。"""
         ...
@@ -33,12 +29,12 @@ class VectorStore(Protocol):
         ...
 
     def search(self, embedding: list[float], k: int) -> list[dict]:
-        """返回 top-k 相似结果，每条为 {doc_id, score, metadata}。"""
+        """返回 top-k 相似结果，每条为 {id, metadata, distance}。"""
         ...
 
 
 @runtime_checkable
-class LLMProvider(Protocol):
+class ChatModel(Protocol):
     def chat(
         self,
         messages: list[dict],
@@ -50,6 +46,9 @@ class LLMProvider(Protocol):
         """调用 LLM 聊天接口，返回 OpenAI 兼容响应。"""
         ...
 
-    def get_embedding(self, text: str) -> list[float]:
+
+@runtime_checkable
+class EmbeddingProvider(Protocol):
+    def encode(self, text: str) -> list[float]:
         """对文本生成 embedding 向量。"""
         ...

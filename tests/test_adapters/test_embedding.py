@@ -41,13 +41,13 @@ class TestInit:
         assert provider._model_name == "BAAI/bge-small-zh-v1.5"
 
 
-class TestGetEmbedding:
+class TestEncode:
     def test_lazy_loads_model_on_first_call(self, settings):
         mock_instance = _make_mock_st()
         with patch("sentence_transformers.SentenceTransformer", return_value=mock_instance) as mock_st:
             from src.adapters.embedding import LocalEmbeddingProvider
             provider = LocalEmbeddingProvider(settings)
-            result = provider.get_embedding("测试文本")
+            result = provider.encode("测试文本")
 
             mock_st.assert_called_once_with("BAAI/bge-small-zh-v1.5")
             mock_instance.encode.assert_called_once_with(
@@ -60,8 +60,8 @@ class TestGetEmbedding:
         with patch("sentence_transformers.SentenceTransformer", return_value=mock_instance) as mock_st:
             from src.adapters.embedding import LocalEmbeddingProvider
             provider = LocalEmbeddingProvider(settings)
-            provider.get_embedding("第一次")
-            provider.get_embedding("第二次")
+            provider.encode("第一次")
+            provider.encode("第二次")
 
             assert mock_st.call_count == 1
 
@@ -70,7 +70,7 @@ class TestGetEmbedding:
         with patch("sentence_transformers.SentenceTransformer", return_value=mock_instance):
             from src.adapters.embedding import LocalEmbeddingProvider
             provider = LocalEmbeddingProvider(settings)
-            result = provider.get_embedding("测试")
+            result = provider.encode("测试")
 
             assert isinstance(result, list)
             assert all(isinstance(x, float) for x in result)
@@ -79,7 +79,7 @@ class TestGetEmbedding:
         from src.adapters.embedding import LocalEmbeddingProvider
         provider = LocalEmbeddingProvider(settings)
         with pytest.raises(ValueError, match="不能为空"):
-            provider.get_embedding("")
+            provider.encode("")
 
 
 class TestThreadSafety:
@@ -98,7 +98,7 @@ class TestThreadSafety:
             from src.adapters.embedding import LocalEmbeddingProvider
             provider = LocalEmbeddingProvider(settings)
             threads = [
-                threading.Thread(target=provider.get_embedding, args=(f"文本{i}",))
+                threading.Thread(target=provider.encode, args=(f"文本{i}",))
                 for i in range(10)
             ]
             for t in threads:
@@ -115,6 +115,6 @@ class TestDimension:
         with patch("sentence_transformers.SentenceTransformer", return_value=mock_instance):
             from src.adapters.embedding import LocalEmbeddingProvider
             provider = LocalEmbeddingProvider(settings)
-            provider.get_embedding("触发加载")
+            provider.encode("触发加载")
 
             assert provider.dimension == 512

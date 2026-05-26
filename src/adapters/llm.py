@@ -1,4 +1,4 @@
-"""DeepSeek API 适配器 — 实现 LLMProvider 协议。"""
+"""DeepSeek API 适配器 — 实现 ChatModel 协议。"""
 import logging
 from typing import Any
 
@@ -50,16 +50,6 @@ class DeepSeekAdapter:
             raise LLMError(f"无法连接到 DeepSeek API，请检查网络和 base_url: {e}") from e
         except APIError as e:
             raise LLMError(f"DeepSeek API 错误: {e}") from e
-
-    def get_embedding(self, text: str) -> list[float]:
-        try:
-            response = self._client.embeddings.create(
-                model="text-embedding-ada-002",
-                input=text,
-            )
-            return response.data[0].embedding
-        except APIError as e:
-            raise LLMError(f"Embedding API 错误: {e}") from e
 
     def close(self) -> None:
         self._client.close()
