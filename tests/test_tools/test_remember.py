@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, create_autospec
 import pytest
 
 from src.core.memory import EmbeddingProvider, MemoryStore, VectorStore
-from src.core.types import Memory
+from src.core.types import Memory, SearchResult
 from src.tools.remember import RememberTool
 
 
@@ -58,7 +58,8 @@ class TestRememberExecute:
         assert "已存储记忆" in result.content
         mock_memory_store.store.assert_called_once()
         mock_vector_store.store.assert_called_once()
-        mock_embedding.encode.assert_called_once_with("用户喜欢喝咖啡")
+        # encode 被调用两次：新颖度检测 + 实际存储
+        assert mock_embedding.encode.call_count == 2
 
     def test_stores_memory_id_in_metadata(self, tool, mock_memory_store):
         result = tool.execute({"content": "测试记忆"})
@@ -143,3 +144,47 @@ class TestRememberErrorHandling:
 
         result = tool.execute({"content": "内容"})
         assert result.success is False
+
+
+class TestNoveltyScoring:
+    def test_merge_when_highly_similar(self, tool, mock_vector_store, mock_memory_store):
+        """高相似度 → 合并更新已有记忆。"""
+        existing = Memory(
+            id="existing_1",
+            content="用户在学习 LangGraph",
+            summary=None,
+            source="user",
+            timestamp=datetime(2026, 5, 25, tzinfo=timezone.utc),
+        )
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="existing_1", score=0.10, metadata={}),
+        ]
+        mock_memory_store.get_by_id.return_value = existing
+
+        result = tool.execute({"content": "用户今天继续学习 LangGraph"})
+
+        assert result.success is True
+        assert result.metadata["merged"] is True
+        assert result.metadata["existing_id"] == "existing_1"
+
+    def test_downgrade_when_moderately_similar(self, tool, mock_vector_store):
+        """中等相似度 → 降权存储。"""
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="existing_1", score=0.20, metadata={}),
+        ]
+        # 基础分 5，降权 -2 = 3
+        result = tool.execute({"content": "普通信息"})
+        assert result.success is True
+        assert "merged" not in result.metadata
+        assert result.metadata["importance"] == 3  # 5 - 2
+
+    def test_normal_store_when_novel(self, tool, mock_vector_store):
+        """低相似度 → 正常存储。"""
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="existing_1", score=0.50, metadata={}),
+        ]
+        result = tool.execute({"content": "全新信息"})
+        assert result.success is True
+        assert result.metadata["novelty"]["action"] == "store"
+
+

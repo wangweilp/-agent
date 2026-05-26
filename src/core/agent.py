@@ -2,13 +2,22 @@
 
 Think → Act → Reflect，不依赖任何具体适配器。
 """
+import concurrent.futures
 import hashlib
 import json
 import logging
+import threading
 import time
+import uuid
 from typing import Any, Protocol
 
-from src.core.constants import MAX_LLM_RETRIES, MAX_SAME_TOOL_CALLS, MIN_IMPORTANCE_FOR_STORAGE
+from src.core.constants import (
+    DEDUP_SIMILARITY_THRESHOLD,
+    MAX_LLM_RETRIES,
+    MAX_SAME_TOOL_CALLS,
+    MIN_IMPORTANCE_FOR_STORAGE,
+    TOOL_TIMEOUT_SECONDS,
+)
 from src.core.context import ContextBuilder
 from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
 from src.core.types import Memory, Message, ToolResult
@@ -146,9 +155,13 @@ class DefaultReflectionEngine:
             check_result = response.choices[0].message.content or ""
             if check_result.strip().upper().startswith("CORRECTION:"):
                 correction = check_result[len("CORRECTION:"):].strip()
+                logger.info(
+                    "reflection:needs_correction",
+                    extra={"suggestion": correction[:200]},
+                )
                 return True, f"请根据以下反馈修正你的回答：{correction}"
         except Exception:
-            logger.warning("Reflection 检查失败，跳过", exc_info=True)
+            logger.warning("reflection:failed", exc_info=True)
         return False, ""
 
 
@@ -203,11 +216,22 @@ class CognitiveAgent:
         self._importance_threshold = importance_threshold
         self._system_prompt = system_prompt or SYSTEM_PROMPT
         self._short_term: list[Message] = []
+        self._current_trace_id: str = ""
 
     # ── 公共 API ──
 
     def run(self, user_input: str) -> str:
         """处理单轮用户输入，返回最终回复。"""
+        t_start = time.monotonic()
+        self._current_trace_id = str(uuid.uuid4())
+        logger.info(
+            "agent_run_start",
+            extra={
+                "trace_id": self._current_trace_id,
+                "user_input": user_input[:100],
+            },
+        )
+
         memories = self._retrieve_memories(user_input)
         context = self._context_builder.build(
             system_prompt=self._system_prompt,
@@ -221,14 +245,26 @@ class CognitiveAgent:
         consecutive_same_tool = 0
         last_tool_signature = ""
         seen_responses: set[str] = set()
+        tool_call_count = 0
 
         for round_idx in range(self._max_tool_rounds):
+            t_llm_start = time.monotonic()
             response = self._retry_llm_call(
                 messages=messages,
                 tools=TOOL_DEFINITIONS,
                 tool_choice="auto",
             )
             msg = response.choices[0].message
+            logger.info(
+                "llm_response",
+                extra={
+                    "trace_id": self._current_trace_id,
+                    "round": round_idx,
+                    "has_tool_calls": bool(msg.tool_calls),
+                    "content_len": len(msg.content or ""),
+                    "duration_ms": int((time.monotonic() - t_llm_start) * 1000),
+                },
+            )
 
             # ── 有 tool_calls → 执行工具 ──
             if msg.tool_calls:
@@ -248,18 +284,25 @@ class CognitiveAgent:
 
                     if consecutive_same_tool >= MAX_SAME_TOOL_CALLS:
                         logger.warning(
-                            "工具 %s 连续调用 %d 次，强制终止循环",
-                            tool_name,
-                            consecutive_same_tool,
+                            "stop_condition:same_tool_repeated",
+                            extra={
+                                "trace_id": self._current_trace_id,
+                                "tool": tool_name,
+                                "count": consecutive_same_tool,
+                            },
                         )
                         messages.append({
                             "role": "user",
                             "content": f"注意：{tool_name} 已多次调用无新结果，请基于现有信息直接回答。",
                         })
-                        break  # 跳出 for tc in msg.tool_calls
+                        break
 
                     # 重要性阈值过滤
                     if tool_name == "remember" and not self._should_remember(arguments):
+                        logger.info(
+                            "tool_skip:low_importance",
+                            extra={"arguments": arguments},
+                        )
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
@@ -267,16 +310,28 @@ class CognitiveAgent:
                         })
                         continue
 
+                    # 记忆去重
+                    if tool_name == "remember" and self._is_duplicate(arguments):
+                        logger.info(
+                            "tool_skip:duplicate_memory",
+                            extra={"content": arguments.get("content", "")[:100]},
+                        )
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": "未存储：相似记忆已存在，无需重复写入。",
+                        })
+                        continue
+
                     tool_result = self._execute_tool_call(tool_name, arguments)
+                    tool_call_count += 1
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
                         "content": tool_result.content if tool_result.success else f"错误: {tool_result.error}",
                     })
                 else:
-                    # for 循环正常结束（没有被 break），继续下一轮
                     continue
-                # for 循环被 break，退出外层 while
                 continue
 
             # ── 无 tool_calls → 获得回答 ──
@@ -285,15 +340,27 @@ class CognitiveAgent:
             # 重复回答检测
             answer_hash = hashlib.md5(final_answer.encode()).hexdigest()
             if answer_hash in seen_responses and round_idx > 0:
-                logger.warning("检测到重复回答，直接返回")
+                logger.warning(
+                    "stop_condition:duplicate_response",
+                    extra={"trace_id": self._current_trace_id, "round": round_idx},
+                )
                 self._commit_to_short_term(user_input, final_answer)
                 return final_answer
             seen_responses.add(answer_hash)
 
             # Reflection 自检（最后一轮不检）
             if round_idx < self._max_tool_rounds - 1:
+                t_ref_start = time.monotonic()
                 needs_fix, correction = self._reflection.reflect(
                     final_answer, user_input, self._llm
+                )
+                logger.info(
+                    "reflection_check",
+                    extra={
+                        "trace_id": self._current_trace_id,
+                        "needs_fix": needs_fix,
+                        "duration_ms": int((time.monotonic() - t_ref_start) * 1000),
+                    },
                 )
                 if needs_fix:
                     messages.append({
@@ -303,9 +370,19 @@ class CognitiveAgent:
                     continue
 
             self._commit_to_short_term(user_input, final_answer)
+            logger.info(
+                "agent_run_done",
+                extra={
+                    "trace_id": self._current_trace_id,
+                    "rounds": round_idx + 1,
+                    "tool_calls": tool_call_count,
+                    "total_ms": int((time.monotonic() - t_start) * 1000),
+                },
+            )
             return final_answer
 
         # 超过最大轮数
+        logger.warning("agent_max_rounds_exceeded", extra={"rounds": self._max_tool_rounds})
         return self._best_effort(messages)
 
     def reset(self) -> None:
@@ -316,6 +393,10 @@ class CognitiveAgent:
     def short_term_size(self) -> int:
         return len(self._short_term)
 
+    @property
+    def trace_id(self) -> str:
+        return self._current_trace_id
+
     # ── LLM 调用 + 重试 ──
 
     def _retry_llm_call(
@@ -324,11 +405,9 @@ class CognitiveAgent:
         tools: list[dict[str, Any]] | None = None,
         tool_choice: str | None = None,
     ) -> Any:
-        """带指数退避的 LLM 调用。
-
-        自动处理 DeepSeek timeout / 429 / 网络波动。
-        """
+        """带指数退避的 LLM 调用。"""
         last_error: Exception | None = None
+        msg_count = len(messages)
         for attempt in range(MAX_LLM_RETRIES):
             try:
                 return self._llm.chat(
@@ -342,8 +421,14 @@ class CognitiveAgent:
                     break
                 wait = 2 ** attempt
                 logger.warning(
-                    "LLM 调用失败(第 %d/%d 次): %s，%ds 后重试",
-                    attempt + 1, MAX_LLM_RETRIES, e, wait,
+                    "llm_retry",
+                    extra={
+                        "attempt": attempt + 1,
+                        "max_retries": MAX_LLM_RETRIES,
+                        "error": str(e)[:200],
+                        "wait_s": wait,
+                        "msg_count": msg_count,
+                    },
                 )
                 time.sleep(wait)
 
@@ -361,9 +446,13 @@ class CognitiveAgent:
                 mem = self._memory_store.get_by_id(r.doc_id)
                 if mem:
                     memories.append(mem)
+            logger.info(
+                "memory_retrieval",
+                extra={"query": user_input[:80], "found": len(memories)},
+            )
             return memories
         except Exception:
-            logger.warning("记忆检索失败，降级为空上下文", exc_info=True)
+            logger.warning("memory_retrieval_failed", exc_info=True)
             return []
 
     # ── 工具执行 ──
@@ -380,25 +469,85 @@ class CognitiveAgent:
         """重要性阈值过滤：低价值信息不存储。"""
         override = arguments.get("importance_override")
         if override is not None and override < self._importance_threshold:
-            logger.info(
-                "remember 被过滤：importance=%d < threshold=%d",
-                override,
-                self._importance_threshold,
-            )
             return False
         return True
 
-    def _execute_tool_call(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
-        """执行工具调用并统一错误处理。"""
+    def _is_duplicate(self, arguments: dict[str, Any]) -> bool:
+        """记忆去重：检查是否已存在高度相似记忆。
+
+        对新内容做 embedding → 向量搜索 → 相似度 > 阈值则拒绝。
+        """
+        content = arguments.get("content", "")
+        if not content:
+            return False
         try:
-            return self._tool_executor.execute(tool_name, arguments)
-        except Exception as e:
-            logger.warning("工具 %s 执行失败: %s", tool_name, e)
+            embedding = self._embedding.encode(content)
+            results = self._vector_store.search(embedding, k=3)
+            for r in results:
+                similarity = 1.0 - r.score if r.score <= 1.0 else 0.0
+                if similarity > DEDUP_SIMILARITY_THRESHOLD:
+                    logger.info(
+                        "memory_dedup_hit",
+                        extra={
+                            "new_content": content[:100],
+                            "existing_doc": r.doc_id,
+                            "similarity": round(similarity, 4),
+                        },
+                    )
+                    return True
+        except Exception:
+            logger.debug("memory_dedup_check_failed", exc_info=True)
+        return False
+
+    def _execute_tool_call(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
+        """执行工具调用，带超时保护。"""
+        t_start = time.monotonic()
+        logger.info(
+            "tool_call_start",
+            extra={
+                "trace_id": self._current_trace_id,
+                "tool": tool_name,
+                "args_summary": str(arguments)[:200],
+            },
+        )
+
+        def _run() -> ToolResult:
+            try:
+                return self._tool_executor.execute(tool_name, arguments)
+            except Exception as e:
+                return ToolResult(
+                    tool_name=tool_name,
+                    success=False,
+                    error=str(e),
+                )
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_run)
+                result = future.result(timeout=TOOL_TIMEOUT_SECONDS)
+        except concurrent.futures.TimeoutError:
+            elapsed = int((time.monotonic() - t_start) * 1000)
+            logger.error(
+                "tool_timeout",
+                extra={"tool": tool_name, "elapsed_ms": elapsed},
+            )
             return ToolResult(
                 tool_name=tool_name,
                 success=False,
-                error=str(e),
+                error=f"工具执行超时（{TOOL_TIMEOUT_SECONDS}s）",
             )
+
+        elapsed = int((time.monotonic() - t_start) * 1000)
+        logger.info(
+            "tool_call_done",
+            extra={
+                "trace_id": self._current_trace_id,
+                "tool": tool_name,
+                "success": result.success,
+                "elapsed_ms": elapsed,
+            },
+        )
+        return result
 
     # ── 兜底 ──
 

@@ -118,6 +118,66 @@ class TestReflectExecute:
         assert result.metadata["checked"] == 0
 
 
+class TestReflectAntiLoop:
+    def test_too_many_reflections_skips(self, tool, mock_memory_store):
+        """近期 reflect 过多 → 跳过本次反思。"""
+        reflect_memories = []
+        for i in range(5):
+            reflect_memories.append(Memory(
+                id=f"ref_{i}",
+                content=f"反思内容 {i}",
+                summary=None,
+                source="reflect",
+                timestamp=datetime(2026, 5, 26, tzinfo=timezone.utc),
+                memory_type="reflect",
+            ))
+        mock_memory_store.get_recent.return_value = reflect_memories
+
+        result = tool.execute({"topic": "测试主题"})
+        assert result.success is True
+        assert result.metadata["skipped"] == "anti_loop"
+
+    def test_normal_when_few_reflections(self, tool, mock_memory_store, mock_llm):
+        """少量 reflect → 正常执行。"""
+        mock_memory_store.get_recent.return_value = []  # 没有 reflect 记忆
+        response = MagicMock()
+        response.choices = [MagicMock()]
+        response.choices[0].message.content = "NOTHING_TO_RECORD"
+        mock_llm.chat.return_value = response
+
+        result = tool.execute({"topic": "测试主题"})
+        assert result.success is True
+        assert "未发现" in result.content
+
+    def test_excludes_reflect_source_from_search(self, tool, mock_memory_store, mock_llm):
+        """source=reflect 的记忆不参与反思。"""
+        reflect_mem = Memory(
+            id="ref_1",
+            content="反思记忆",
+            summary=None,
+            source="reflect",
+            timestamp=datetime(2026, 5, 26, tzinfo=timezone.utc),
+            memory_type="reflect",
+        )
+        normal_mem = Memory(
+            id="norm_1",
+            content="普通记忆",
+            summary=None,
+            source="user",
+            timestamp=datetime(2026, 5, 26, tzinfo=timezone.utc),
+        )
+        # get_by_id 返回 reflect 记忆，但应被过滤
+        mock_memory_store.get_by_id.return_value = reflect_mem
+        mock_memory_store.get_recent.return_value = [normal_mem]
+        response = MagicMock()
+        response.choices = [MagicMock()]
+        response.choices[0].message.content = "NOTHING_TO_RECORD"
+        mock_llm.chat.return_value = response
+
+        result = tool.execute({"topic": "测试"})
+        assert result.success is True
+
+
 class TestReflectErrorHandling:
     def test_llm_failure_returns_error(self, tool, mock_llm):
         mock_llm.chat.side_effect = RuntimeError("LLM 崩溃")

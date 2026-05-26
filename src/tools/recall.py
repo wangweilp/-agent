@@ -16,6 +16,11 @@ class RecallTool:
     name = "recall"
     description = "检索相关长期记忆。回答用户问题前应先调用此工具查找相关历史信息。"
     requires_confirmation = False
+    metadata = {
+        "category": "memory",
+        "cost": "low",
+        "side_effect": False,
+    }
 
     def __init__(
         self,

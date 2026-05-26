@@ -1,4 +1,9 @@
-"""Reflect 工具 — 反思近期对话，发现矛盾、联系或知识盲点。"""
+"""Reflect 工具 — 反思近期对话，发现矛盾、联系或知识盲点。
+
+防自激机制：
+- source="reflect" 的记忆不参与后续 reflect（避免反思链爆炸）
+- 最近 20 条记忆中若有 >=3 条 reflect 记忆，拒绝本次反思
+"""
 import logging
 from datetime import datetime, timezone
 
@@ -6,6 +11,9 @@ from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, VectorSto
 from src.core.types import Memory, ToolResult
 
 logger = logging.getLogger(__name__)
+
+_MAX_REFLECTION_IN_RECENT = 3  # 近期记忆中 reflect 占比超过此值则拒绝
+_RECENT_CHECK_WINDOW = 20
 
 _REFLECT_PROMPT = """你是一个知识管理反思助手。请检查以下内容是否存在矛盾、遗漏或可建立的新联系。
 
@@ -30,6 +38,11 @@ class ReflectTool:
     name = "reflect"
     description = "反思近期对话，主动发现矛盾、联系或知识盲点。"
     requires_confirmation = False
+    metadata = {
+        "category": "cognition",
+        "cost": "high",
+        "side_effect": True,
+    }
 
     def __init__(
         self,
@@ -75,19 +88,30 @@ class ReflectTool:
         if not topic.strip():
             return ToolResult(tool_name="reflect", success=False, error="反思主题不能为空")
 
+        # 防自激：检查近期 reflect 密度
+        if self._too_many_reflections():
+            return ToolResult(
+                tool_name="reflect",
+                success=True,
+                content="近期已有足够多的反思，暂不新增，避免反思自激。",
+                metadata={"checked": 0, "skipped": "anti_loop"},
+            )
+
         try:
             embedding = self._embedding.encode(topic)
             semantic_results = self._vector_store.search(embedding, k=5)
             related_memories: list[Memory] = []
             for r in semantic_results:
                 mem = self._memory_store.get_by_id(r.doc_id)
-                if mem:
+                # 防自激：source=reflect 的记忆不参与反思
+                if mem and mem.source != "reflect":
                     related_memories.append(mem)
 
             recent = self._memory_store.get_recent(recent_n)
             seen_ids = {m.id for m in related_memories}
             for m in recent:
-                if m.id not in seen_ids:
+                # 同样跳过 reflect 来源
+                if m.id not in seen_ids and m.source != "reflect":
                     related_memories.append(m)
                     seen_ids.add(m.id)
 
@@ -161,6 +185,21 @@ class ReflectTool:
                 success=False,
                 error=f"反思失败: {e}",
             )
+
+    def _too_many_reflections(self) -> bool:
+        """检查近期是否已有过多 reflect 记忆。"""
+        try:
+            recent = self._memory_store.get_recent(_RECENT_CHECK_WINDOW)
+            reflect_count = sum(1 for m in recent if m.source == "reflect")
+            if reflect_count >= _MAX_REFLECTION_IN_RECENT:
+                logger.info(
+                    "reflect:anti_loop_triggered",
+                    extra={"reflect_count": reflect_count, "window": _RECENT_CHECK_WINDOW},
+                )
+                return True
+        except Exception:
+            logger.debug("reflect:anti_loop_check_failed", exc_info=True)
+        return False
 
     @staticmethod
     def _format_for_prompt(memories: list[Memory]) -> str:
