@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
   Sparkles,
+  Brain,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
