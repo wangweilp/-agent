@@ -179,7 +179,11 @@ class ReflectTool:
                 },
             )
         except Exception as e:
-            logger.error("reflect:failed", extra={"error": str(e)})
+            logger.error(
+                "reflect:failed",
+                extra={"event": "reflect_failed", "error_type": type(e).__name__},
+            )
+            logger.exception("reflect:exception")
             return ToolResult(
                 tool_name="reflect",
                 success=False,

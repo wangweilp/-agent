@@ -20,11 +20,20 @@ logger = logging.getLogger(__name__)
 def bootstrap() -> Settings:
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        format=(
+            "%(asctime)s.%(msecs)03d "
+            "%(levelname)s "
+            "[%(name)s] "
+            "%(message)s"
+        ),
+        datefmt="%Y-%m-%dT%H:%M:%S",
         stream=sys.stderr,
     )
     settings = Settings()  # type: ignore[call-arg]
-    logger.info("Agent Memory 启动完成")
+    logger.info(
+        "服务启动完成",
+        extra={"event": "bootstrap_complete"},
+    )
     return settings
 
 

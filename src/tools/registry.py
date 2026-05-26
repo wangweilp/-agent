@@ -50,7 +50,14 @@ class ToolRegistry:
 
     def register(self, tool: Tool) -> None:
         self._tools[tool.name] = tool
-        logger.info("tool_registered", extra={"name": tool.name})
+        logger.info(
+            "tool:registered",
+            extra={
+                "event": "tool_registered",
+                "tool_name": tool.name,
+                "requires_confirmation": tool.requires_confirmation,
+            },
+        )
 
     def execute(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
         if tool_name in DANGEROUS_TOOLS:

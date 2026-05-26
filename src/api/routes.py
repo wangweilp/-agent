@@ -51,9 +51,25 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
             logger.exception("chat stream error")
             raise HTTPException(status_code=500, detail=str(e))
 
+    @router.get("/")
+    async def root():
+        return {
+            "status": "ok",
+            "service": "Agent Memory",
+            "version": "0.1.0",
+            "docs": "/docs",
+            "health": "/health",
+        }
+
     @router.get("/health")
     async def health():
-        return {"status": "ok"}
+        return {
+            "status": "healthy",
+            "agent": {
+                "short_term_size": agent.short_term_size,
+                "trace_id": agent.trace_id,
+            },
+        }
 
     return router
 

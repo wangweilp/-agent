@@ -130,7 +130,12 @@ class RememberTool:
             )
             logger.info(
                 "remember:stored",
-                extra={"id": memory.id, "importance": importance, "entities": entities},
+                extra={
+                    "event": "memory_stored",
+                    "memory_id": memory.id,
+                    "importance": importance,
+                    "entities": entities,
+                },
             )
             return ToolResult(
                 tool_name="remember",
@@ -143,7 +148,11 @@ class RememberTool:
                 },
             )
         except Exception as e:
-            logger.error("remember:failed", extra={"error": str(e)})
+            logger.error(
+                "remember:failed",
+                extra={"event": "remember_failed", "error_type": type(e).__name__},
+            )
+            logger.exception("remember:exception")
             return ToolResult(
                 tool_name="remember",
                 success=False,
@@ -179,7 +188,10 @@ class RememberTool:
         existing = self._memory_store.get_by_id(existing_id)
         if existing is None:
             # 已有记忆不存在，回退到正常存储
-            logger.warning("remember:merge_target_missing", extra={"id": existing_id})
+            logger.warning(
+            "remember:merge_target_missing",
+            extra={"event": "merge_target_missing", "memory_id": existing_id},
+        )
             return self.execute({"content": new_content, "entities": entities})
 
         merged_content = f"{existing.content}\n\n[更新] {new_content}"
@@ -217,7 +229,11 @@ class RememberTool:
                 },
             )
         except Exception as e:
-            logger.error("remember:merge_failed", extra={"error": str(e)})
+            logger.error(
+                "remember:merge_failed",
+                extra={"event": "remember_merge_failed", "existing_id": novelty.get("existing_id", ""), "error_type": type(e).__name__},
+            )
+            logger.exception("remember:merge_exception")
             return ToolResult(
                 tool_name="remember",
                 success=False,

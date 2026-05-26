@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-os-border;
+  }
+  body {
+    @apply bg-os-base text-os-text antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    @apply bg-os-accent/20 text-os-text-high;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-os-muted rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-os-subtle;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-os-surface/60 backdrop-blur-xl border border-white/[0.04] shadow-os-sm;
+  }
+  .glass-elevated {
+    @apply bg-os-elevated/70 backdrop-blur-xl border border-white/[0.06] shadow-os-md;
+  }
+  .os-card {
+    @apply bg-os-surface border border-os-border rounded-os shadow-os;
+  }
+  .os-card-hover {
+    @apply transition-all duration-200 hover:border-os-muted hover:shadow-os-md;
+  }
+  .os-divider {
+    @apply border-t border-os-border;
+  }
+  .os-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-medium rounded-full;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  .shimmer-bg {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+}

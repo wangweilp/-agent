@@ -113,7 +113,11 @@ class RecallTool:
                 },
             )
         except Exception as e:
-            logger.error("recall:failed", extra={"error": str(e)})
+            logger.error(
+                "recall:failed",
+                extra={"event": "recall_failed", "error_type": type(e).__name__},
+            )
+            logger.exception("recall:exception")
             return ToolResult(
                 tool_name="recall",
                 success=False,
