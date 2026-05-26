@@ -5,10 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
   Sparkles,
-  Brain,
-  Wrench,
-  Lightbulb,
-  ChevronDown,
+  ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { useChatStore } from "@/stores/chat-store";
