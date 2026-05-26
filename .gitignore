@@ -15,5 +15,6 @@ build/
 *.egg-info/
 node_modules/
 .next/
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
