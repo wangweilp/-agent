@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", frozen=True)
+
     deepseek_api_key: str
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
@@ -11,6 +13,3 @@ class Settings(BaseSettings):
     agent_max_tool_rounds: int = 5
     agent_short_term_size: int = 20
     agent_context_window: int = 6  # Context Builder 保留最近 N 轮
-
-    class Config:
-        env_file = ".env"

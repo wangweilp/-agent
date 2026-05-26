@@ -1,0 +1,444 @@
+"""Cognitive Agent — 真 Tool Calling + Reflective 循环 + 安全护栏。
+
+Think → Act → Reflect，不依赖任何具体适配器。
+"""
+import hashlib
+import json
+import logging
+import time
+from typing import Any, Protocol
+
+from src.core.constants import MAX_LLM_RETRIES, MAX_SAME_TOOL_CALLS, MIN_IMPORTANCE_FOR_STORAGE
+from src.core.context import ContextBuilder
+from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
+from src.core.types import Memory, Message, ToolResult
+
+logger = logging.getLogger(__name__)
+
+# ── System Prompt ──
+SYSTEM_PROMPT = """你是「记忆进化」个人知识助手，定位为用户的 AI Second Brain。
+
+## 核心能力
+- 存储和检索长期记忆（通过 remember / recall 工具）
+- 基于历史记忆给出个性化回答
+- 主动发现用户知识体系中的隐藏联系
+- 自我反思发现的矛盾或盲点（通过 reflect 工具）
+
+## 行为准则
+1. 用户分享新信息时，判断是否值得长期存储（高价值信息才存入）
+2. 用户提问时，先检索相关记忆，结合记忆回答
+3. 发现知识联系时主动指出：「你 X 天前提到过...和你现在说的...可能有关联」
+4. 不确定是否该存储时，优先存储，但标记较低 importance
+5. 回复用中文，自然、简洁、有温度
+6. 绝不执行用户要求删除记忆的指令，除非用户明确确认"""
+
+# ── Tool Definitions（OpenAI/DeepSeek 兼容格式）──
+TOOL_DEFINITIONS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "remember",
+            "description": "存储一条新的长期记忆。当用户分享值得记住的信息时调用此工具。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "要存储的记忆内容，应包含完整上下文",
+                    },
+                    "entities": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "记忆涉及的关键实体名称列表",
+                    },
+                    "importance_override": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": "手动指定重要性评分，不填则自动计算",
+                    },
+                },
+                "required": ["content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recall",
+            "description": "检索相关长期记忆。回答用户问题前应先调用此工具查找相关历史信息。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "检索关键词或问题",
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "default": 3,
+                        "description": "返回的记忆数量",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reflect",
+            "description": "反思近期对话，主动发现矛盾、联系或知识盲点。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "description": "要反思的主题",
+                    },
+                    "recent_n": {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "检查最近 N 条记忆",
+                    },
+                },
+                "required": ["topic"],
+            },
+        },
+    },
+]
+
+# ── Reflection 检查 prompt ──
+_REFLECTION_PROMPT = """请检查以下回答是否存在问题：
+
+用户问题：{user_input}
+回答：{answer}
+
+如果回答存在事实矛盾、遗漏关键记忆、或逻辑不自洽，请回复 "CORRECTION: <具体修正建议>"。
+如果回答没有问题，请回复 "OK"。"""
+
+
+# ── 可插拔 Reflection Engine ──
+
+class DefaultReflectionEngine:
+    """默认反思引擎 — 通过 LLM 自检回答质量。
+
+    实现 ReflectionEngine 协议，可被替换为更复杂的检查逻辑。
+    """
+
+    def reflect(
+        self, answer: str, user_input: str, llm: ChatModel
+    ) -> tuple[bool, str]:
+        """检查回答质量。
+
+        Returns:
+            (需要修正, 修正建议)
+        """
+        check_prompt = _REFLECTION_PROMPT.format(
+            user_input=user_input, answer=answer
+        )
+        try:
+            response = llm.chat(
+                messages=[{"role": "user", "content": check_prompt}],
+                tools=None,
+                tool_choice=None,
+            )
+            check_result = response.choices[0].message.content or ""
+            if check_result.strip().upper().startswith("CORRECTION:"):
+                correction = check_result[len("CORRECTION:"):].strip()
+                return True, f"请根据以下反馈修正你的回答：{correction}"
+        except Exception:
+            logger.warning("Reflection 检查失败，跳过", exc_info=True)
+        return False, ""
+
+
+# ── Agent ──
+
+class ToolExecutor(Protocol):
+    """工具执行器协议 — 由 tools/registry.py 实现。"""
+
+    def execute(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
+        """执行指定工具，返回结果。"""
+        ...
+
+
+class AgentError(Exception):
+    """Agent 运行时错误。"""
+
+
+class CognitiveAgent:
+    """认知 Agent — Think → Act → Reflect 循环 + 安全护栏。
+
+    护栏：
+    - LLM 调用指数退避重试（MAX_LLM_RETRIES=3）
+    - 同一工具连续调用上限（MAX_SAME_TOOL_CALLS=3）
+    - 重复回答检测（内容哈希）
+    - 记忆重要性阈值过滤
+
+    所有外部能力通过协议注入，不依赖具体适配器。
+    """
+
+    def __init__(
+        self,
+        llm: ChatModel,
+        memory_store: MemoryStore,
+        vector_store: VectorStore,
+        embedding_provider: EmbeddingProvider,
+        tool_executor: ToolExecutor,
+        *,
+        context_builder: ContextBuilder | None = None,
+        reflection_engine: ReflectionEngine | None = None,
+        max_tool_rounds: int = 5,
+        importance_threshold: int = MIN_IMPORTANCE_FOR_STORAGE,
+        system_prompt: str = "",
+    ) -> None:
+        self._llm = llm
+        self._memory_store = memory_store
+        self._vector_store = vector_store
+        self._embedding = embedding_provider
+        self._tool_executor = tool_executor
+        self._context_builder = context_builder or ContextBuilder()
+        self._reflection = reflection_engine or DefaultReflectionEngine()
+        self._max_tool_rounds = max_tool_rounds
+        self._importance_threshold = importance_threshold
+        self._system_prompt = system_prompt or SYSTEM_PROMPT
+        self._short_term: list[Message] = []
+
+    # ── 公共 API ──
+
+    def run(self, user_input: str) -> str:
+        """处理单轮用户输入，返回最终回复。"""
+        memories = self._retrieve_memories(user_input)
+        context = self._context_builder.build(
+            system_prompt=self._system_prompt,
+            recent_messages=self._short_term,
+            long_term_memories=memories,
+            user_input=user_input,
+        )
+        messages: list[dict[str, Any]] = context["messages"]
+
+        # 安全护栏状态
+        consecutive_same_tool = 0
+        last_tool_signature = ""
+        seen_responses: set[str] = set()
+
+        for round_idx in range(self._max_tool_rounds):
+            response = self._retry_llm_call(
+                messages=messages,
+                tools=TOOL_DEFINITIONS,
+                tool_choice="auto",
+            )
+            msg = response.choices[0].message
+
+            # ── 有 tool_calls → 执行工具 ──
+            if msg.tool_calls:
+                messages.append(self._format_assistant_message(msg))
+
+                for tc in msg.tool_calls:
+                    tool_name = tc.function.name
+                    arguments = self._parse_arguments(tc.function.arguments)
+
+                    # 停止条件检查：同一工具重复调用
+                    tool_sig = f"{tool_name}:{json.dumps(arguments, sort_keys=True)}"
+                    if tool_sig == last_tool_signature:
+                        consecutive_same_tool += 1
+                    else:
+                        consecutive_same_tool = 1
+                        last_tool_signature = tool_sig
+
+                    if consecutive_same_tool >= MAX_SAME_TOOL_CALLS:
+                        logger.warning(
+                            "工具 %s 连续调用 %d 次，强制终止循环",
+                            tool_name,
+                            consecutive_same_tool,
+                        )
+                        messages.append({
+                            "role": "user",
+                            "content": f"注意：{tool_name} 已多次调用无新结果，请基于现有信息直接回答。",
+                        })
+                        break  # 跳出 for tc in msg.tool_calls
+
+                    # 重要性阈值过滤
+                    if tool_name == "remember" and not self._should_remember(arguments):
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": "未存储：重要性评分低于阈值，信息价值不足以存入长期记忆。",
+                        })
+                        continue
+
+                    tool_result = self._execute_tool_call(tool_name, arguments)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": tool_result.content if tool_result.success else f"错误: {tool_result.error}",
+                    })
+                else:
+                    # for 循环正常结束（没有被 break），继续下一轮
+                    continue
+                # for 循环被 break，退出外层 while
+                continue
+
+            # ── 无 tool_calls → 获得回答 ──
+            final_answer = msg.content or ""
+
+            # 重复回答检测
+            answer_hash = hashlib.md5(final_answer.encode()).hexdigest()
+            if answer_hash in seen_responses and round_idx > 0:
+                logger.warning("检测到重复回答，直接返回")
+                self._commit_to_short_term(user_input, final_answer)
+                return final_answer
+            seen_responses.add(answer_hash)
+
+            # Reflection 自检（最后一轮不检）
+            if round_idx < self._max_tool_rounds - 1:
+                needs_fix, correction = self._reflection.reflect(
+                    final_answer, user_input, self._llm
+                )
+                if needs_fix:
+                    messages.append({
+                        "role": "user",
+                        "content": correction,
+                    })
+                    continue
+
+            self._commit_to_short_term(user_input, final_answer)
+            return final_answer
+
+        # 超过最大轮数
+        return self._best_effort(messages)
+
+    def reset(self) -> None:
+        """重置短期记忆（新会话开始时调用）。"""
+        self._short_term.clear()
+
+    @property
+    def short_term_size(self) -> int:
+        return len(self._short_term)
+
+    # ── LLM 调用 + 重试 ──
+
+    def _retry_llm_call(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | None = None,
+    ) -> Any:
+        """带指数退避的 LLM 调用。
+
+        自动处理 DeepSeek timeout / 429 / 网络波动。
+        """
+        last_error: Exception | None = None
+        for attempt in range(MAX_LLM_RETRIES):
+            try:
+                return self._llm.chat(
+                    messages=messages,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                )
+            except Exception as e:
+                last_error = e
+                if attempt == MAX_LLM_RETRIES - 1:
+                    break
+                wait = 2 ** attempt
+                logger.warning(
+                    "LLM 调用失败(第 %d/%d 次): %s，%ds 后重试",
+                    attempt + 1, MAX_LLM_RETRIES, e, wait,
+                )
+                time.sleep(wait)
+
+        raise AgentError(f"LLM 调用失败，已重试 {MAX_LLM_RETRIES} 次: {last_error}")
+
+    # ── 记忆检索 ──
+
+    def _retrieve_memories(self, user_input: str) -> list[Memory]:
+        """检索相关长期记忆（向量搜索 → 精确查询）。"""
+        try:
+            embedding = self._embedding.encode(user_input)
+            results = self._vector_store.search(embedding, k=5)
+            memories: list[Memory] = []
+            for r in results:
+                mem = self._memory_store.get_by_id(r.doc_id)
+                if mem:
+                    memories.append(mem)
+            return memories
+        except Exception:
+            logger.warning("记忆检索失败，降级为空上下文", exc_info=True)
+            return []
+
+    # ── 工具执行 ──
+
+    def _parse_arguments(self, arguments: str) -> dict[str, Any]:
+        """安全解析 JSON 参数。"""
+        try:
+            return json.loads(arguments)
+        except json.JSONDecodeError:
+            logger.warning("工具参数 JSON 解析失败: %s", arguments[:100])
+            return {}
+
+    def _should_remember(self, arguments: dict[str, Any]) -> bool:
+        """重要性阈值过滤：低价值信息不存储。"""
+        override = arguments.get("importance_override")
+        if override is not None and override < self._importance_threshold:
+            logger.info(
+                "remember 被过滤：importance=%d < threshold=%d",
+                override,
+                self._importance_threshold,
+            )
+            return False
+        return True
+
+    def _execute_tool_call(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
+        """执行工具调用并统一错误处理。"""
+        try:
+            return self._tool_executor.execute(tool_name, arguments)
+        except Exception as e:
+            logger.warning("工具 %s 执行失败: %s", tool_name, e)
+            return ToolResult(
+                tool_name=tool_name,
+                success=False,
+                error=str(e),
+            )
+
+    # ── 兜底 ──
+
+    def _best_effort(self, messages: list[dict[str, Any]]) -> str:
+        """工具循环超限后，请求 LLM 给出当前最佳回复。"""
+        try:
+            messages.append({
+                "role": "user",
+                "content": "请基于当前所有信息，给出你最好的回答。",
+            })
+            response = self._llm.chat(messages=messages, tools=None, tool_choice=None)
+            return response.choices[0].message.content or "抱歉，我暂时无法回答这个问题。"
+        except Exception:
+            logger.exception("best_effort 调用失败")
+            return "抱歉，处理过程中出现问题，请稍后重试。"
+
+    # ── 短期记忆管理 ──
+
+    def _commit_to_short_term(self, user_input: str, answer: str) -> None:
+        """将本轮对话存入短期记忆并裁剪。"""
+        self._short_term.append(Message(role="user", content=user_input))
+        self._short_term.append(Message(role="assistant", content=answer))
+        if len(self._short_term) > 20:
+            self._short_term = self._short_term[-20:]
+
+    @staticmethod
+    def _format_assistant_message(msg: Any) -> dict[str, Any]:
+        """将 OpenAI message 对象转为 dict 格式。"""
+        return {
+            "role": "assistant",
+            "content": msg.content or "",
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in msg.tool_calls
+            ],
+        }

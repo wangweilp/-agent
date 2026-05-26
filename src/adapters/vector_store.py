@@ -6,6 +6,7 @@ import chromadb
 from chromadb.api import ClientAPI
 
 from src.adapters.config import Settings
+from src.core.types import SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class ChromaDBAdapter:
         )
         return doc_id
 
-    def search(self, embedding: list[float], k: int) -> list[dict[str, Any]]:
+    def search(self, embedding: list[float], k: int) -> list[SearchResult]:
         if not embedding:
             raise ValueError("embedding 不能为空")
 
@@ -61,17 +62,17 @@ class ChromaDBAdapter:
             include=["metadatas", "distances"],
         )
 
-        hits: list[dict[str, Any]] = []
+        hits: list[SearchResult] = []
         ids = result.get("ids", [[]])[0]
         metadatas = result.get("metadatas", [[]])[0]
         distances = result.get("distances", [[]])[0]
 
         for i, doc_id in enumerate(ids):
-            hits.append({
-                "id": doc_id,
-                "metadata": metadatas[i] if metadatas else {},
-                "distance": distances[i] if distances else 0.0,
-            })
+            hits.append(SearchResult(
+                doc_id=doc_id,
+                score=distances[i] if distances else 0.0,
+                metadata=metadatas[i] if metadatas else {},
+            ))
         return hits
 
     def delete(self, doc_id: str) -> None:

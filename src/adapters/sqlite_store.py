@@ -7,7 +7,7 @@ import json
 import logging
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlite_utils import Database
@@ -164,7 +164,7 @@ class SQLiteStoreAdapter:
         self._db.execute(
             """UPDATE notes SET access_count = access_count + 1,
                last_accessed = ? WHERE id = ?""",
-            (datetime.now().isoformat(), memory_id),
+            (datetime.now(timezone.utc).isoformat(), memory_id),
         )
         row = self._db.execute(
             "SELECT * FROM notes WHERE id = ?", (memory_id,)

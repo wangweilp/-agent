@@ -54,7 +54,7 @@ class TestSearch:
         results = chroma_store.search([1.0, 0.1, 0.0], k=2)
 
         assert len(results) == 2
-        assert results[0]["id"] == "mem_1"
+        assert results[0].doc_id == "mem_1"
 
     def test_each_result_has_required_keys(self, chroma_store):
         chroma_store.store("mem_1", [1.0, 0.0, 0.0], {"text": "测试"})
@@ -62,9 +62,9 @@ class TestSearch:
         results = chroma_store.search([1.0, 0.0, 0.0], k=1)
 
         result = results[0]
-        assert "id" in result
-        assert "metadata" in result
-        assert "distance" in result
+        assert hasattr(result, "doc_id")
+        assert hasattr(result, "metadata")
+        assert hasattr(result, "score")
 
     def test_k_larger_than_collection_returns_fewer(self, chroma_store):
         chroma_store.store("mem_1", [1.0, 0.0, 0.0], {})
@@ -112,9 +112,9 @@ class TestMetadataSanitization:
             "mem_1", [1.0, 0.0, 0.0], {"count": 5, "active": True, "score": 3.14}
         )
         results = chroma_store.search([1.0, 0.0, 0.0], k=1)
-        assert results[0]["metadata"]["count"] == 5
-        assert results[0]["metadata"]["active"] is True
-        assert results[0]["metadata"]["score"] == 3.14
+        assert results[0].metadata["count"] == 5
+        assert results[0].metadata["active"] is True
+        assert results[0].metadata["score"] == 3.14
 
 
 class TestProtocolCompliance:
