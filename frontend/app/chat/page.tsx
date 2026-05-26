@@ -8,6 +8,10 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  Search,
+  Wrench,
+  Lightbulb,
 } from "lucide-react";
 import { useChatStore } from "@/stores/chat-store";
 import { useAgentStore } from "@/stores/agent-store";
@@ -30,6 +34,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [showSidebar, setShowSidebar] = useState(true);
   const [showActivity, setShowActivity] = useState(true);
+  const [agentPhase, setAgentPhase] = useState<"idle" | "retrieving" | "thinking" | "acting" | "reflecting">("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -43,11 +48,25 @@ export default function ChatPage() {
     setInput("");
     setStreaming(true);
     setThinking(true);
+    setAgentPhase("retrieving");
     setStatus("thinking");
+
+    let firstTokenReceived = false;
 
     abortRef.current = api.chatStream(
       { content: text },
-      (token) => { appendStreamToken(token); setThinking(false); },
+      (token) => {
+        if (!firstTokenReceived) {
+          firstTokenReceived = true;
+          setAgentPhase("thinking");
+        }
+        if (token.includes("⚡")) { setAgentPhase("acting"); setStatus("acting"); }
+        else if (token.includes("✓")) { setAgentPhase("thinking"); }
+        else if (token.includes("🔄")) { setAgentPhase("reflecting"); setStatus("reflecting"); }
+        else { setAgentPhase("thinking"); }
+        appendStreamToken(token);
+        setThinking(false);
+      },
       (data: unknown) => {
         const d = data as Record<string, unknown>;
         const tc: ToolCall = {
@@ -59,6 +78,7 @@ export default function ChatPage() {
           finished_at: null,
         };
         addToolCall(tc);
+        setAgentPhase("acting");
         setStatus("acting");
       },
       (data: unknown) => {
@@ -69,12 +89,14 @@ export default function ChatPage() {
         flushStream("assistant");
         setStreaming(false);
         setThinking(false);
+        setAgentPhase("idle");
         setStatus("idle");
       },
       (err) => {
         addMessage({ role: "assistant", content: `错误: ${err}` });
         setStreaming(false);
         setThinking(false);
+        setAgentPhase("idle");
         setStatus("idle");
       },
     );
@@ -113,8 +135,16 @@ export default function ChatPage() {
             </button>
             <Sparkles size={14} className="text-os-accent" />
             <span className="text-xs text-os-text-high font-medium">对话</span>
-            {isThinking && (
-              <span className="text-2xs text-os-accent animate-pulse">Agent 思考中...</span>
+            {agentPhase !== "idle" && (
+              <div className="flex items-center gap-1.5 ml-2">
+                <Loader2 size={11} className="text-os-accent animate-spin" />
+                <span className="text-2xs text-os-accent">
+                  {agentPhase === "retrieving" && "检索记忆中..."}
+                  {agentPhase === "thinking" && "思考中..."}
+                  {agentPhase === "acting" && "执行工具中..."}
+                  {agentPhase === "reflecting" && "反思中..."}
+                </span>
+              </div>
             )}
             <button
               onClick={() => setShowActivity(!showActivity)}

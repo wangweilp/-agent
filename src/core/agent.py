@@ -9,6 +9,7 @@ import logging
 import threading
 import time
 import uuid
+from collections.abc import Generator
 from typing import Any, Protocol
 
 from src.core.constants import (
@@ -384,6 +385,189 @@ class CognitiveAgent:
         # 超过最大轮数
         logger.warning("agent_max_rounds_exceeded", extra={"rounds": self._max_tool_rounds})
         return self._best_effort(messages)
+
+    def run_stream(self, user_input: str) -> Generator[str, None, None]:
+        """流式版本 — 逐 token 返回，不等待完整响应。
+
+        与 run() 逻辑相同，但 LLM 调用使用 stream=True，
+        每收到一个 token 就 yield 出去，消除首字节延迟。
+        """
+        t_start = time.monotonic()
+        self._current_trace_id = str(uuid.uuid4())
+        t_setup = time.monotonic()
+        logger.info(
+            "agent_run_stream_start",
+            extra={"trace_id": self._current_trace_id, "user_input": user_input[:100]},
+        )
+
+        # ── Phase 1: 记忆检索 ──
+        t_retrieve_start = time.monotonic()
+        memories = self._retrieve_memories(user_input)
+        t_retrieve_ms = int((time.monotonic() - t_retrieve_start) * 1000)
+
+        context = self._context_builder.build(
+            system_prompt=self._system_prompt,
+            recent_messages=self._short_term,
+            long_term_memories=memories,
+            user_input=user_input,
+        )
+        messages: list[dict[str, Any]] = context["messages"]
+
+        consecutive_same_tool = 0
+        last_tool_signature = ""
+        seen_responses: set[str] = set()
+        tool_call_count = 0
+
+        for round_idx in range(self._max_tool_rounds):
+            t_llm_start = time.monotonic()
+            try:
+                stream = self._llm.chat(
+                    messages=messages,
+                    tools=TOOL_DEFINITIONS,
+                    tool_choice="auto",
+                    stream=True,
+                )
+            except Exception:
+                logger.warning("stream_llm_failed", exc_info=True)
+                yield "\n[LLM 调用失败，请重试]\n"
+                return
+
+            content_parts: list[str] = []
+            tool_call_buffers: dict[int, dict[str, Any]] = {}
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    content_parts.append(delta.content)
+                    yield delta.content
+                if delta.tool_calls:
+                    for tc_delta in delta.tool_calls:
+                        idx = tc_delta.index
+                        if idx not in tool_call_buffers:
+                            tool_call_buffers[idx] = {
+                                "id": "",
+                                "function": {"name": "", "arguments": ""},
+                            }
+                        buf = tool_call_buffers[idx]
+                        if tc_delta.id:
+                            buf["id"] = tc_delta.id
+                        if tc_delta.function:
+                            if tc_delta.function.name:
+                                buf["function"]["name"] += tc_delta.function.name
+                            if tc_delta.function.arguments:
+                                buf["function"]["arguments"] += tc_delta.function.arguments
+
+            content = "".join(content_parts)
+            t_llm_ms = int((time.monotonic() - t_llm_start) * 1000)
+
+            # ── 有 tool_calls → 执行工具 ──
+            if tool_call_buffers:
+                messages.append({
+                    "role": "assistant",
+                    "content": content or "",
+                    "tool_calls": [
+                        {
+                            "id": buf["id"],
+                            "type": "function",
+                            "function": {
+                                "name": buf["function"]["name"],
+                                "arguments": buf["function"]["arguments"],
+                            },
+                        }
+                        for buf in tool_call_buffers.values()
+                    ],
+                })
+
+                for buf in tool_call_buffers.values():
+                    tool_name = buf["function"]["name"]
+                    arguments = self._parse_arguments(buf["function"]["arguments"])
+
+                    yield f"\n\n⚡ 调用工具: {tool_name}\n"
+
+                    # 停止条件
+                    tool_sig = f"{tool_name}:{json.dumps(arguments, sort_keys=True)}"
+                    if tool_sig == last_tool_signature:
+                        consecutive_same_tool += 1
+                    else:
+                        consecutive_same_tool = 1
+                        last_tool_signature = tool_sig
+
+                    if consecutive_same_tool >= MAX_SAME_TOOL_CALLS:
+                        yield f"\n⚠️ {tool_name} 重复调用已达上限，基于现有信息回答。\n"
+                        messages.append({
+                            "role": "user",
+                            "content": f"注意：{tool_name} 已多次调用无新结果，请基于现有信息直接回答。",
+                        })
+                        break
+
+                    # 重要性阈值 / 去重
+                    if tool_name == "remember":
+                        if not self._should_remember(arguments):
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": buf["id"],
+                                "content": "未存储：重要性评分低于阈值。",
+                            })
+                            continue
+                        if self._is_duplicate(arguments):
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": buf["id"],
+                                "content": "未存储：相似记忆已存在。",
+                            })
+                            continue
+
+                    tool_result = self._execute_tool_call(tool_name, arguments)
+                    tool_call_count += 1
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": buf["id"],
+                        "content": tool_result.content if tool_result.success else f"错误: {tool_result.error}",
+                    })
+
+                    yield f"✓ {tool_name} 完成\n\n"
+                else:
+                    continue
+                continue
+
+            # ── 无 tool_calls → 获得回答 ──
+            if not content.strip():
+                continue
+
+            answer_hash = hashlib.md5(content.encode()).hexdigest()
+            if answer_hash in seen_responses and round_idx > 0:
+                self._commit_to_short_term(user_input, content)
+                return
+
+            seen_responses.add(answer_hash)
+
+            # Reflection 自检（最后一轮不检）
+            if round_idx < self._max_tool_rounds - 1:
+                needs_fix, correction = self._reflection.reflect(content, user_input, self._llm)
+                if needs_fix:
+                    messages.append({"role": "user", "content": correction})
+                    yield "\n\n🔄 自我修正中...\n\n"
+                    continue
+
+            t_total_ms = int((time.monotonic() - t_start) * 1000)
+            self._commit_to_short_term(user_input, content)
+            logger.info(
+                "agent_run_stream_done",
+                extra={
+                    "trace_id": self._current_trace_id,
+                    "rounds": round_idx + 1,
+                    "tool_calls": tool_call_count,
+                    "retrieve_ms": t_retrieve_ms,
+                    "last_llm_ms": t_llm_ms,
+                    "total_ms": t_total_ms,
+                },
+            )
+            return
+
+        # 超过最大轮数
+        logger.warning("agent_max_rounds_exceeded", extra={"rounds": self._max_tool_rounds})
+        fallback = self._best_effort(messages)
+        yield fallback
 
     def reset(self) -> None:
         """重置短期记忆（新会话开始时调用）。"""

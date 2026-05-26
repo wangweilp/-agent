@@ -10,7 +10,7 @@ SSE 事件类型：
 import asyncio
 import json
 import logging
-import time
+import threading
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException
@@ -36,20 +36,42 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
 
     @router.post("/chat/stream")
     async def chat_stream(request: ChatRequest):
-        try:
-            reply = await asyncio.to_thread(agent.run, request.content)
-            return StreamingResponse(
-                _stream_response(reply),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                    "X-Accel-Buffering": "no",
-                },
-            )
-        except Exception as e:
-            logger.exception("chat stream error")
-            raise HTTPException(status_code=500, detail=str(e))
+        async def generate():
+            loop = asyncio.get_running_loop()
+            queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
+
+            def _run():
+                try:
+                    for token in agent.run_stream(request.content):
+                        loop.call_soon_threadsafe(queue.put_nowait, ("token", token))
+                    loop.call_soon_threadsafe(queue.put_nowait, ("done", ""))
+                except Exception as e:
+                    logger.exception("chat stream error")
+                    loop.call_soon_threadsafe(queue.put_nowait, ("error", str(e)))
+
+            thread = threading.Thread(target=_run, daemon=True)
+            thread.start()
+
+            while True:
+                event_type, data = await queue.get()
+                if event_type == "done":
+                    yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
+                    break
+                elif event_type == "error":
+                    yield f"event: error\ndata: {json.dumps({'message': data})}\n\n"
+                    break
+                else:
+                    yield f"event: token\ndata: {json.dumps({'text': data})}\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     @router.get("/")
     async def root():
@@ -74,10 +96,3 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
     return router
 
 
-async def _stream_response(text: str) -> AsyncGenerator[str, None]:
-    """SSE 流式返回，统一事件类型。"""
-    for i in range(0, len(text), 10):
-        chunk = text[i:i + 10]
-        yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
-        await asyncio.sleep(0.02)
-    yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
