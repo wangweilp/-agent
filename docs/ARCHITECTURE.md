@@ -4,140 +4,152 @@
 
 > 每一层都有边界，每一个模块都有职责，每一次调用都是可预期的。
 
-本项目采用 **六边形架构（Ports & Adapters）** 的简化版：领域核心不依赖任何外部实现，所有外部能力通过适配器注入。
+本项目定位：**Cognitive OS / AI Second Brain**，而非又一个聊天机器人。
+
+采用 **六边形架构（Ports & Adapters）**：领域核心不依赖任何外部实现，所有外部能力通过适配器注入。
+
+---
 
 ## 2. 目录结构与职责边界
 
 ```
-knowledge-agent/
+D:\代码\day2\
 ├── src/
-│   ├── core/          # 【领域层】纯逻辑，零外部依赖
-│   │   ├── __init__.py
-│   │   ├── memory.py        # 记忆抽象：存储/检索/管理记忆
-│   │   ├── agent.py         # Agent 核心循环：Think → Act → Observe
-│   │   ├── knowledge.py     # 知识实体模型 + 关系图谱
-│   │   ├── report.py        # 周报生成逻辑（纯 prompt 组装）
-│   │   └── types.py         # 共享数据类型（Memory, Entity, ToolCall...）
+│   ├── core/              # 领域层 — 纯逻辑，零外部依赖
+│   │   ├── types.py       # 所有数据类型定义
+│   │   ├── memory.py      # 记忆抽象协议（MemoryStore, VectorStore, LLMProvider）
+│   │   ├── agent.py       # Agent 核心循环 + System Prompt
+│   │   ├── context.py     # Context Builder（动态组装上下文）
+│   │   ├── consolidation.py # 记忆巩固（自动重组知识）
+│   │   ├── knowledge.py   # 知识图谱逻辑（实体→关系）
+│   │   └── report.py      # 周报/洞察生成逻辑
 │   │
-│   ├── adapters/      # 【适配器层】所有外部系统在这里封装
-│   │   ├── __init__.py
-│   │   ├── llm.py           # DeepSeek 适配器（chat + embedding）
-│   │   ├── vector_store.py  # ChromaDB 适配器
-│   │   ├── sqlite_store.py  # SQLite 适配器（结构化存储）
-│   │   └── config.py        # 配置加载（.env → pydantic Settings）
+│   ├── adapters/          # 适配器层 — 封装所有外部 I/O
+│   │   ├── llm.py         # DeepSeek adapter（chat + embedding + tool calling）
+│   │   ├── embedding.py   # 本地 embedding（bge-small-zh-v1.5）
+│   │   ├── vector_store.py# ChromaDB adapter
+│   │   ├── sqlite_store.py# SQLite adapter（结构化存储）
+│   │   └── config.py      # 配置加载（pydantic Settings）
 │   │
-│   ├── api/           # 【接口层】对外暴露的通信协议
-│   │   ├── __init__.py
-│   │   ├── routes.py        # FastAPI 路由
-│   │   ├── schemas.py       # 请求/响应 Pydantic 模型
-│   │   └── middleware.py    # 日志、错误处理
+│   ├── api/               # 接口层 — FastAPI
+│   │   ├── routes.py      # /chat 端点 + SSE 流式
+│   │   ├── schemas.py     # Pydantic 请求/响应模型
+│   │   └── middleware.py  # 日志、错误处理
 │   │
-│   └── tools/         # 【工具层】Agent 可调用的工具函数（独立可测试）
-│       ├── __init__.py
-│       ├── recall.py        # 记忆检索工具
-│       ├── remember.py      # 记忆存储工具
-│       ├── reflect.py       # 反思/关联发现工具
-│       └── registry.py      # 工具注册表
+│   └── tools/             # 工具层 — Agent 可调用的工具
+│       ├── remember.py    # 记忆存储（+重要性评分）
+│       ├── recall.py      # 语义检索（+RRF 重排序）
+│       ├── reflect.py     # 反思工具
+│       ├── consolidate.py # 记忆巩固触发
+│       └── registry.py    # 工具注册表 + 权限分级
 │
-├── tests/             # 测试目录（镜像 src/ 结构）
-│   ├── test_core/
-│   ├── test_adapters/
-│   └── test_tools/
-│
-├── docs/              # 文档
-│   ├── ARCHITECTURE.md
-│   ├── DESIGN.md
-│   ├── ROADMAP.md
-│   └── DEV_GUIDE.md
-│
-├── config/            # 配置文件模板
-│   └── .env.template
-│
-├── data/              # 运行时数据（不提交 git）
-├── main.py            # 启动入口（组装所有依赖）
-├── requirements.txt
-└── .gitignore
+├── tests/                 # 镜像 src/ 结构
+├── docs/                  # 设计文档
+├── config/.env.template
+├── data/                  # 运行时数据
+├── CLAUDE.md              # 开发规则（最高优先级）
+├── main.py                # 依赖注入入口
+└── requirements.txt
 ```
+
+---
 
 ## 3. 模块依赖图
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   main.py                       │
-│          (依赖注入：组装整个系统)                  │
-└─────────────────────────────────────────────────┘
-         │                │
-    ┌────▼────┐      ┌───▼────┐
-    │  api/   │      │ tools/ │
-    │ FastAPI │◄─────│ 工具注册│
-    └────┬────┘      └───┬────┘
-         │               │
-    ┌────▼───────────────▼────┐
-    │         core/            │
-    │  ┌────────────────────┐  │
-    │  │      agent.py      │  │  ◄── 核心循环
-    │  │  Think→Act→Observe │  │
-    │  └───┬──────────┬─────┘  │
-    │      │          │        │
-    │  ┌───▼──┐  ┌───▼─────┐  │
-    │  │memory│  │knowledge│  │  ◄── 纯领域模型
-    │  └───┬──┘  └─────────┘  │
-    └──────┼──────────────────┘
-           │ 依赖协议(Protocol/ABC)
-    ┌──────▼──────────────────┐
-    │       adapters/          │
-    │  ┌─────┬─────┬────────┐  │
-    │  │ LLM │Vectr│ SQLite │  │  ◄── 所有 I/O 在这里
-    │  └─────┴─────┴────────┘  │
-    └──────────────────────────┘
+                    ┌──────────────┐
+                    │   main.py    │
+                    │ (依赖注入)    │
+                    └──┬───────┬───┘
+                       │       │
+          ┌────────────▼─┐  ┌──▼──────────┐
+          │    api/       │  │   tools/     │
+          │  FastAPI      │  │ 注册表+权限   │
+          └──────┬────────┘  └──┬───────────┘
+                 │              │
+          ┌──────▼──────────────▼───┐
+          │         core/           │
+          │  ┌───────────────────┐  │
+          │  │    agent.py       │  │ ← 真 Tool Calling + Reflective 循环
+          │  │ Think→Act→Reflect │  │
+          │  └─┬──────┬──────┬──┘  │
+          │    │      │      │     │
+          │  ┌─▼──┐ ┌─▼──┐ ┌─▼───┐ │
+          │  │ctx │ │mem │ │cons │ │ ← 纯领域模型
+          │  │bldr│ │    │ │olida│ │
+          │  └────┘ └────┘ └─────┘ │
+          └─────────┬──────────────┘
+                    │ 协议(Protocol/ABC)
+          ┌─────────▼──────────────┐
+          │      adapters/          │
+          │ ┌────┬────┬────┬─────┐ │
+          │ │LLM │Emb │Vec │SQL  │ │ ← 所有 I/O
+          │ └────┴────┴────┴─────┘ │
+          └────────────────────────┘
 ```
 
 **核心规则**：
-- `core/` 不导入 `adapters/`、`api/`。只定义 Protocol/ABC 签名。
-- `adapters/` 实现 `core/` 定义的协议。
-- `tools/` 是纯函数，依赖 `core/` 的类型，通过协议访问 `adapters/`。
-- `api/` 只做请求解析和响应格式化，调用 `core/`。
-- `main.py` 负责把所有东西组装起来（依赖注入）。
+- `core/` 不导入 `adapters/`、`api/`。只定义 Protocol 签名。
+- `adapters/` 实现 core 定义的协议。
+- `tools/` 是纯函数，通过协议访问数据。
+- `api/` 只做请求解析和响应格式化。
+- `main.py` 负责依赖注入。
 
-## 4. 数据流
+---
+
+## 4. 数据流（Cognitive Architecture）
 
 ```
 用户输入
   │
   ▼
-api/routes.py ──→ core/agent.py
-                      │
-         ┌────────────┼────────────┐
-         ▼            ▼            ▼
-      Think        Act         Observe
-      (LLM)      (Tools)      (Update)
-         │            │            │
-         │      ┌─────┴─────┐      │
-         │      ▼           ▼      │
-         │  remember     recall    │
-         │  →SQLite     →ChromaDB  │
-         │  →ChromaDB              │
-         └─────────────────────────┘
-                      │
-                      ▼
-              最终回复 (streaming SSE)
+api/routes.py
+  │
+  ▼
+core/context.py ← Context Builder
+  │  ├─ System Prompt (core/agent.py)
+  │  ├─ 最近 6 轮对话
+  │  ├─ 检索到的长期记忆 (via adapters/)
+  │  └─ 当前用户输入
+  │
+  ▼
+core/agent.py ← Agent 核心循环 (5 轮上限)
+  │
+  ├─→ Think: LLM 推理 (via True Tool Calling API)
+  │   tools=[{remember}, {recall}, {reflect}]
+  │
+  ├─→ Act: 执行工具调用
+  │   ├─ remember → embedding + ChromaDB + SQLite 双写
+  │   └─ recall   → 语义搜索 + RRF 重排序
+  │
+  ├─→ Reflect: 自我检查
+  │   └─ 检查是否遗漏记忆、存在矛盾、可建立新连接
+  │
+  └─→ Respond: 最终回复 (SSE 流式)
 ```
+
+---
 
 ## 5. 关键设计决策
 
-| 决策 | 理由 | 约束 |
-|------|------|------|
-| 双层记忆（向量+结构化） | 语义搜索 + 精确查询不可互相替代 | ChromaDB 只存向量，SQLite 存原始文本和元数据 |
-| Agent 循环上限 5 轮 | 防止 Agent 死循环，控制成本和延迟 | 在 config 中可配置 |
-| 短对话记忆窗口 20 条 | 平衡上下文相关性和 token 成本 | 超过时自动摘要压缩 |
-| 工具调用用 JSON 解析 | 零依赖，足够控制 Agent 行为 | 后续可升级为 function calling |
-| CLI 入口优先于 Web UI | 快速验证，不分散架构精力 | dev 阶段用终端，prod 再挂 FastAPI |
+| 决策 | v0.1 方案 | 理由 |
+|------|----------|------|
+| Tool Calling | **OpenAI Tool Calling API** | 结构化 schema，防 prompt injection，DeepSeek 兼容 |
+| Embedding | **本地 bge-small-zh-v1.5** | 免费、离线、中文 SOTA，不做 SQLite LIKE 伪搜索 |
+| Context 组装 | **Context Builder** | Agent 上下文 ≠ 全部历史，防 token 爆炸 |
+| 记忆存储 | **双写（ChromaDB + SQLite）** | 向量搜索 + 结构化精确查询 |
+| 记忆模型 | **丰富字段（含 importance, memory_type）** | 支持记忆衰减、分级、巩固 |
+| Agent 循环 | **Reflective（Think→Act→Reflect）** | 非单步 Agent，有自我检查 |
+| RAG | **Embedding 召回 → RRF 重排序 → LLM 压缩** | 非 top_k 直接返回 |
+| 工具安全 | **SAFE / DANGEROUS 分级** | 危险操作需人工确认 |
+
+---
 
 ## 6. 分层测试策略
 
 | 层级 | 测试类型 | 覆盖目标 |
 |------|---------|---------|
-| `core/` | 单元测试 | 100% 覆盖纯逻辑 |
+| `core/` | 单元测试 | 95%+ 覆盖纯逻辑 |
 | `tools/` | 单元测试 | 每个工具的输入输出 |
 | `adapters/` | 集成测试 | Mock 外部 API，验证适配器行为 |
 | `api/` | E2E 测试 | 完整请求-响应链路 |

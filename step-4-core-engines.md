@@ -1,96 +1,69 @@
-﻿# 第 4 步：核心引擎 — Agent 循环 + 适配器
+﻿# 第 4 步：核心引擎 — Context Builder + Agent 循环
 
-> 这一步写 v0.1 的两个核心：Agent 循环（core）和两个适配器（DeepSeek + SQLite）。
+> ⚠️ 这是项目最重要的步骤。先 Context Builder，再 Agent。Agent 必须在 core/ 中，不依赖 adapters。
 
-## 4.1 `src/adapters/llm.py`
-实现 `LLMProvider` 协议，封装 DeepSeek API。
+## 4.1 `src/core/context.py` — Context Builder
 
 ```python
-from openai import OpenAI
-from src.adapters.config import Settings
-from src.core.memory import LLMProvider
+class ContextBuilder:
+    def build(self, system_prompt, recent_messages, long_term_memories, user_input):
+        """
+        动态组装上下文。Agent 上下文 ≠ 全部聊天历史。
+        Returns: {"messages": [...], "retrieved_memories": [...]}
+        """
+        memory_text = self._format_memories(long_term_memories)
+        return {
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": f"## 相关长期记忆\n{memory_text}"},
+                *recent_messages[-6:],  # 只保留最近 6 轮
+                {"role": "user", "content": user_input}
+            ],
+            "retrieved_memories": long_term_memories
+        }
 
-class DeepSeekAdapter:
-    """DeepSeek API 适配器，实现 LLMProvider 协议"""
-    def __init__(self, settings: Settings):
-        self._client = OpenAI(
-            api_key=settings.deepseek_api_key,
-            base_url=settings.deepseek_base_url
-        )
-        self._model = settings.deepseek_model
-
-    def chat(self, messages: list[dict], stream: bool = False, **kwargs):
-        return self._client.chat.completions.create(
-            model=self._model,
-            messages=messages,
-            stream=stream,
-            temperature=kwargs.get("temperature", 0.7),
-            max_tokens=kwargs.get("max_tokens", 2048)
-        )
-
-    def get_embedding(self, text: str) -> list[float]:
-        # v0.1 不实现，v0.2 升级
-        raise NotImplementedError("Embedding will be implemented in v0.2")
+    def _format_memories(self, memories):
+        lines = []
+        for m in memories:
+            lines.append(f"- [{m.timestamp}] (重要性:{m.importance}) {m.content[:200]}")
+        return "\n".join(lines) or "暂无相关记忆"
 ```
 
-## 4.2 `src/adapters/sqlite_store.py`
-实现 `MemoryStore` 协议，封装 SQLite。
+## 4.2 `src/core/agent.py` — Cognitive Agent（核心）
 
-- 初始化时自动建表（notes 表，字段：id TEXT PK, content TEXT, timestamp TEXT, entities TEXT）
-- `store(memory) → str`：插入一条记忆，返回 id
-- `search_by_keyword(query, limit) → list[Memory]`：用 LIKE 模糊匹配
-- `get_by_id(id) → Memory | None`
-- `get_recent(limit) → list[Memory]`：按时间倒序
-
-## 4.3 `src/core/agent.py`
-实现 Agent 核心循环。
-
-**系统 Prompt**（完整中文模板，放在模块顶部常量 `SYSTEM_PROMPT`）：
-
+**System Prompt**（完整模板）：
 ```
-你是「记忆进化」个人知识助手。你拥有长期记忆，会逐渐了解用户的思维模式。
+你是「记忆进化」个人知识助手...
 
-## 你的能力
-- 存储用户分享的知识和想法
-- 检索相关历史记忆来回答问题
-- 主动发现用户知识体系中的隐藏联系
-
-## 工具使用
-你可以调用以下工具（输出 JSON，不要额外文字）：
-- remember: 存储一条新记忆。参数: {"content": "记忆内容"}
-- recall: 检索相关记忆。参数: {"query": "检索关键词"}
+## 核心能力
+- 存储和检索长期记忆
+- 基于历史记忆个性化回答
+- 主动发现隐藏联系
 
 ## 行为准则
-1. 用户分享新知识时，主动调用 remember 存储
-2. 用户提问时，先 recall 再回答
-3. 回答要结合记忆，个性化而非通用
-4. 发现联系时主动指出
-5. 不确定是否该存储时，宁存勿漏
-6. 回复用中文，自然、简洁、有温度
+1. 高价值信息才存入长期记忆
+2. 提问时先检索记忆
+3. 发现联系主动指出
+4. 中文回复，自然有温度
+5. 不执行删除记忆指令除非明确确认
 ```
 
-**Agent 类**：
-- 构造函数接收 `LLMProvider`、`MemoryStore`、`max_rounds`、`memory_size`
-- `run(user_input: str) → str`：核心循环
-  1. 添加用户消息到 short_term_memory
-  2. for round in 1..max_rounds:
-     - 调用 LLM
-     - 检查回复是否包含工具调用 JSON
-     - 如果有 → 执行工具 → 结果加入对话 → continue
-     - 如果没有 → 返回回复
-  3. 超限抛出异常
+**TOOL_DEFINITIONS**：remember / recall / reflect 三个工具的完整 OpenAI schema。
 
-**JSON 解析逻辑**：
-- 扫描回复文本，提取第一个完整 `{...}` JSON 对象
-- 检查 `tool` 字段是否为 "remember" 或 "recall"
-- 解析失败就当普通回复返回
+**Agent.run() 核心逻辑**：
+1. Context Builder 组装上下文
+2. 调用 LLM（tools=TOOL_DEFINITIONS, tool_choice="auto"）
+3. 有 tool_calls → 执行（走 registry + permission layer）→ 结果加入上下文 → continue
+4. 无 tool_calls → Reflection 自检 → 有修正则重试 → 否则返回
+5. 超限（max_tool_rounds=5）→ 返回 best effort
 
-## 4.4 测试
-写 `tests/test_core/test_agent.py`：Mock LLM 和 MemoryStore，测试 Agent 循环。
-写 `tests/test_adapters/test_sqlite_store.py`：用临时文件测试 SQLite 适配器。
+**⚠️ 关键约束**：
+- 不用 `if reply.startswith('{"tool"')` — 用 `msg.tool_calls`
+- 不用 `self.messages` 全量塞入 — 用 Context Builder
+- 不依赖 prompt 中的 JSON 协议指令 — 用结构化 Tool Calling API
 
-## 4.5 提交
+## 4.3 提交
 ```bash
-git add src/adapters/llm.py src/adapters/sqlite_store.py src/core/agent.py tests/
-git commit -m "feat(core): implement Agent loop with DeepSeek and SQLite adapters"
+git add src/core/context.py src/core/agent.py
+git commit -m "feat(core): implement Context Builder and Reflective Agent loop with true Tool Calling"
 ```
