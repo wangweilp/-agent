@@ -25,6 +25,7 @@ class DeepSeekAdapter:
         self._client = OpenAI(
             api_key=config.deepseek_api_key,
             base_url=config.deepseek_base_url,
+            timeout=120.0,
         )
 
     def chat(

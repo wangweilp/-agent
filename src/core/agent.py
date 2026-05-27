@@ -419,8 +419,15 @@ class CognitiveAgent:
 
         # ── Phase 1: 记忆检索 ──
         t_retrieve_start = time.monotonic()
+        logger.info("phase1_retrieve_start", extra={"trace_id": self._current_trace_id})
+        yield "🔍 检索记忆中..."
         memories = self._retrieve_memories(user_input)
         t_retrieve_ms = int((time.monotonic() - t_retrieve_start) * 1000)
+        logger.info("phase1_retrieve_done", extra={"trace_id": self._current_trace_id, "ms": t_retrieve_ms, "count": len(memories)})
+        if memories:
+            yield f" 找到 {len(memories)} 条相关记忆\n\n"
+        else:
+            yield "\n"
 
         context = self._context_builder.build(
             system_prompt=self._system_prompt,
@@ -437,6 +444,7 @@ class CognitiveAgent:
 
         for round_idx in range(self._max_tool_rounds):
             t_llm_start = time.monotonic()
+            logger.info("phase2_llm_stream_start", extra={"trace_id": self._current_trace_id, "round": round_idx, "msg_count": len(messages)})
             try:
                 stream = self._llm.chat(
                     messages=messages,
@@ -451,8 +459,13 @@ class CognitiveAgent:
 
             content_parts: list[str] = []
             tool_call_buffers: dict[int, dict[str, Any]] = {}
+            first_chunk = True
 
             for chunk in stream:
+                if first_chunk:
+                    t_first_token_ms = int((time.monotonic() - t_llm_start) * 1000)
+                    logger.info("phase2_first_chunk", extra={"trace_id": self._current_trace_id, "ttft_ms": t_first_token_ms})
+                    first_chunk = False
                 delta = chunk.choices[0].delta
                 if delta.content:
                     content_parts.append(delta.content)
@@ -558,14 +571,6 @@ class CognitiveAgent:
                 return
 
             seen_responses.add(answer_hash)
-
-            # Reflection 自检（最后一轮不检）
-            if round_idx < self._max_tool_rounds - 1:
-                needs_fix, correction = self._reflection.reflect(content, user_input, self._llm)
-                if needs_fix:
-                    messages.append({"role": "user", "content": correction})
-                    yield "\n\n🔄 自我修正中...\n\n"
-                    continue
 
             t_total_ms = int((time.monotonic() - t_start) * 1000)
             self._commit_to_short_term(user_input, content)

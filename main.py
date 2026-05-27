@@ -1,7 +1,7 @@
 """Agent Memory 应用入口。
 
 启动方式：
-    uvicorn main:app --reload --host 127.0.0.1 --port 8000
+    uvicorn main:app --reload --host 0.0.0.0 --port 8000
     python main.py --cli          # CLI 交互模式
 """
 import logging
@@ -82,10 +82,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -109,7 +106,7 @@ def main() -> None:
     else:
         import uvicorn
 
-        uvicorn.run(app, host="127.0.0.1", port=8000)
+        uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":

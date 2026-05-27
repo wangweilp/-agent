@@ -43,6 +43,7 @@ export const api = {
       if (!reader) { onError("No stream body"); return; }
       const dec = new TextDecoder();
       let buf = "";
+      let eventType = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -51,13 +52,11 @@ export const api = {
         buf = lines.pop() || "";
         for (const line of lines) {
           if (line.startsWith("event: ")) {
-            const evtType = line.slice(7).trim();
-            // eslint-disable-next-line no-await-in-loop
-            const dataLine = await readNextDataLine(reader, dec);
-            if (!dataLine) continue;
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
             try {
-              const parsed = JSON.parse(dataLine.slice(6));
-              switch (evtType) {
+              const parsed = JSON.parse(line.slice(6));
+              switch (eventType) {
                 case "token": onToken(parsed.text || ""); break;
                 case "tool_call": onToolCall(parsed); break;
                 case "tool_result": onToolResult(parsed); break;
@@ -65,6 +64,7 @@ export const api = {
                 case "error": onError(parsed.message || "未知错误"); break;
               }
             } catch { /* skip parse errors */ }
+            eventType = "";
           }
         }
       }
@@ -116,19 +116,3 @@ export const api = {
   },
 };
 
-async function readNextDataLine(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  dec: TextDecoder,
-): Promise<string | null> {
-  let buf = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) return buf || null;
-    buf += dec.decode(value, { stream: true });
-    const idx = buf.indexOf("\n");
-    if (idx !== -1) {
-      const line = buf.slice(0, idx);
-      return line.trim();
-    }
-  }
-}

@@ -1,5 +1,6 @@
 """本地 Embedding 提供器 — 使用 sentence-transformers 模型。"""
 import logging
+import os
 import threading
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,16 @@ _DIMENSIONS: dict[str, int] = {
 }
 
 
+def _detect_device() -> str:
+    try:
+        import torch  # type: ignore[import-untyped]
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+
 class EmbeddingError(Exception):
     """Embedding 相关错误。"""
 
@@ -25,10 +36,12 @@ class LocalEmbeddingProvider:
 
     延迟加载模型，首次调用 encode() 时加载，节省启动时间。
     双重检查锁定保证多线程安全。
+    自动检测 CUDA，缓存命中时跳过 HF 网络检查。
     """
 
     def __init__(self, config: Settings) -> None:
         self._model_name = config.embedding_model
+        self._device = os.environ.get("EMBEDDING_DEVICE", "") or _detect_device()
         self._model: SentenceTransformer | None = None
         self._lock = threading.Lock()
 
@@ -39,8 +52,15 @@ class LocalEmbeddingProvider:
                 if self._model is None:
                     from sentence_transformers import SentenceTransformer
 
-                    logger.info("加载 embedding 模型: %s", self._model_name)
-                    self._model = SentenceTransformer(self._model_name)
+                    logger.info(
+                        "加载 embedding 模型: %s (device=%s)",
+                        self._model_name,
+                        self._device,
+                    )
+                    self._model = SentenceTransformer(
+                        self._model_name,
+                        device=self._device,
+                    )
         return self._model
 
     def encode(self, text: str) -> list[float]:
