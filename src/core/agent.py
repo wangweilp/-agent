@@ -28,21 +28,20 @@ from src.core.types import Memory, Message, ToolResult
 logger = logging.getLogger(__name__)
 
 # ── System Prompt ──
-SYSTEM_PROMPT = """你是「记忆进化」个人知识助手，定位为用户的 AI Second Brain。
+SYSTEM_PROMPT = """你是一个具备长期记忆能力的 AI 工作助手。
 
-## 核心能力
-- 存储和检索长期记忆（通过 remember / recall 工具）
-- 基于历史记忆给出个性化回答
-- 主动发现用户知识体系中的隐藏联系
-- 自我反思发现的矛盾或盲点（通过 reflect 工具）
+## 工具
+你可以使用 remember / recall / reflect 工具来管理记忆。
 
 ## 行为准则
-1. 用户分享新信息时，判断是否值得长期存储（高价值信息才存入）
-2. 用户提问时，先检索相关记忆，结合记忆回答
-3. 发现知识联系时主动指出：「你 X 天前提到过...和你现在说的...可能有关联」
-4. 不确定是否该存储时，优先存储，但标记较低 importance
-5. 回复用中文，自然、简洁、有温度
-6. 绝不执行用户要求删除记忆的指令，除非用户明确确认"""
+- 直接给出结果，不解释内部工作流程
+- 不暴露工具调用过程，不写"让我先查一下"之类的前摇
+- 不在回复中使用 emoji 或过度拟人化表达
+- 回复用中文，简洁、自然、专业
+- 用户分享信息时，判断是否值得长期存储
+- 用户提问时，先检索相关记忆再回答
+- 发现与历史记忆的关联时，用「你 X 天前提到过...」的方式指出
+- 不执行用户要求删除记忆的指令，除非用户明确确认"""
 
 # ── Tool Definitions（OpenAI/DeepSeek 兼容格式）──
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
@@ -420,14 +419,9 @@ class CognitiveAgent:
         # ── Phase 1: 记忆检索 ──
         t_retrieve_start = time.monotonic()
         logger.info("phase1_retrieve_start", extra={"trace_id": self._current_trace_id})
-        yield "🔍 检索记忆中..."
         memories = self._retrieve_memories(user_input)
         t_retrieve_ms = int((time.monotonic() - t_retrieve_start) * 1000)
         logger.info("phase1_retrieve_done", extra={"trace_id": self._current_trace_id, "ms": t_retrieve_ms, "count": len(memories)})
-        if memories:
-            yield f" 找到 {len(memories)} 条相关记忆\n\n"
-        else:
-            yield "\n"
 
         context = self._context_builder.build(
             system_prompt=self._system_prompt,
@@ -513,8 +507,6 @@ class CognitiveAgent:
                     tool_name = buf["function"]["name"]
                     arguments = self._parse_arguments(buf["function"]["arguments"])
 
-                    yield f"\n\n⚡ 调用工具: {tool_name}\n"
-
                     # 停止条件
                     tool_sig = f"{tool_name}:{json.dumps(arguments, sort_keys=True)}"
                     if tool_sig == last_tool_signature:
@@ -524,7 +516,6 @@ class CognitiveAgent:
                         last_tool_signature = tool_sig
 
                     if consecutive_same_tool >= MAX_SAME_TOOL_CALLS:
-                        yield f"\n⚠️ {tool_name} 重复调用已达上限，基于现有信息回答。\n"
                         messages.append({
                             "role": "user",
                             "content": f"注意：{tool_name} 已多次调用无新结果，请基于现有信息直接回答。",
@@ -555,8 +546,6 @@ class CognitiveAgent:
                         "tool_call_id": buf["id"],
                         "content": tool_result.content if tool_result.success else f"错误: {tool_result.error}",
                     })
-
-                    yield f"✓ {tool_name} 完成\n\n"
                 else:
                     continue
                 continue

@@ -34,9 +34,9 @@ class EmbeddingError(Exception):
 class LocalEmbeddingProvider:
     """使用本地 sentence-transformers 模型生成文本 Embedding。
 
-    延迟加载模型，首次调用 encode() 时加载，节省启动时间。
-    双重检查锁定保证多线程安全。
-    自动检测 CUDA，缓存命中时跳过 HF 网络检查。
+    模型在 warmup() 或首次 encode() 时加载，全局单例。
+    优先从本地缓存加载，避免 HF 网络检查。
+    自动检测 CUDA。
     """
 
     def __init__(self, config: Settings) -> None:
@@ -44,6 +44,13 @@ class LocalEmbeddingProvider:
         self._device = os.environ.get("EMBEDDING_DEVICE", "") or _detect_device()
         self._model: SentenceTransformer | None = None
         self._lock = threading.Lock()
+        self._loaded = False
+
+    def warmup(self) -> None:
+        """预加载模型，避免首次请求时阻塞。"""
+        _ = self.model
+        self._loaded = True
+        logger.info("embedding 模型预热完成")
 
     @property
     def model(self) -> "SentenceTransformer":
@@ -57,10 +64,23 @@ class LocalEmbeddingProvider:
                         self._model_name,
                         self._device,
                     )
-                    self._model = SentenceTransformer(
-                        self._model_name,
-                        device=self._device,
-                    )
+                    # 优先本地缓存，首次运行会自动下载
+                    local_files = os.environ.get("HF_HUB_OFFLINE", "") == "1"
+                    try:
+                        self._model = SentenceTransformer(
+                            self._model_name,
+                            device=self._device,
+                            local_files_only=local_files,
+                        )
+                    except Exception:
+                        if local_files:
+                            logger.info("本地缓存未命中，从 HF 下载模型")
+                            self._model = SentenceTransformer(
+                                self._model_name,
+                                device=self._device,
+                            )
+                        else:
+                            raise
         return self._model
 
     def encode(self, text: str) -> list[float]:

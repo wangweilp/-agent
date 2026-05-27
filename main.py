@@ -73,6 +73,9 @@ async def lifespan(app: FastAPI):
 settings = bootstrap()
 agent = create_agent(settings)
 
+# 预加载 embedding 模型，避免首次请求阻塞
+agent._embedding.warmup()
+
 app = FastAPI(
     title="Agent Memory API",
     description="个人知识助手 — AI Second Brain",
