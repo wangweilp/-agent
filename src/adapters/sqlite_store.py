@@ -1,4 +1,4 @@
-"""SQLite 记忆存储适配器 — 实现 MemoryStore 协议。
+﻿"""SQLite 记忆存储适配器 — 实现 MemoryStore 协议。
 
 管理 notes / entities / memory_entities / relations 四张表。
 语义搜索职责由上层 Retriever 编排，不在此层实现。
@@ -142,6 +142,20 @@ class SQLiteStoreAdapter:
 
         return memory.id
 
+    def delete(self, memory_id: str) -> None:
+        """删除一条记忆及其关联的实体/关系记录。"""
+        with self._write_lock:
+            with self._db.conn:
+                self._db.execute(
+                    "DELETE FROM memory_entities WHERE memory_id = ?", (memory_id,)
+                )
+                self._db.execute(
+                    "DELETE FROM relations WHERE memory_id = ?", (memory_id,)
+                )
+                self._db.execute(
+                    "DELETE FROM notes WHERE id = ?", (memory_id,)
+                )
+
     def search_by_entity(self, entity_name: str) -> list[Memory]:
         rows = self._db.execute(
             """SELECT n.* FROM notes n
@@ -155,20 +169,28 @@ class SQLiteStoreAdapter:
         return [self._row_to_memory(dict(r)) for r in rows]
 
     def get_by_id(self, memory_id: str) -> Memory | None:
-        row = self._db.execute(
-            "SELECT * FROM notes WHERE id = ?", (memory_id,)
-        ).fetchone()
-        if row is None:
-            return None
+        """获取单条记忆，同时原子地更新 access_count。
 
-        self._db.execute(
-            """UPDATE notes SET access_count = access_count + 1,
-               last_accessed = ? WHERE id = ?""",
-            (datetime.now(timezone.utc).isoformat(), memory_id),
-        )
-        row = self._db.execute(
-            "SELECT * FROM notes WHERE id = ?", (memory_id,)
-        ).fetchone()
+        使用 BEGIN IMMEDIATE 防止 read-modify-write 竞态。
+        """
+        with self._write_lock:
+            with self._db.conn:
+                self._db.execute("BEGIN IMMEDIATE")
+                row = self._db.execute(
+                    "SELECT * FROM notes WHERE id = ?", (memory_id,)
+                ).fetchone()
+                if row is None:
+                    return None
+
+                now = datetime.now(timezone.utc).isoformat()
+                self._db.execute(
+                    "UPDATE notes SET access_count = access_count + 1,"
+                    " last_accessed = ? WHERE id = ?",
+                    (now, memory_id),
+                )
+                row = self._db.execute(
+                    "SELECT * FROM notes WHERE id = ?", (memory_id,)
+                ).fetchone()
         return self._row_to_memory(dict(row))
 
     def get_recent(self, limit: int) -> list[Memory]:

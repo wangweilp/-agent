@@ -1,4 +1,4 @@
-"""Remember 工具 — 重要性评分 + 新颖度检测，双写 ChromaDB + SQLite。
+﻿"""Remember 工具 — 重要性评分 + 新颖度检测，双写 ChromaDB + SQLite。
 
 新颖度检测防止记忆污染："今天学X → 继续学X → 还在学X" 不会被全部写入。
 高相似度 → 合并更新；中等相似度 → 降权存储；低相似度 → 正常写入。
@@ -12,18 +12,26 @@ from src.core.types import Memory, ToolResult
 logger = logging.getLogger(__name__)
 
 _IMPORTANCE_KEYWORDS = [
+    # 中文
     "重要", "关键", "必须", "记住", "永远", "绝对", "一定",
     "目标", "计划", "决定", "秘密", "密码", "账号",
+    # English
+    "important", "critical", "must", "remember", "forever", "always",
+    "never forget", "goal", "plan", "decision", "secret", "password",
 ]
 
 _EMOTION_WORDS = [
+    # 中文
     "开心", "难过", "愤怒", "激动", "担心", "害怕", "期待",
     "焦虑", "感动", "兴奋", "喜欢", "讨厌", "爱", "恨",
+    # English
+    "happy", "sad", "angry", "excited", "worried", "afraid",
+    "anxious", "moved", "love", "hate",
 ]
 
-# 新颖度阈值（基于向量距离，越小越相似）
-_NOVELTY_MERGE_THRESHOLD = 0.15    # 距离 < 0.15 → 合并更新，不新建
-_NOVELTY_DOWNGRADE_THRESHOLD = 0.30  # 距离 < 0.30 → 降权存储
+# 新颖度阈值（基于 cosine_similarity，越大越相似）
+_NOVELTY_MERGE_THRESHOLD = 0.85    # similarity > 0.85 → 合并更新，不新建
+_NOVELTY_DOWNGRADE_THRESHOLD = 0.70  # similarity > 0.70 → 降权存储
 _NOVELTY_SEARCH_K = 3
 
 
@@ -118,16 +126,25 @@ class RememberTool:
         try:
             embedding = self._embedding.encode(content)
             self._memory_store.store(memory)
-            self._vector_store.store(
-                doc_id=memory.id,
-                embedding=embedding,
-                metadata={
-                    "source": memory.source,
-                    "importance": memory.importance,
-                    "memory_type": memory.memory_type,
-                    "entities": ",".join(entities),
-                },
-            )
+            try:
+                self._vector_store.store(
+                    doc_id=memory.id,
+                    embedding=embedding,
+                    metadata={
+                        "source": memory.source,
+                        "importance": memory.importance,
+                        "memory_type": memory.memory_type,
+                        "entities": ",".join(entities),
+                    },
+                )
+            except Exception as ve:
+                # 失败补偿：回滚 SQLite 写入，保持最终一致性
+                logger.warning(
+                    "remember:vector_write_failed_rolling_back",
+                    extra={"memory_id": memory.id, "error": str(ve)[:200]},
+                )
+                self._memory_store.delete(memory.id)
+                raise
             logger.info(
                 "remember:stored",
                 extra={
@@ -171,16 +188,16 @@ class RememberTool:
             embedding = self._embedding.encode(content)
             results = self._vector_store.search(embedding, k=_NOVELTY_SEARCH_K)
             if not results:
-                return {"action": "store", "distance": None}
-            min_distance = results[0].score
-            if min_distance < _NOVELTY_MERGE_THRESHOLD:
-                return {"action": "merge", "existing_id": results[0].doc_id, "distance": min_distance}
-            elif min_distance < _NOVELTY_DOWNGRADE_THRESHOLD:
-                return {"action": "downgrade", "distance": min_distance}
-            return {"action": "store", "distance": min_distance}
+                return {"action": "store", "similarity": None}
+            min_similarity = results[0].score
+            if min_similarity > _NOVELTY_MERGE_THRESHOLD:
+                return {"action": "merge", "existing_id": results[0].doc_id, "similarity": min_similarity}
+            elif min_similarity > _NOVELTY_DOWNGRADE_THRESHOLD:
+                return {"action": "downgrade", "similarity": min_similarity}
+            return {"action": "store", "similarity": min_similarity}
         except Exception:
             logger.debug("novelty_check_failed", exc_info=True)
-            return {"action": "store", "distance": None}
+            return {"action": "store", "similarity": None}
 
     def _merge_memory(self, novelty: dict, new_content: str, entities: list[str]) -> ToolResult:
         """合并更新已有记忆，而非创建重复记忆。"""
@@ -203,24 +220,31 @@ class RememberTool:
         try:
             embedding = self._embedding.encode(merged_content)
             self._memory_store.store(existing)
-            self._vector_store.store(
-                doc_id=existing.id,
-                embedding=embedding,
-                metadata={
-                    "source": existing.source,
-                    "importance": existing.importance,
-                    "memory_type": existing.memory_type,
-                    "entities": ",".join(existing.entities),
-                },
-            )
+            try:
+                self._vector_store.store(
+                    doc_id=existing.id,
+                    embedding=embedding,
+                    metadata={
+                        "source": existing.source,
+                        "importance": existing.importance,
+                        "memory_type": existing.memory_type,
+                        "entities": ",".join(existing.entities),
+                    },
+                )
+            except Exception as ve:
+                logger.warning(
+                    "remember:merge_vector_write_failed",
+                    extra={"memory_id": existing.id, "error": str(ve)[:200]},
+                )
+                # 向量写入失败不影响已有记忆的合并结果
             logger.info(
                 "remember:merged",
-                extra={"existing_id": existing_id, "distance": novelty["distance"]},
+                extra={"existing_id": existing_id, "similarity": novelty["similarity"]},
             )
             return ToolResult(
                 tool_name="remember",
                 success=True,
-                content=f"已合并更新已有记忆（距离: {novelty['distance']:.3f}），无需重复存储。",
+                content=f"已合并更新已有记忆（相似度: {novelty['similarity']:.3f}），无需重复存储。",
                 metadata={
                     "memory_id": existing.id,
                     "importance": existing.importance,

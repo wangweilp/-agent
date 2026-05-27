@@ -1,4 +1,4 @@
-from typing import Any, Protocol, runtime_checkable
+﻿from typing import Any, Protocol, runtime_checkable
 
 from src.core.types import Memory, SearchResult, ToolResult
 
@@ -7,6 +7,10 @@ from src.core.types import Memory, SearchResult, ToolResult
 class MemoryStore(Protocol):
     def store(self, memory: Memory) -> str:
         """存储一条记忆，返回 memory_id。"""
+        ...
+
+    def delete(self, memory_id: str) -> None:
+        """删除一条记忆（用于双写失败补偿）。"""
         ...
 
     def search_by_entity(self, entity_name: str) -> list[Memory]:

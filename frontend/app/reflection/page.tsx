@@ -19,14 +19,14 @@ export default function ReflectionPage() {
 
   const list = insights || [];
 
-  // Mock some insights for UI demonstration
+  // Demo insights for UI demonstration (固定时间戳避免 hydration mismatch)
   const demoInsights: ReflectionInsight[] = list.length > 0 ? list : [
     {
       id: "1",
       topic: "用户学习路径分析",
       finding: "用户在过去两周持续学习 Rust 和系统编程，与之前提到的「想深入理解计算机底层」目标一致。建议关注操作系统相关知识的积累。",
       confidence: 0.85,
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      timestamp: "2026-05-26T20:00:00.000Z",
       related_memories: ["m1", "m2", "m3"],
     },
     {
@@ -34,7 +34,7 @@ export default function ReflectionPage() {
       topic: "知识体系矛盾检测",
       finding: "用户提到「喜欢静态类型的安全性」但同时表示「Python 的动态性让开发更快」。这并非真正矛盾，而是反映用户在不同场景下的工具偏好。",
       confidence: 0.72,
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      timestamp: "2026-05-26T18:00:00.000Z",
       related_memories: ["m4", "m5"],
     },
     {
@@ -42,7 +42,7 @@ export default function ReflectionPage() {
       topic: "长期兴趣模式",
       finding: "用户对 AI Agent 架构的兴趣呈上升趋势，从最初的 LLM 调用逐步深入到 Memory 系统和认知架构。这可能预示用户正在构建自己的 Agent 项目。",
       confidence: 0.91,
-      timestamp: new Date(Date.now() - 10800000).toISOString(),
+      timestamp: "2026-05-26T16:00:00.000Z",
       related_memories: ["m6", "m7", "m8", "m9"],
     },
   ];

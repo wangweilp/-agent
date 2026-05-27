@@ -27,12 +27,18 @@ export function SessionSidebar() {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+        {sessions.length === 0 && (
+          <p className="text-2xs text-os-muted text-center py-6">暂无会话，点击 + 创建</p>
+        )}
         {sessions.map((s) => (
-          <button
+          <div
             key={s.id}
+            role="button"
+            tabIndex={0}
             onClick={() => setActive(s.id)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActive(s.id); } }}
             className={cn(
-              "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-all group",
+              "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-all group cursor-pointer",
               s.id === activeId
                 ? "bg-os-accent/10 text-os-accent"
                 : "text-os-text hover:bg-os-elevated",
@@ -46,10 +52,11 @@ export function SessionSidebar() {
             <button
               onClick={(e) => { e.stopPropagation(); removeSession(s.id); }}
               className="opacity-0 group-hover:opacity-100 text-os-subtle hover:text-red-400 transition-all"
+              aria-label="删除会话"
             >
               <Trash2 size={12} />
             </button>
-          </button>
+          </div>
         ))}
       </div>
     </div>

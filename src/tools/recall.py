@@ -1,15 +1,10 @@
-"""Recall 工具 — 语义搜索 + 实体匹配 → RRF 融合 + 时间衰减 + 重要性加权。"""
-import concurrent.futures
+﻿"""Recall 工具 — 语义搜索 + 实体匹配 → RRF 融合 + 时间衰减 + 重要性加权。"""
 import logging
-from datetime import datetime, timezone
 
 from src.core.memory import EmbeddingProvider, MemoryStore, VectorStore
-from src.core.types import Memory, ToolResult
+from src.core.types import ToolResult
 
 logger = logging.getLogger(__name__)
-
-_HALF_LIFE_DAYS = 30
-_RRF_K = 60
 
 
 class RecallTool:
@@ -65,36 +60,14 @@ class RecallTool:
             return ToolResult(tool_name="recall", success=False, error="查询不能为空")
 
         try:
-            embedding = self._embedding.encode(query)
+            from src.core.retrieval import MemoryRetrievalService
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-                semantic_future = executor.submit(
-                    self._vector_store.search, embedding, top_k * 2
-                )
-                entity_future = executor.submit(self._entity_match, query)
-                semantic_results = semantic_future.result()
-                entity_memories = entity_future.result()
+            service = MemoryRetrievalService(
+                self._memory_store, self._vector_store, self._embedding,
+            )
+            memories = service.retrieve(query, top_k=top_k)
 
-            fused_scores: dict[str, float] = {}
-
-            for rank, r in enumerate(semantic_results):
-                fused_scores[r.doc_id] = fused_scores.get(r.doc_id, 0) + 1.0 / (_RRF_K + rank + 1)
-
-            for rank, mem in enumerate(entity_memories):
-                fused_scores[mem.id] = fused_scores.get(mem.id, 0) + 1.0 / (_RRF_K + rank + 1)
-
-            scored: list[tuple[Memory, float]] = []
-            for doc_id, rrf_score in fused_scores.items():
-                mem = self._memory_store.get_by_id(doc_id)
-                if mem is None:
-                    continue
-                final_score = self._apply_scoring(mem, rrf_score)
-                scored.append((mem, final_score))
-
-            scored.sort(key=lambda x: x[1], reverse=True)
-            top_memories = scored[:top_k]
-
-            if not top_memories:
+            if not memories:
                 return ToolResult(
                     tool_name="recall",
                     success=True,
@@ -102,15 +75,12 @@ class RecallTool:
                     metadata={"count": 0},
                 )
 
-            formatted = self._format_results([m for m, _ in top_memories])
+            formatted = service.format_results(memories)
             return ToolResult(
                 tool_name="recall",
                 success=True,
                 content=formatted,
-                metadata={
-                    "count": len(top_memories),
-                    "scores": [round(s, 4) for _, s in top_memories],
-                },
+                metadata={"count": len(memories)},
             )
         except Exception as e:
             logger.error(
@@ -143,11 +113,3 @@ class RecallTool:
         return rrf_score * (0.4 * time_factor + 0.4 * importance_factor + 0.2 + access_bonus)
 
     @staticmethod
-    def _format_results(memories: list[Memory]) -> str:
-        lines = []
-        for i, m in enumerate(memories, 1):
-            ts = m.timestamp.strftime("%Y-%m-%d %H:%M")
-            text = m.summary or m.content[:200]
-            entities_str = f" [{'、'.join(m.entities)}]" if m.entities else ""
-            lines.append(f"{i}. ({ts} 重要性:{m.importance}){entities_str} {text}")
-        return "\n".join(lines)

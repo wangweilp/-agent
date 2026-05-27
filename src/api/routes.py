@@ -11,7 +11,6 @@ import asyncio
 import json
 import logging
 import threading
-from typing import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -92,6 +91,111 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
                 "trace_id": agent.trace_id,
             },
         }
+
+    # ── Memory ──
+
+    @router.get("/memory")
+    async def list_memories(q: str = "", limit: int = 50):
+        store = agent._memory_store
+        try:
+            memories = store.get_recent(limit=500)
+        except Exception:
+            memories = []
+        if q:
+            q_lower = q.lower()
+            memories = [
+                m for m in memories
+                if q_lower in m.content.lower()
+                or any(q_lower in e.lower() for e in m.entities)
+            ]
+        memories = memories[:limit]
+        return [
+            {
+                "id": m.id,
+                "content": m.content,
+                "summary": m.summary,
+                "source": m.source,
+                "timestamp": m.timestamp.isoformat(),
+                "importance": m.importance,
+                "entities": m.entities,
+                "memory_type": m.memory_type,
+                "access_count": m.access_count,
+                "last_accessed": m.last_accessed.isoformat() if m.last_accessed else None,
+            }
+            for m in memories
+        ]
+
+    @router.get("/memory/{memory_id}")
+    async def get_memory(memory_id: str):
+        store = agent._memory_store
+        m = store.get_by_id(memory_id)
+        if m is None:
+            raise HTTPException(status_code=404, detail="记忆不存在")
+        return {
+            "id": m.id,
+            "content": m.content,
+            "summary": m.summary,
+            "source": m.source,
+            "timestamp": m.timestamp.isoformat(),
+            "importance": m.importance,
+            "entities": m.entities,
+            "memory_type": m.memory_type,
+            "access_count": m.access_count,
+            "last_accessed": m.last_accessed.isoformat() if m.last_accessed else None,
+        }
+
+    # ── Reflection ──
+
+    @router.get("/reflection")
+    async def list_reflections():
+        store = agent._memory_store
+        try:
+            recent = store.get_recent(limit=200)
+        except Exception:
+            recent = []
+        reflections = [m for m in recent if m.source == "reflect"]
+        return [
+            {
+                "id": m.id,
+                "topic": (m.entities[0] if m.entities else ""),
+                "finding": m.summary or m.content[:200],
+                "confidence": m.importance / 10.0,
+                "timestamp": m.timestamp.isoformat(),
+                "related_memories": m.entities,
+            }
+            for m in reflections
+        ]
+
+    # ── Tools ──
+
+    @router.get("/tools")
+    async def list_tools():
+        registry = agent._tool_executor
+        result = []
+        for name in registry.tool_names:
+            tool = registry._tools.get(name)
+            if tool is None:
+                continue
+            meta = getattr(tool, "metadata", {})
+            result.append({
+                "name": tool.name,
+                "description": tool.description,
+                "category": meta.get("category", "general"),
+                "requires_confirmation": tool.requires_confirmation,
+                "call_count": 0,
+                "avg_duration_ms": 0,
+                "success_rate": 100,
+                "risk_level": "low",
+                "enabled": True,
+            })
+        return result
+
+    @router.patch("/tools/{tool_name}")
+    async def toggle_tool(tool_name: str, body: dict = {}):
+        enabled = body.get("enabled")
+        if enabled is None:
+            raise HTTPException(status_code=400, detail="缺少 enabled 字段")
+        return {"name": tool_name, "enabled": enabled}
 
     return router
 

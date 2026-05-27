@@ -18,18 +18,22 @@ interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
-  sessions: [
-    { id: "1", title: "今天的对话", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), message_count: 0 },
-  ],
-  activeId: "1",
+  sessions: [],
+  activeId: null,
 
   setSessions: (sessions) => set({ sessions }),
   setActive: (activeId) => set({ activeId }),
   addSession: (session) =>
-    set((s) => ({ sessions: [session, ...s.sessions] })),
-  removeSession: (id) =>
     set((s) => ({
-      sessions: s.sessions.filter((x) => x.id !== id),
-      activeId: s.activeId === id ? s.sessions[0]?.id || null : s.activeId,
+      sessions: [session, ...s.sessions],
+      activeId: s.activeId || session.id,
     })),
+  removeSession: (id) =>
+    set((s) => {
+      const remaining = s.sessions.filter((x) => x.id !== id);
+      return {
+        sessions: remaining,
+        activeId: s.activeId === id ? (remaining[0]?.id || null) : s.activeId,
+      };
+    }),
 }));

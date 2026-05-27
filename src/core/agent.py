@@ -1,4 +1,4 @@
-"""Cognitive Agent — 真 Tool Calling + Reflective 循环 + 安全护栏。
+﻿"""Cognitive Agent — 真 Tool Calling + Reflective 循环 + 安全护栏。
 
 Think → Act → Reflect，不依赖任何具体适配器。
 """
@@ -21,6 +21,7 @@ from src.core.constants import (
 )
 from src.core.context import ContextBuilder
 from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
+from src.core.retrieval import MemoryRetrievalService
 from src.core.types import Memory, Message, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -202,6 +203,7 @@ class CognitiveAgent:
         *,
         context_builder: ContextBuilder | None = None,
         reflection_engine: ReflectionEngine | None = None,
+        retrieval_service: MemoryRetrievalService | None = None,
         max_tool_rounds: int = 5,
         importance_threshold: int = MIN_IMPORTANCE_FOR_STORAGE,
         system_prompt: str = "",
@@ -213,6 +215,9 @@ class CognitiveAgent:
         self._tool_executor = tool_executor
         self._context_builder = context_builder or ContextBuilder()
         self._reflection = reflection_engine or DefaultReflectionEngine()
+        self._retrieval_service = retrieval_service or MemoryRetrievalService(
+            memory_store, vector_store, embedding_provider,
+        )
         self._max_tool_rounds = max_tool_rounds
         self._importance_threshold = importance_threshold
         self._system_prompt = system_prompt or SYSTEM_PROMPT
@@ -453,7 +458,8 @@ class CognitiveAgent:
                             buf["id"] = tc_delta.id
                         if tc_delta.function:
                             if tc_delta.function.name:
-                                buf["function"]["name"] += tc_delta.function.name
+                                if not buf["function"]["name"]:
+                                    buf["function"]["name"] = tc_delta.function.name
                             if tc_delta.function.arguments:
                                 buf["function"]["arguments"] += tc_delta.function.arguments
 
@@ -621,23 +627,8 @@ class CognitiveAgent:
     # ── 记忆检索 ──
 
     def _retrieve_memories(self, user_input: str) -> list[Memory]:
-        """检索相关长期记忆（向量搜索 → 精确查询）。"""
-        try:
-            embedding = self._embedding.encode(user_input)
-            results = self._vector_store.search(embedding, k=5)
-            memories: list[Memory] = []
-            for r in results:
-                mem = self._memory_store.get_by_id(r.doc_id)
-                if mem:
-                    memories.append(mem)
-            logger.info(
-                "memory_retrieval",
-                extra={"query": user_input[:80], "found": len(memories)},
-            )
-            return memories
-        except Exception:
-            logger.warning("memory_retrieval_failed", exc_info=True)
-            return []
+        """检索相关长期记忆，统一使用 MemoryRetrievalService。"""
+        return self._retrieval_service.retrieve(user_input, top_k=5)
 
     # ── 工具执行 ──
 
@@ -668,14 +659,14 @@ class CognitiveAgent:
             embedding = self._embedding.encode(content)
             results = self._vector_store.search(embedding, k=3)
             for r in results:
-                similarity = 1.0 - r.score if r.score <= 1.0 else 0.0
-                if similarity > DEDUP_SIMILARITY_THRESHOLD:
+                # vector_store.search 已返回 cosine_similarity (0~1)，直接比较
+                if r.score > DEDUP_SIMILARITY_THRESHOLD:
                     logger.info(
                         "memory_dedup_hit",
                         extra={
                             "new_content": content[:100],
                             "existing_doc": r.doc_id,
-                            "similarity": round(similarity, 4),
+                            "similarity": round(r.score, 4),
                         },
                     )
                     return True

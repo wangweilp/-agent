@@ -1,15 +1,22 @@
-"""Agent Memory 应用入口 — 加载配置、组装依赖、启动 API/CLI。"""
+"""Agent Memory 应用入口。
+
+启动方式：
+    uvicorn main:app --reload --host 127.0.0.1 --port 8000
+    python main.py --cli          # CLI 交互模式
+"""
 import logging
 import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.adapters.config import Settings
 from src.adapters.embedding import LocalEmbeddingProvider
 from src.adapters.llm import DeepSeekAdapter
 from src.adapters.sqlite_store import SQLiteStoreAdapter
 from src.adapters.vector_store import ChromaDBAdapter
+from src.api.dashboard import create_dashboard_router
 from src.api.routes import create_router
 from src.core.agent import CognitiveAgent
 from src.tools.registry import ToolRegistry
@@ -30,10 +37,7 @@ def bootstrap() -> Settings:
         stream=sys.stderr,
     )
     settings = Settings()  # type: ignore[call-arg]
-    logger.info(
-        "服务启动完成",
-        extra={"event": "bootstrap_complete"},
-    )
+    logger.info("服务启动完成", extra={"event": "bootstrap_complete"})
     return settings
 
 
@@ -66,21 +70,29 @@ async def lifespan(app: FastAPI):
     logger.info("服务关闭")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
-    if settings is None:
-        settings = bootstrap()
+settings = bootstrap()
+agent = create_agent(settings)
 
-    agent = create_agent(settings)
-    router = create_router(agent)
+app = FastAPI(
+    title="Agent Memory API",
+    description="个人知识助手 — AI Second Brain",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
-    app = FastAPI(
-        title="Agent Memory API",
-        description="个人知识助手 — AI Second Brain",
-        version="0.1.0",
-        lifespan=lifespan,
-    )
-    app.include_router(router)
-    return app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(create_router(agent))
+app.include_router(create_dashboard_router(agent))
 
 
 def main() -> None:
@@ -88,22 +100,16 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Agent Memory — AI Second Brain")
     parser.add_argument("--cli", action="store_true", help="以 CLI 交互模式运行")
-    parser.add_argument("--host", default="127.0.0.1", help="API 服务器地址")
-    parser.add_argument("--port", type=int, default=8000, help="API 服务器端口")
     args = parser.parse_args()
-
-    settings = bootstrap()
 
     if args.cli:
         from src.tools.cli import run_cli
 
-        agent = create_agent(settings)
         run_cli(agent)
     else:
         import uvicorn
 
-        app = create_app(settings)
-        uvicorn.run(app, host=args.host, port=args.port)
+        uvicorn.run(app, host="127.0.0.1", port=8000)
 
 
 if __name__ == "__main__":

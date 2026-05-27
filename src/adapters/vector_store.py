@@ -1,4 +1,4 @@
-"""ChromaDB 向量存储适配器 — 实现 VectorStore 协议。"""
+﻿"""ChromaDB 向量存储适配器 — 实现 VectorStore 协议。"""
 import logging
 from typing import Any
 
@@ -53,6 +53,12 @@ class ChromaDBAdapter:
         return doc_id
 
     def search(self, embedding: list[float], k: int) -> list[SearchResult]:
+        """语义搜索，返回 cosine_similarity 0~1（越大越相似）。
+
+        底层 ChromaDB 默认 metric 为 cosine（需确认 collection metadata），
+        这里将 chroma 返回的 "distance" 统一转换为 cosine_similarity。
+        对于已 normalize 的 embedding，cosine_distance = 1 - cosine_similarity。
+        """
         if not embedding:
             raise ValueError("embedding 不能为空")
 
@@ -68,9 +74,12 @@ class ChromaDBAdapter:
         distances = result.get("distances", [[]])[0]
 
         for i, doc_id in enumerate(ids):
+            raw_score = distances[i] if distances else 0.0
+            # 统一为 cosine_similarity：ChromaDB cosine 模式下 distance = 1 - similarity
+            similarity = 1.0 - raw_score
             hits.append(SearchResult(
                 doc_id=doc_id,
-                score=distances[i] if distances else 0.0,
+                score=similarity,
                 metadata=metadatas[i] if metadatas else {},
             ))
         return hits
