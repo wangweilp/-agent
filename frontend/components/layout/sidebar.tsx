@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/memory", label: "记忆", icon: Brain },
   { href: "/reflection", label: "反思", icon: Lightbulb },
   { href: "/tools", label: "工具中心", icon: Wrench },
+  { href: "/debug", label: "Debug", icon: Bug },
 ];
 
 export function Sidebar() {

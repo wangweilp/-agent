@@ -22,6 +22,7 @@ from src.core.constants import (
 from src.core.context import ContextBuilder
 from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
 from src.core.retrieval import MemoryRetrievalService
+from src.core.events import emit, EventType
 from src.core.types import Memory, Message, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -230,6 +231,11 @@ class CognitiveAgent:
         """处理单轮用户输入，返回最终回复。"""
         t_start = time.monotonic()
         self._current_trace_id = str(uuid.uuid4())
+        emit(
+            EventType.AGENT_START,
+            trace_id=self._current_trace_id,
+            input=user_input[:200],
+        )
         logger.info(
             "agent_run_start",
             extra={
@@ -376,6 +382,12 @@ class CognitiveAgent:
                     continue
 
             self._commit_to_short_term(user_input, final_answer)
+            emit(
+                EventType.AGENT_DONE,
+                trace_id=self._current_trace_id,
+                rounds=round_idx + 1,
+                tool_calls=tool_call_count,
+            )
             logger.info(
                 "agent_run_done",
                 extra={
@@ -678,6 +690,12 @@ class CognitiveAgent:
         """执行工具调用，带超时保护。"""
         t_start = time.monotonic()
         logger.info(
+            emit(
+                EventType.TOOL_CALL_START,
+                trace_id=self._current_trace_id,
+                tool=tool_name,
+            )
+            logger.info(
             "tool_call_start",
             extra={
                 "trace_id": self._current_trace_id,
@@ -714,6 +732,14 @@ class CognitiveAgent:
 
         elapsed = int((time.monotonic() - t_start) * 1000)
         logger.info(
+            emit(
+                EventType.TOOL_CALL_DONE,
+                trace_id=self._current_trace_id,
+                tool=tool_name,
+                success=result.success,
+                elapsed_ms=elapsed,
+            )
+            logger.info(
             "tool_call_done",
             extra={
                 "trace_id": self._current_trace_id,

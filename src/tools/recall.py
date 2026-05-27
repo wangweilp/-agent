@@ -1,10 +1,13 @@
 ﻿"""Recall 工具 — 语义搜索 + 实体匹配 → RRF 融合 + 时间衰减 + 重要性加权。"""
 import logging
+from datetime import datetime, timezone
 
 from src.core.memory import EmbeddingProvider, MemoryStore, VectorStore
-from src.core.types import ToolResult
+from src.core.types import Memory, ToolResult
 
 logger = logging.getLogger(__name__)
+
+_HALF_LIFE_DAYS = 30
 
 
 class RecallTool:
@@ -111,5 +114,3 @@ class RecallTool:
         importance_factor = memory.importance / 10.0
         access_bonus = min(memory.access_count * 0.05, 0.3)
         return rrf_score * (0.4 * time_factor + 0.4 * importance_factor + 0.2 + access_bonus)
-
-    @staticmethod

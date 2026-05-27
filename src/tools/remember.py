@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 from src.core.memory import EmbeddingProvider, MemoryStore, VectorStore
 from src.core.types import Memory, ToolResult
+from src.core.events import emit, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,14 @@ class RememberTool:
                 )
                 self._memory_store.delete(memory.id)
                 raise
+            emit(
+                EventType.MEMORY_CREATED,
+                memory_id=memory.id,
+                source=memory.source,
+                importance=importance,
+                entities=entities,
+                memory_type=memory.memory_type,
+            )
             logger.info(
                 "remember:stored",
                 extra={
@@ -237,6 +246,13 @@ class RememberTool:
                     extra={"memory_id": existing.id, "error": str(ve)[:200]},
                 )
                 # 向量写入失败不影响已有记忆的合并结果
+            emit(
+                EventType.MEMORY_MERGED,
+                memory_id=existing.id,
+                existing_id=existing_id,
+                similarity=novelty["similarity"],
+                source=existing.source,
+            )
             logger.info(
                 "remember:merged",
                 extra={"existing_id": existing_id, "similarity": novelty["similarity"]},

@@ -1,4 +1,4 @@
-"""FastAPI 路由 — /chat 端点与 SSE 流式返回。
+﻿"""FastAPI 路由 — /chat 端点与 SSE 流式返回。
 
 SSE 事件类型：
 - event: token      → 逐块回复文本
@@ -19,6 +19,18 @@ from src.api.schemas import ChatRequest, ChatResponse
 from src.core.agent import CognitiveAgent
 
 logger = logging.getLogger(__name__)
+
+
+def _check_vectorized(vs, memory_id: str) -> bool:
+    """检查 memory 是否在向量存储中。
+
+    使用 ChromaDB get 直接查询——不依赖 embedding 搜索。
+    """
+    try:
+        result = vs._collection.get(ids=[memory_id], include=[])
+        return bool(result and result.get("ids") and len(result["ids"]) > 0)
+    except Exception:
+        return False
 
 
 def create_router(agent: CognitiveAgent) -> APIRouter:
@@ -97,6 +109,7 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
     @router.get("/memory")
     async def list_memories(q: str = "", limit: int = 50):
         store = agent._memory_store
+        vs = agent._vector_store
         try:
             memories = store.get_recent(limit=500)
         except Exception:
@@ -121,6 +134,7 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
                 "memory_type": m.memory_type,
                 "access_count": m.access_count,
                 "last_accessed": m.last_accessed.isoformat() if m.last_accessed else None,
+                "embedding_status": "vectorized" if _check_vectorized(vs, m.id) else "missing",
             }
             for m in memories
         ]
@@ -131,6 +145,7 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
         m = store.get_by_id(memory_id)
         if m is None:
             raise HTTPException(status_code=404, detail="记忆不存在")
+        vs = agent._vector_store
         return {
             "id": m.id,
             "content": m.content,
@@ -142,6 +157,7 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
             "memory_type": m.memory_type,
             "access_count": m.access_count,
             "last_accessed": m.last_accessed.isoformat() if m.last_accessed else None,
+            "embedding_status": "vectorized" if _check_vectorized(vs, m.id) else "missing",
         }
 
     # ── Reflection ──
@@ -196,6 +212,51 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
         if enabled is None:
             raise HTTPException(status_code=400, detail="缺少 enabled 字段")
         return {"name": tool_name, "enabled": enabled}
+
+    # ── Debug: Retrieval Inspector ──
+
+    @router.get("/debug/retrieve")
+    async def debug_retrieve(q: str = "", top_k: int = 5):
+        """Retrieval Inspector: 输入 query，返回分步 score 详情。"""
+        from src.core.retrieval import MemoryRetrievalService
+
+        service = MemoryRetrievalService(
+            agent._memory_store, agent._vector_store, agent._embedding,
+        )
+        results = service.retrieve(q, top_k=top_k, with_breakdown=True)
+        return [
+            {
+                "memory_id": r["memory"].id,
+                "content": (r["memory"].summary or r["memory"].content)[:200],
+                "source": r["memory"].source,
+                "importance": r["memory"].importance,
+                "rrf_score": r["rrf_score"],
+                "time_factor": r["time_factor"],
+                "importance_factor": r["importance_factor"],
+                "access_bonus": r["access_bonus"],
+                "final_score": r["final_score"],
+                "timestamp": r["memory"].timestamp.isoformat(),
+            }
+            for r in results
+        ]
+
+    # ── Debug: Event Timeline ──
+
+    @router.get("/debug/events")
+    async def debug_events(limit: int = 100):
+        """Event Timeline: 返回最近的系统事件流。"""
+        from src.core.events import recent
+
+        events = recent(limit)
+        return [
+            {
+                "id": e.id,
+                "type": e.type,
+                "timestamp": e.timestamp,
+                "data": e.data,
+            }
+            for e in events
+        ]
 
     return router
 

@@ -1,4 +1,4 @@
-"""Reflect 工具 — 反思近期对话，发现矛盾、联系或知识盲点。
+﻿"""Reflect 工具 — 反思近期对话，发现矛盾、联系或知识盲点。
 
 防自激机制：
 - source="reflect" 的记忆不参与后续 reflect（避免反思链爆炸）
@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, VectorStore
 from src.core.types import Memory, ToolResult
+from src.core.events import emit, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -90,12 +91,15 @@ class ReflectTool:
 
         # 防自激：检查近期 reflect 密度
         if self._too_many_reflections():
+            emit(EventType.REFLECTION_SKIPPED, topic=topic, reason="anti_loop")
             return ToolResult(
                 tool_name="reflect",
                 success=True,
                 content="近期已有足够多的反思，暂不新增，避免反思自激。",
                 metadata={"checked": 0, "skipped": "anti_loop"},
             )
+
+        emit(EventType.REFLECTION_RUN, topic=topic, recent_n=recent_n)
 
         try:
             embedding = self._embedding.encode(topic)
@@ -164,6 +168,12 @@ class ReflectTool:
                 },
             )
 
+            emit(
+                EventType.REFLECTION_INSIGHT,
+                topic=topic,
+                memory_id=reflect_memory.id,
+                finding=finding[:200],
+            )
             logger.info(
                 "reflect:insight_stored",
                 extra={"topic": topic, "finding": finding[:200]},
