@@ -42,8 +42,13 @@ class ToolResult:
     tool_name: str
     success: bool
     content: str = ""  # 工具返回的主要内容
-    error: str | None = None
+    error: str | None = None  # 内部错误信息，仅用于日志
+    user_message: str = ""  # 用户可见信息，默认取 content
     metadata: dict = field(default_factory=dict)  # {"memory_count": 3, "importance": 7, ...}
+
+    def __post_init__(self) -> None:
+        if not self.user_message:
+            self.user_message = self.content
 
     @property
     def data(self) -> str:

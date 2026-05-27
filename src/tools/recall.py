@@ -88,13 +88,13 @@ class RecallTool:
         except Exception as e:
             logger.error(
                 "recall:failed",
-                extra={"event": "recall_failed", "error_type": type(e).__name__},
+                extra={"event": "recall_failed", "error_type": type(e).__name__, "detail": str(e)[:200]},
             )
-            logger.exception("recall:exception")
             return ToolResult(
                 tool_name="recall",
                 success=False,
-                error=f"检索失败: {e}",
+                error=str(e),
+                user_message="未找到相关记忆。",
             )
 
     def _entity_match(self, query: str) -> list[Memory]:

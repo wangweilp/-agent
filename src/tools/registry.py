@@ -64,7 +64,8 @@ class ToolRegistry:
             return ToolResult(
                 tool_name=tool_name,
                 success=False,
-                error="需要人工确认才能执行此操作",
+                error="需要人工确认",
+                user_message="需要确认后才能执行此操作。",
             )
 
         tool = self._tools.get(tool_name)
@@ -73,6 +74,7 @@ class ToolRegistry:
                 tool_name=tool_name,
                 success=False,
                 error=f"未知工具: {tool_name}",
+                user_message="该操作暂不可用。",
             )
 
         return tool.execute(arguments)

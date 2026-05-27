@@ -176,13 +176,13 @@ class RememberTool:
         except Exception as e:
             logger.error(
                 "remember:failed",
-                extra={"event": "remember_failed", "error_type": type(e).__name__},
+                extra={"event": "remember_failed", "error_type": type(e).__name__, "detail": str(e)[:200]},
             )
-            logger.exception("remember:exception")
             return ToolResult(
                 tool_name="remember",
                 success=False,
-                error=f"存储记忆失败: {e}",
+                error=str(e),
+                user_message="这部分暂时没有保存成功。",
             )
 
     # ── 新颖度检测 ──
@@ -271,13 +271,13 @@ class RememberTool:
         except Exception as e:
             logger.error(
                 "remember:merge_failed",
-                extra={"event": "remember_merge_failed", "existing_id": novelty.get("existing_id", ""), "error_type": type(e).__name__},
+                extra={"event": "remember_merge_failed", "existing_id": novelty.get("existing_id", ""), "error_type": type(e).__name__, "detail": str(e)[:200]},
             )
-            logger.exception("remember:merge_exception")
             return ToolResult(
                 tool_name="remember",
                 success=False,
-                error=f"合并记忆失败: {e}",
+                error=str(e),
+                user_message="这部分暂时没有保存成功。",
             )
 
     # ── 重要性计算 ──

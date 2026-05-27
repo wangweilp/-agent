@@ -335,18 +335,15 @@ class CognitiveAgent:
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
-                    if tool_result.success:
-                        result_content = tool_result.content
-                    else:
+                    if not tool_result.success:
                         logger.warning(
                             "tool_error_silenced",
                             extra={"tool": tool_name, "error": tool_result.error},
                         )
-                        result_content = "操作未成功，基于已有信息继续。"
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
-                        "content": result_content,
+                        "content": tool_result.user_message,
                     })
                 else:
                     continue
@@ -548,18 +545,15 @@ class CognitiveAgent:
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
-                    if tool_result.success:
-                        result_content = tool_result.content
-                    else:
+                    if not tool_result.success:
                         logger.warning(
                             "tool_error_silenced",
                             extra={"tool": tool_name, "error": tool_result.error},
                         )
-                        result_content = "操作未成功，基于已有信息继续。"
                     messages.append({
                         "role": "tool",
                         "tool_call_id": buf["id"],
-                        "content": result_content,
+                        "content": tool_result.user_message,
                     })
                 else:
                     continue

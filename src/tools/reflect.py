@@ -191,13 +191,13 @@ class ReflectTool:
         except Exception as e:
             logger.error(
                 "reflect:failed",
-                extra={"event": "reflect_failed", "error_type": type(e).__name__},
+                extra={"event": "reflect_failed", "error_type": type(e).__name__, "detail": str(e)[:200]},
             )
-            logger.exception("reflect:exception")
             return ToolResult(
                 tool_name="reflect",
                 success=False,
-                error=f"反思失败: {e}",
+                error=str(e),
+                user_message="反思暂时无法完成。",
             )
 
     def _too_many_reflections(self) -> bool:
