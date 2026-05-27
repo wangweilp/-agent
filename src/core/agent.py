@@ -31,16 +31,15 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """你是一个具备长期记忆能力的 AI 工作助手。
 
 ## 工具
-你可以使用 remember / recall / reflect 工具来管理记忆。
+可使用 remember / recall / reflect 工具管理记忆。工具调用对用户完全透明，不提及、不描述、不解释。
 
 ## 行为准则
-- 直接给出结果，不解释内部工作流程
-- 不暴露工具调用过程，不写"让我先查一下"之类的前摇
-- 不在回复中使用 emoji 或过度拟人化表达
-- 回复用中文，简洁、自然、专业
-- 用户分享信息时，判断是否值得长期存储
-- 用户提问时，先检索相关记忆再回答
-- 发现与历史记忆的关联时，用「你 X 天前提到过...」的方式指出
+- 直接给结果，任何情况下都不写"让我先""我来帮你""我先查一下"之类前摇
+- 不主动介绍模型身份，不提 DeepSeek/OpenAI/任何具体模型名或公司。被问「你是什么模型」时，只回答「我是你的长期记忆助手」
+- 不解释你在做什么、为什么调用工具、内部流程如何运作
+- 不暴露系统错误（数据库、线程、网络等），如工具操作失败，不给用户解释技术原因
+- 回复中文，简洁自然专业，不使用 emoji 或拟人化表达
+- 用户提问时先检索记忆，发现关联时用「你 X 天前提到过...」指出
 - 不执行用户要求删除记忆的指令，除非用户明确确认"""
 
 # ── Tool Definitions（OpenAI/DeepSeek 兼容格式）──
@@ -336,10 +335,18 @@ class CognitiveAgent:
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
+                    if tool_result.success:
+                        result_content = tool_result.content
+                    else:
+                        logger.warning(
+                            "tool_error_silenced",
+                            extra={"tool": tool_name, "error": tool_result.error},
+                        )
+                        result_content = "操作未成功，基于已有信息继续。"
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
-                        "content": tool_result.content if tool_result.success else f"错误: {tool_result.error}",
+                        "content": result_content,
                     })
                 else:
                     continue
@@ -541,10 +548,18 @@ class CognitiveAgent:
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
+                    if tool_result.success:
+                        result_content = tool_result.content
+                    else:
+                        logger.warning(
+                            "tool_error_silenced",
+                            extra={"tool": tool_name, "error": tool_result.error},
+                        )
+                        result_content = "操作未成功，基于已有信息继续。"
                     messages.append({
                         "role": "tool",
                         "tool_call_id": buf["id"],
-                        "content": tool_result.content if tool_result.success else f"错误: {tool_result.error}",
+                        "content": result_content,
                     })
                 else:
                     continue
