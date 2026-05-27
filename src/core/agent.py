@@ -689,13 +689,12 @@ class CognitiveAgent:
     def _execute_tool_call(self, tool_name: str, arguments: dict[str, Any]) -> ToolResult:
         """执行工具调用，带超时保护。"""
         t_start = time.monotonic()
+        emit(
+            EventType.TOOL_CALL_START,
+            trace_id=self._current_trace_id,
+            tool=tool_name,
+        )
         logger.info(
-            emit(
-                EventType.TOOL_CALL_START,
-                trace_id=self._current_trace_id,
-                tool=tool_name,
-            )
-            logger.info(
             "tool_call_start",
             extra={
                 "trace_id": self._current_trace_id,
@@ -731,15 +730,14 @@ class CognitiveAgent:
             )
 
         elapsed = int((time.monotonic() - t_start) * 1000)
+        emit(
+            EventType.TOOL_CALL_DONE,
+            trace_id=self._current_trace_id,
+            tool=tool_name,
+            success=result.success,
+            elapsed_ms=elapsed,
+        )
         logger.info(
-            emit(
-                EventType.TOOL_CALL_DONE,
-                trace_id=self._current_trace_id,
-                tool=tool_name,
-                success=result.success,
-                elapsed_ms=elapsed,
-            )
-            logger.info(
             "tool_call_done",
             extra={
                 "trace_id": self._current_trace_id,
