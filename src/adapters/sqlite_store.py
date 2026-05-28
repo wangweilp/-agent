@@ -83,7 +83,8 @@ class SQLiteStoreAdapter:
         if path == ":memory:":
             self._db = Database(memory=True)
         else:
-            self._db = Database(path)
+            conn = sqlite3.connect(path, check_same_thread=False)
+            self._db = Database(conn)
 
         self._init_schema()
 

@@ -95,6 +95,31 @@ export interface TraceEntry {
   detail: string;
 }
 
+export interface RuntimeStats {
+  worker: {
+    alive: boolean;
+    started_at: string;
+    uptime_seconds: number;
+  };
+  queue: {
+    pending: number;
+    total_stored: number;
+    total_failed: number;
+  };
+  dead_letter: {
+    count: number;
+    dir: string;
+  };
+  recent_tasks: Array<{
+    task_id: string;
+    call_id: string;
+    status: string;
+    content_preview: string;
+    elapsed_ms: number;
+    submitted_at: string;
+  }>;
+}
+
 export interface StreamEvent {
   event: "token" | "tool_call" | "tool_result" | "done" | "error";
   data: Record<string, unknown>;

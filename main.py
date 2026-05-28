@@ -19,6 +19,7 @@ from src.adapters.vector_store import ChromaDBAdapter
 from src.api.dashboard import create_dashboard_router
 from src.api.routes import create_router
 from src.core.agent import CognitiveAgent
+from src.core.memory_queue import MemoryWriteWorker
 from src.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -54,24 +55,30 @@ def create_agent(settings: Settings) -> CognitiveAgent:
         llm=llm,
     )
 
-    return CognitiveAgent(
+    memory_writer = MemoryWriteWorker(settings, embedding_provider=embedding)
+    agent = CognitiveAgent(
         llm=llm,
         memory_store=memory_store,
         vector_store=vector_store,
         embedding_provider=embedding,
         tool_executor=tool_registry,
+        memory_writer=memory_writer,
     )
+    memory_writer.start()
+    logger.info("memory_writer 线程已启动")
+    return agent, memory_writer
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("服务启动")
     yield
-    logger.info("服务关闭")
+    logger.info("服务关闭，等待后台任务刷盘...")
+    agent.shutdown()
 
 
 settings = bootstrap()
-agent = create_agent(settings)
+agent, memory_writer = create_agent(settings)
 
 # 预加载 embedding 模型，避免首次请求阻塞
 agent._embedding.warmup()
@@ -92,7 +99,7 @@ app.add_middleware(
 )
 
 app.include_router(create_router(agent))
-app.include_router(create_dashboard_router(agent))
+app.include_router(create_dashboard_router(agent, memory_writer))
 
 
 def main() -> None:

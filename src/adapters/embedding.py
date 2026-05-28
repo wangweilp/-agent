@@ -4,6 +4,11 @@ import os
 import threading
 from typing import TYPE_CHECKING
 
+# 彻底关闭 HuggingFace 在线检查，必须在 sentence_transformers 导入前设置
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
 from src.adapters.config import Settings
 
 if TYPE_CHECKING:

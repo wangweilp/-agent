@@ -19,6 +19,7 @@ import { StatusCard } from "@/components/dashboard/status-card";
 import { TraceTimeline } from "@/components/dashboard/trace-timeline";
 import { AgentStatusPanel } from "@/components/dashboard/agent-status";
 import { MemoryChart } from "@/components/dashboard/memory-chart";
+import { RuntimeMonitor } from "@/components/dashboard/runtime-monitor";
 import { cn, formatNumber } from "@/lib/utils";
 
 export default function DashboardPage() {
@@ -111,29 +112,14 @@ export default function DashboardPage() {
             </div>
           </StaggerItem>
 
-          {/* Quick stats */}
+          {/* Runtime Monitor */}
           <StaggerItem delay={0.3}>
             <div className="os-card p-4 h-full">
               <div className="flex items-center gap-2 mb-4">
                 <Activity size={14} className="text-os-accent" />
-                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">系统指标</h2>
+                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">Runtime Monitor</h2>
               </div>
-              <div className="space-y-3">
-                {[
-                  { label: "Reflection 活跃度", value: metrics?.reflection_count || 0, unit: "次" },
-                  { label: "Token 使用量", value: formatNumber(metrics?.token_usage || 0), unit: "" },
-                  { label: "活跃会话", value: metrics?.active_sessions || 0, unit: "个" },
-                  { label: "正常运行", value: "2h 34m", unit: "" },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between">
-                    <span className="text-xs text-os-subtle">{item.label}</span>
-                    <span className="text-sm font-medium text-os-text-high font-mono">
-                      {item.value}
-                      <span className="text-2xs text-os-muted ml-0.5">{item.unit}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <RuntimeMonitor />
             </div>
           </StaggerItem>
         </div>

@@ -113,6 +113,9 @@ export const api = {
     traces(): Promise<TraceEntry[]> {
       return request("/dashboard/traces");
     },
+    runtime(): Promise<import("@/types").RuntimeStats> {
+      return request("/dashboard/runtime");
+    },
   },
 };
 

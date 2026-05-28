@@ -1,12 +1,10 @@
 ﻿"""Cognitive Agent — 真 Tool Calling + Reflective 循环 + 安全护栏。
-
 Think → Act → Reflect，不依赖任何具体适配器。
 """
 import concurrent.futures
 import hashlib
 import json
 import logging
-import threading
 import time
 import uuid
 from collections.abc import Generator
@@ -23,6 +21,7 @@ from src.core.context import ContextBuilder
 from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
 from src.core.retrieval import MemoryRetrievalService
 from src.core.events import emit, EventType
+from src.core.memory_queue import MemoryWriteWorker, MemoryWriteTask
 from src.core.types import Memory, Message, ToolResult
 
 logger = logging.getLogger(__name__)
@@ -203,6 +202,7 @@ class CognitiveAgent:
         context_builder: ContextBuilder | None = None,
         reflection_engine: ReflectionEngine | None = None,
         retrieval_service: MemoryRetrievalService | None = None,
+        memory_writer: MemoryWriteWorker | None = None,
         max_tool_rounds: int = 5,
         importance_threshold: int = MIN_IMPORTANCE_FOR_STORAGE,
         system_prompt: str = "",
@@ -217,6 +217,7 @@ class CognitiveAgent:
         self._retrieval_service = retrieval_service or MemoryRetrievalService(
             memory_store, vector_store, embedding_provider,
         )
+        self._memory_writer = memory_writer
         self._max_tool_rounds = max_tool_rounds
         self._importance_threshold = importance_threshold
         self._system_prompt = system_prompt or SYSTEM_PROMPT
@@ -307,7 +308,7 @@ class CognitiveAgent:
                         })
                         break
 
-                    # 重要性阈值过滤
+                    # 重要性阈值过滤（同步，无 I/O）
                     if tool_name == "remember" and not self._should_remember(arguments):
                         logger.info(
                             "tool_skip:low_importance",
@@ -316,20 +317,18 @@ class CognitiveAgent:
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
-                            "content": "未存储：重要性评分低于阈值，信息价值不足以存入长期记忆。",
+                            "content": "已跳过：信息价值较低。",
                         })
                         continue
 
-                    # 记忆去重
-                    if tool_name == "remember" and self._is_duplicate(arguments):
-                        logger.info(
-                            "tool_skip:duplicate_memory",
-                            extra={"content": arguments.get("content", "")[:100]},
-                        )
+                    # remember → 异步写入，不阻塞 LLM 响应
+                    if tool_name == "remember":
+                        self._fire_and_forget_remember(tc.id, arguments)
+                        tool_call_count += 1
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
-                            "content": "未存储：相似记忆已存在，无需重复写入。",
+                            "content": "已接受处理。",
                         })
                         continue
 
@@ -452,7 +451,6 @@ class CognitiveAgent:
                 )
             except Exception:
                 logger.warning("stream_llm_failed", exc_info=True)
-                yield "\n[LLM 调用失败，请重试]\n"
                 return
 
             content_parts: list[str] = []
@@ -526,22 +524,26 @@ class CognitiveAgent:
                         })
                         break
 
-                    # 重要性阈值 / 去重
+                    # 重要性阈值过滤（同步，无 I/O）
                     if tool_name == "remember":
                         if not self._should_remember(arguments):
                             messages.append({
                                 "role": "tool",
                                 "tool_call_id": buf["id"],
-                                "content": "未存储：重要性评分低于阈值。",
+                                "content": "已跳过：信息价值较低。",
                             })
                             continue
-                        if self._is_duplicate(arguments):
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": buf["id"],
-                                "content": "未存储：相似记忆已存在。",
-                            })
-                            continue
+
+                    # remember → 异步写入，不阻塞 LLM 响应
+                    if tool_name == "remember":
+                        self._fire_and_forget_remember(buf["id"], arguments)
+                        tool_call_count += 1
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": buf["id"],
+                            "content": "已接受处理。",
+                        })
+                        continue
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
@@ -793,3 +795,21 @@ class CognitiveAgent:
                 for tc in msg.tool_calls
             ],
         }
+
+    # ── 异步记忆写入 ──
+
+    def _fire_and_forget_remember(self, call_id: str, arguments: dict[str, Any]) -> None:
+        """异步写入记忆：入队到 MemoryWriteWorker，不阻塞 LLM 响应。
+
+        Worker 拥有独立的 SQLite 连接，不会触发跨线程错误。
+        写入失败进入 Dead Letter Queue，可重试。
+        """
+        if self._memory_writer is None:
+            logger.warning("no_memory_writer: dropping remember", extra={"call_id": call_id})
+            return
+        self._memory_writer.enqueue(MemoryWriteTask(arguments=arguments, call_id=call_id))
+
+    def shutdown(self) -> None:
+        """关闭 MemoryWriteWorker，等待未完成的写入刷盘。"""
+        if self._memory_writer is not None:
+            self._memory_writer.shutdown()
