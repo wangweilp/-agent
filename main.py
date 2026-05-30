@@ -101,7 +101,7 @@ app.add_middleware(
 
 app.include_router(create_router(agent))
 app.include_router(create_dashboard_router(agent, memory_writer))
-app.include_router(create_upload_router(settings, llm, memory_writer))
+app.include_router(create_upload_router(settings, llm, memory_writer, agent))
 
 
 def main() -> None:

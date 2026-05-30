@@ -768,6 +768,32 @@ class CognitiveAgent:
             logger.exception("best_effort 调用失败")
             return "抱歉，处理过程中出现问题，请稍后重试。"
 
+    # ── 图片上下文构建 ──
+
+    def build_image_context(self, user_input: str = "") -> dict:
+        """构建图片分析所需的对话上下文和历史记忆。"""
+        # 对话上下文：最近短期记忆
+        parts = []
+        for msg in self._short_term[-4:]:
+            role = "用户" if msg.role == "user" else "助手"
+            parts.append(f"[{role}]: {msg.content[:150]}")
+        conversation_context = "\n".join(parts) if parts else "暂无对话"
+
+        # 历史记忆检索
+        query = user_input or " ".join(
+            m.content[:50] for m in self._short_term[-2:] if m.role == "user"
+        )
+        memories: list = []
+        if query.strip():
+            memories = self._retrieval_service.retrieve(query, top_k=5)
+        memories_text = self._retrieval_service.format_results(memories) if memories else "暂无"
+
+        return {
+            "conversation_context": conversation_context,
+            "historical_memories": memories_text,
+            "memories": memories,
+        }
+
     # ── 短期记忆管理 ──
 
     def _commit_to_short_term(self, user_input: str, answer: str) -> None:

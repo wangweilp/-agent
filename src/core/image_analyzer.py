@@ -40,6 +40,35 @@ _MULTI_IMAGE_PROMPT = """你正在分析一批共 {total} 张图片。
 
 请特别关注：这张图片与之前图片之间是否存在关联（如：同一主题、连续文档、相关场景等）。如有，在 suggested_use 中注明。"""
 
+_CONTEXT_AWARE_PROMPT = """你正在帮助分析用户上传的图片，结合对话上下文和历史记忆。
+
+## 当前对话上下文
+{conversation_context}
+
+## 用户的相关历史记忆
+{historical_memories}
+
+## 多图上下文
+{image_context}
+
+请基于以上全部信息分析这张图片，严格返回 JSON（不要 markdown 代码块）：
+
+{
+  "summary": "≤50字摘要，必须关联上下文中的主题或实体",
+  "detailed_description": "详细描述",
+  "entities": ["实体列表，优先使用上下文和记忆中出现的实体"],
+  "objects": ["物体列表"],
+  "text_in_image": "图中文字",
+  "scene_type": "场景类型",
+  "suggested_use": "用途建议，说明与当前话题/历史记忆的关联",
+  "structured_json": {
+    "text_in_image": "...",
+    "entities": [...],
+    "scene_type": "...",
+    "object_list": [...]
+  }
+}"""
+
 
 @dataclass
 class StructuredJson:
@@ -115,6 +144,37 @@ class ImageAnalyzer:
             previous.append(result.summary)
 
         return results
+
+    def analyze_with_context(
+        self,
+        file_path: str,
+        *,
+        conversation_context: str = "",
+        historical_memories: str = "",
+        previous_image_summaries: list[str] | None = None,
+    ) -> ImageAnalysisResult:
+        """带对话上下文和历史记忆的图片分析。"""
+        image_ctx = ""
+        if previous_image_summaries:
+            image_ctx = f"之前已分析的同批图片摘要：{'；'.join(previous_image_summaries)}"
+        else:
+            image_ctx = "这是本批次唯一一张图片"
+
+        if not conversation_context:
+            conversation_context = "暂无对话上下文"
+        if not historical_memories:
+            historical_memories = "暂无相关历史记忆"
+
+        prompt = _CONTEXT_AWARE_PROMPT.format(
+            conversation_context=conversation_context,
+            historical_memories=historical_memories,
+            image_context=image_ctx,
+        )
+
+        self._validate_file(file_path)
+        content_type = self._detect_mime(file_path)
+        data_url = self._file_to_data_url(file_path, content_type)
+        return self.analyze_base64(data_url, prompt=prompt)
 
     def analyze_base64(self, data_url: str, prompt: str = "") -> ImageAnalysisResult:
         """通过 LLM Vision API 分析 base64 图片。"""

@@ -21,6 +21,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, UploadFile
 
 from src.adapters.config import Settings
+from src.core.agent import CognitiveAgent
 from src.core.image_analyzer import ImageAnalyzer
 from src.core.memory import ChatModel
 from src.core.memory_queue import MemoryWriteWorker, MemoryWriteTask
@@ -43,6 +44,7 @@ def create_upload_router(
     settings: Settings,
     llm: ChatModel,
     writer: MemoryWriteWorker,
+    agent: CognitiveAgent | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/upload", tags=["upload"])
     analyzer = ImageAnalyzer(llm)
@@ -232,6 +234,193 @@ def create_upload_router(
             "analysis_time_ms": t_analysis_ms,
             "total_time_ms": t_total_ms,
             "queue_depth": writer.pending,
+            "items": items,
+            "worker": {
+                "alive": worker_stats["worker"]["alive"],
+                "total_stored": worker_stats["queue"]["total_stored"],
+                "total_failed": worker_stats["queue"]["total_failed"],
+                "dlq_count": worker_stats["dead_letter"]["count"],
+            },
+            "alerts": worker_alerts,
+        }
+
+    @router.post("/chat")
+    async def upload_with_chat_context(
+        files: list[UploadFile],
+        conversation_text: str = "",
+    ):
+        """带对话上下文的批量图片上传。
+
+        与 /upload 相同流程，但图片分析会注入当前对话上下文和历史记忆。
+        """
+        if not files:
+            raise HTTPException(400, "至少需要一个文件")
+
+        t0 = time.monotonic()
+        saved: list[dict[str, Any]] = []
+        file_paths: list[str] = []
+
+        # ── Phase 1: 校验 + 保存 ──
+        for f in files:
+            if not f.filename:
+                raise HTTPException(400, "文件名为空")
+            if not f.content_type or not f.content_type.startswith("image/"):
+                raise HTTPException(400, f"仅支持图片文件，{f.filename}: {f.content_type}")
+
+            content = await f.read()
+            size_bytes = len(content)
+            max_bytes = settings.upload_max_size_mb * 1024 * 1024
+            if size_bytes > max_bytes:
+                raise HTTPException(413, f"文件过大: {f.filename} {size_bytes / 1024 / 1024:.1f}MB")
+
+            upload_dir = Path(settings.upload_dir)
+            upload_dir.mkdir(parents=True, exist_ok=True)
+
+            ext = os.path.splitext(f.filename)[1] or ".png"
+            file_id = str(uuid.uuid4())
+            filename = f"{file_id}{ext}"
+            file_path = upload_dir / filename
+            file_path.write_bytes(content)
+
+            saved.append({
+                "file_id": file_id,
+                "filename": f.filename,
+                "saved_name": filename,
+                "size_bytes": size_bytes,
+                "content_type": f.content_type,
+            })
+            file_paths.append(str(file_path))
+            logger.info("upload:chat:saved", extra={"file_id": file_id, "filename": f.filename})
+
+        # ── Phase 2: 构建上下文 ──
+        if agent is not None and conversation_text:
+            ctx = agent.build_image_context(user_input=conversation_text)
+        elif agent is not None:
+            ctx = agent.build_image_context()
+        else:
+            ctx = {"conversation_context": "", "historical_memories": ""}
+
+        # ── Phase 3: 逐张 analyze_with_context ──
+        t_analysis_start = time.monotonic()
+        results: list[Any] = []
+        previous_summaries: list[str] = []
+
+        for path in file_paths:
+            try:
+                result = analyzer.analyze_with_context(
+                    path,
+                    conversation_context=ctx.get("conversation_context", ""),
+                    historical_memories=ctx.get("historical_memories", ""),
+                    previous_image_summaries=previous_summaries if previous_summaries else None,
+                )
+            except Exception:
+                logger.exception("upload:chat:analysis_failed")
+                result = None
+            results.append(result)
+            if result and result.summary:
+                previous_summaries.append(result.summary)
+
+        t_analysis_ms = int((time.monotonic() - t_analysis_start) * 1000)
+
+        # ── Phase 4: 构建任务 + 入队 ──
+        items: list[dict[str, Any]] = []
+        total_tasks = 0
+
+        for i, (meta, result) in enumerate(zip(saved, results)):
+            if result is None or not result.summary:
+                items.append({
+                    **meta,
+                    "analysis": {"summary": "无法识别", "structured_json": None},
+                    "tasks": [],
+                    "error": "图片分析失败",
+                })
+                continue
+
+            all_entities = list(dict.fromkeys(result.entities + result.objects))
+
+            trigger = _match_trigger(result.scene_type)
+            trigger_tasks = _build_trigger_tasks(
+                result=result,
+                file_id=meta["file_id"],
+                filename=meta["filename"],
+                entities=all_entities,
+                trigger=trigger,
+            )
+
+            memory_tasks = _build_memory_tasks(
+                result=result,
+                file_id=meta["file_id"],
+                filename=meta["filename"],
+                entities=all_entities,
+                trigger=trigger,
+            )
+
+            all_tasks = memory_tasks + trigger_tasks
+
+            for t in all_tasks:
+                writer.enqueue(MemoryWriteTask(
+                    arguments={
+                        "content": t["content"],
+                        "entities": t["entities"],
+                        "importance_override": t["importance"],
+                    },
+                    call_id=f"upload:chat:{meta['file_id']}",
+                ))
+                total_tasks += 1
+
+            sj = None
+            if result.structured_json:
+                sj = {
+                    "text_in_image": result.structured_json.text_in_image,
+                    "entities": result.structured_json.entities,
+                    "scene_type": result.structured_json.scene_type,
+                    "object_list": result.structured_json.object_list,
+                }
+
+            items.append({
+                "file_id": meta["file_id"],
+                "filename": meta["filename"],
+                "size_bytes": meta["size_bytes"],
+                "analysis": {
+                    "summary": result.summary,
+                    "scene_type": result.scene_type,
+                    "text_in_image": result.text_in_image,
+                    "entities": all_entities,
+                    "structured_json": sj,
+                    "trigger": {
+                        "matched": trigger is not None,
+                        "reason": trigger.get("reason", "") if trigger else "",
+                    },
+                },
+                "tasks": [
+                    {
+                        "task_id": t["task_id"],
+                        "memory_type": t["memory_type"],
+                        "status": t["status"],
+                        "importance": t["importance"],
+                        "elapsed_ms": 0,
+                        "queue_depth": writer.pending,
+                    }
+                    for t in all_tasks
+                ],
+                "task_count": len(all_tasks),
+            })
+
+        worker_stats = writer.stats
+        worker_alerts = writer.alerts
+        t_total_ms = int((time.monotonic() - t0) * 1000)
+
+        return {
+            "status": "accepted",
+            "files_count": len(files),
+            "total_tasks_enqueued": total_tasks,
+            "analysis_time_ms": t_analysis_ms,
+            "total_time_ms": t_total_ms,
+            "queue_depth": writer.pending,
+            "context": {
+                "has_conversation": bool(ctx.get("conversation_context")),
+                "has_memories": bool(ctx.get("historical_memories")),
+            },
             "items": items,
             "worker": {
                 "alive": worker_stats["worker"]["alive"],
