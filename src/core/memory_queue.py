@@ -157,7 +157,7 @@ class MemoryWriteWorker(threading.Thread):
                     "queue_depth": self.pending,
                 },
             )
-            self._write_dead_letter(task)
+            self._write_dead_letter(task, reason="工具执行异常崩溃")
             self._record_history(task, elapsed_ms)
             return
 
@@ -176,7 +176,7 @@ class MemoryWriteWorker(threading.Thread):
                     "elapsed_ms": elapsed_ms,
                 },
             )
-            self._write_dead_letter(task)
+            self._write_dead_letter(task, reason=result.error or "工具返回失败")
             self._record_history(task, elapsed_ms)
             return
 
@@ -195,18 +195,34 @@ class MemoryWriteWorker(threading.Thread):
         )
         self._record_history(task, elapsed_ms)
 
-    def _write_dead_letter(self, task: MemoryWriteTask) -> None:
+    def _write_dead_letter(self, task: MemoryWriteTask, reason: str = "") -> None:
         task.retry_count += 1
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
         filename = f"memory_{ts}_r{task.retry_count}.json"
         path = self._dead_letter_dir / filename
+        # 从 arguments 推断 memory_type（content 前缀）
+        memory_type = "unknown"
+        content = task.arguments.get("content", "")
+        if "工作区" in content:
+            memory_type = "working"
+        elif "情景" in content:
+            memory_type = "episodic"
+        elif "语义" in content:
+            memory_type = "semantic"
+        elif "概念" in content:
+            memory_type = "conceptual"
+        elif "反思" in content or "自动反思" in content:
+            memory_type = "reflective"
+
         try:
             path.write_text(
                 json.dumps(
                     {
                         "task_id": task.task_id,
                         "call_id": task.call_id,
+                        "memory_type": memory_type,
                         "status": task.status,
+                        "reason": reason or "写入失败，详见 Worker 日志",
                         "arguments": task.arguments,
                         "submitted_at": task.submitted_at,
                         "failed_at": datetime.now(timezone.utc).isoformat(),
@@ -217,7 +233,7 @@ class MemoryWriteWorker(threading.Thread):
                 ),
                 encoding="utf-8",
             )
-            logger.info("dead_letter_written", extra={"path": str(path)})
+            logger.info("dead_letter_written", extra={"path": str(path), "memory_type": memory_type})
         except Exception:
             logger.exception("dead_letter_write_failed")
 
@@ -310,6 +326,7 @@ class MemoryWriteWorker(threading.Thread):
             failed_in_window = sum(1 for t in recent if t["status"] == "failed")
             fail_rate = failed_in_window / len(recent)
             if fail_rate >= 0.3:
+                failed_task_ids = [t["task_id"] for t in recent if t["status"] == "failed"]
                 result.append({
                     "level": "critical",
                     "type": "high_failure_rate",
@@ -318,6 +335,7 @@ class MemoryWriteWorker(threading.Thread):
                     "current": round(fail_rate, 2),
                     "failed_count": failed_in_window,
                     "window_size": len(recent),
+                    "failed_task_ids": failed_task_ids,
                 })
 
         return result

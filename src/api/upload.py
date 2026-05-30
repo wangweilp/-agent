@@ -97,9 +97,34 @@ def create_upload_router(
         t_analysis_start = time.monotonic()
         try:
             results = analyzer.analyze_batch(file_paths)
-        except Exception:
+        except Exception as e:
             logger.exception("upload:batch_analysis_failed")
-            raise HTTPException(500, "图片分析失败，请重试")
+            t_total_ms = int((time.monotonic() - t0) * 1000)
+            return {
+                "status": "error",
+                "files_count": len(files),
+                "total_tasks_enqueued": 0,
+                "analysis_time_ms": int((time.monotonic() - t_analysis_start) * 1000),
+                "total_time_ms": t_total_ms,
+                "queue_depth": writer.pending,
+                "items": [],
+                "worker": {
+                    "alive": writer.stats["worker"]["alive"],
+                    "total_stored": writer.stats["queue"]["total_stored"],
+                    "total_failed": writer.stats["queue"]["total_failed"],
+                    "dlq_count": writer.stats["dead_letter"]["count"],
+                },
+                "alerts": [
+                    {
+                        "level": "critical",
+                        "type": "analysis_failed",
+                        "message": f"批量图片分析失败: {str(e)[:200]}",
+                        "reason": str(e)[:200],
+                        "affected_files": [m["filename"] for m in saved],
+                    },
+                    *writer.alerts,
+                ],
+            }
 
         t_analysis_ms = int((time.monotonic() - t_analysis_start) * 1000)
 
@@ -141,6 +166,7 @@ def create_upload_router(
             all_tasks = memory_tasks + trigger_tasks
 
             # 入队
+            t_enqueue_start = time.monotonic()
             for t in all_tasks:
                 writer.enqueue(MemoryWriteTask(
                     arguments={
@@ -151,6 +177,8 @@ def create_upload_router(
                     call_id=f"upload:{meta['file_id']}",
                 ))
                 total_tasks += 1
+            enqueue_time_ms = int((time.monotonic() - t_enqueue_start) * 1000)
+            current_depth = writer.pending
 
             # 结构化输出
             sj = None
@@ -183,6 +211,8 @@ def create_upload_router(
                         "memory_type": t["memory_type"],
                         "status": t["status"],
                         "importance": t["importance"],
+                        "elapsed_ms": 0,       # 入队时尚未处理，实际耗时见 Worker history
+                        "queue_depth": current_depth,
                     }
                     for t in all_tasks
                 ],
