@@ -206,3 +206,56 @@ Memory = {
 | `docs/ROADMAP.md` | 三优先级版本路线图 |
 | `docs/DEV_GUIDE.md` | Git 规范、代码风格、安全规范 |
 | `config/.env.template` | 环境变量模板 |
+
+---
+
+## 10. Memory Evolution — 图片上传与记忆处理规则（v0.2）
+
+> 处理用户上传的图片、文本和记忆任务时必须遵循。
+
+### 10.1 核心约束
+
+- 工具调用对用户完全透明，不暴露 remember / recall / tool 内部过程
+- 异步写入统一返回「已接受处理」，不承诺持久化
+- 写入失败静默进入 Dead Letter Queue（`data/dead_letter/`），每条含 task_id / memory_type / 失败原因
+- 输出 JSON 必须可直接解析，不包裹 markdown 代码块
+
+### 10.2 图片处理
+
+- 支持一次上传多张图片，每张独立解析
+- 调用 DeepSeek Vision API，提取：
+  - `summary`：≤50 字中文摘要
+  - `structured_json`：{ text_in_image, entities[], scene_type, object_list[] }
+- 多图时合并跨图上下文：之前图片的摘要注入当前 prompt
+
+### 10.3 记忆写入 × 5 层
+
+每张图片生成 MemoryTask 入队 MemoryWriteWorker：
+
+| 层级 | 内容 |
+|------|------|
+| Working | 完整描述，当前对话可用 |
+| Episodic | 时间戳 + 来源 + 场景类型 |
+| Semantic | 结构化 JSON 拼接文本，用于向量检索 |
+| Conceptual | 实体关系 + 用途关联 |
+| Reflective | 自动评论 + 知识关联建议 |
+
+每条 task：`task_id = mem_{file_id}_{layer}`，`memory_type`，`status = pending`，`importance 1-10`。
+
+### 10.4 主动记忆触发
+
+| 场景 | 行为 |
+|------|------|
+| 白板、图表 | 额外生成 Reflective Memory，importance +2 |
+| 代码、文档 | 提取文字内容，importance +1 |
+| 其他 | 标准处理 |
+
+### 10.5 异常告警阈值
+
+| 条件 | 级别 |
+|------|------|
+| DLQ 积压 ≥ 5 条 | warning |
+| 队列积压 ≥ 10 条 | warning |
+| 最近 10 条失败率 ≥ 30% | critical |
+
+告警 JSON：`{ level, type, message, threshold, current }`。

@@ -1,4 +1,4 @@
-import type { AgentStatus, ChatRequest, ChatResponse, DashboardMetrics, Memory, ReflectionInsight, ToolInfo, TraceEntry } from "@/types";
+import type { AgentStatus, ChatRequest, ChatResponse, DashboardMetrics, Memory, ReflectionInsight, ToolInfo, TraceEntry, UploadResult } from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -104,6 +104,18 @@ export const api = {
     toggle(name: string, enabled: boolean): Promise<void> {
       return request(`/tools/${name}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
     },
+  },
+
+  upload(files: File[]): Promise<UploadResult> {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    return fetch(`${BASE}/upload`, {
+      method: "POST",
+      body: form,
+    }).then((res) => {
+      if (!res.ok) throw new ApiError(res.status, `上传失败: ${res.statusText}`);
+      return res.json();
+    });
   },
 
   dashboard: {

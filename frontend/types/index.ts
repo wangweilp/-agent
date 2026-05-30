@@ -120,6 +120,61 @@ export interface RuntimeStats {
   }>;
 }
 
+export interface UploadTask {
+  task_id: string;
+  memory_type: string;
+  content: string;
+  status: string;
+  entities?: string[];
+  importance?: number;
+}
+
+export interface UploadResult {
+  status: string;
+  files_count: number;
+  total_tasks_enqueued: number;
+  analysis_time_ms: number;
+  total_time_ms: number;
+  queue_depth: number;
+  items: Array<{
+    file_id: string;
+    filename: string;
+    size_bytes: number;
+    analysis: {
+      summary: string;
+      scene_type: string;
+      text_in_image: string;
+      entities?: string[];
+      structured_json?: {
+        text_in_image: string;
+        entities: string[];
+        scene_type: string;
+        object_list: string[];
+      } | null;
+      trigger?: {
+        matched: boolean;
+        reason: string;
+      };
+    };
+    tasks: UploadTask[];
+    task_count: number;
+    error?: string;
+  }>;
+  worker: {
+    alive: boolean;
+    total_stored: number;
+    total_failed: number;
+    dlq_count: number;
+  };
+  alerts: Array<{
+    level: string;
+    type: string;
+    message: string;
+    threshold: number;
+    current: number;
+  }>;
+}
+
 export interface StreamEvent {
   event: "token" | "tool_call" | "tool_result" | "done" | "error";
   data: Record<string, unknown>;

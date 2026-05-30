@@ -18,6 +18,7 @@ from src.adapters.sqlite_store import SQLiteStoreAdapter
 from src.adapters.vector_store import ChromaDBAdapter
 from src.api.dashboard import create_dashboard_router
 from src.api.routes import create_router
+from src.api.upload import create_upload_router
 from src.core.agent import CognitiveAgent
 from src.core.memory_queue import MemoryWriteWorker
 from src.tools.registry import ToolRegistry
@@ -42,7 +43,7 @@ def bootstrap() -> Settings:
     return settings
 
 
-def create_agent(settings: Settings) -> CognitiveAgent:
+def create_agent(settings: Settings) -> tuple[CognitiveAgent, MemoryWriteWorker, DeepSeekAdapter]:
     llm = DeepSeekAdapter(settings)
     memory_store = SQLiteStoreAdapter(settings)
     vector_store = ChromaDBAdapter(settings)
@@ -66,7 +67,7 @@ def create_agent(settings: Settings) -> CognitiveAgent:
     )
     memory_writer.start()
     logger.info("memory_writer 线程已启动")
-    return agent, memory_writer
+    return agent, memory_writer, llm
 
 
 @asynccontextmanager
@@ -78,7 +79,7 @@ async def lifespan(app: FastAPI):
 
 
 settings = bootstrap()
-agent, memory_writer = create_agent(settings)
+agent, memory_writer, llm = create_agent(settings)
 
 # 预加载 embedding 模型，避免首次请求阻塞
 agent._embedding.warmup()
@@ -100,6 +101,7 @@ app.add_middleware(
 
 app.include_router(create_router(agent))
 app.include_router(create_dashboard_router(agent, memory_writer))
+app.include_router(create_upload_router(settings, llm, memory_writer))
 
 
 def main() -> None:

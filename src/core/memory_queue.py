@@ -267,3 +267,57 @@ class MemoryWriteWorker(threading.Thread):
                 },
                 "recent_tasks": list(self._history[-20:]),
             }
+
+    @property
+    def alerts(self) -> list[dict[str, Any]]:
+        """生成实时告警 JSON。
+
+        检查阈值：
+          - DLQ 累积 >= 5 条
+          - 队列积压 >= 10 条
+          - 最近 10 条任务失败率 >= 30%
+        """
+        dlq_count = 0
+        try:
+            if self._dead_letter_dir.exists():
+                dlq_count = len(list(self._dead_letter_dir.glob("memory_*.json")))
+        except Exception:
+            pass
+
+        result: list[dict[str, Any]] = []
+
+        if dlq_count >= 5:
+            result.append({
+                "level": "warning",
+                "type": "dlq_accumulation",
+                "message": f"Dead Letter Queue 积压 {dlq_count} 条，请检查 Worker 日志",
+                "threshold": 5,
+                "current": dlq_count,
+            })
+
+        if self.pending >= 10:
+            result.append({
+                "level": "warning",
+                "type": "queue_congestion",
+                "message": f"写入队列积压 {self.pending} 条，可能影响响应延迟",
+                "threshold": 10,
+                "current": self.pending,
+            })
+
+        with self._lock:
+            recent = list(self._history[-10:])
+        if recent:
+            failed_in_window = sum(1 for t in recent if t["status"] == "failed")
+            fail_rate = failed_in_window / len(recent)
+            if fail_rate >= 0.3:
+                result.append({
+                    "level": "critical",
+                    "type": "high_failure_rate",
+                    "message": f"最近 {len(recent)} 条任务失败率 {fail_rate:.0%}，需立即排查",
+                    "threshold": 0.3,
+                    "current": round(fail_rate, 2),
+                    "failed_count": failed_in_window,
+                    "window_size": len(recent),
+                })
+
+        return result

@@ -21,6 +21,7 @@ import { MessageBubble } from "@/components/chat/message-bubble";
 import { ToolCallCard } from "@/components/chat/tool-call-card";
 import { SessionSidebar } from "@/components/chat/session-sidebar";
 import { ActivityPanel } from "@/components/chat/activity-panel";
+import { ImageUploadButton } from "@/components/chat/image-upload-button";
 import type { ToolCall } from "@/types";
 
 export default function ChatPage() {
@@ -206,6 +207,10 @@ export default function ChatPage() {
                   placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
                   rows={1}
                   className="flex-1 bg-transparent resize-none text-sm text-os-text-high placeholder-os-muted py-2 px-2 outline-none max-h-32"
+                />
+                <ImageUploadButton
+                  disabled={streaming}
+                  onUploaded={(summary) => setInput((prev) => (prev ? `${prev}\n${summary}` : summary))}
                 />
                 <button
                   onClick={handleSend}
