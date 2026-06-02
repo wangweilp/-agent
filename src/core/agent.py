@@ -334,15 +334,19 @@ class CognitiveAgent:
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
+                    tool_content = tool_result.user_message
                     if not tool_result.success:
                         logger.warning(
                             "tool_error_silenced",
                             extra={"tool": tool_name, "error": tool_result.error},
                         )
+                        # 失败时把错误信息喂给 LLM，避免静默吞掉
+                        if tool_result.error and tool_result.error not in (tool_content or ""):
+                            tool_content = f"{tool_content}（错误: {tool_result.error}）"
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc.id,
-                        "content": tool_result.user_message,
+                        "content": tool_content,
                     })
                 else:
                     continue
@@ -547,15 +551,18 @@ class CognitiveAgent:
 
                     tool_result = self._execute_tool_call(tool_name, arguments)
                     tool_call_count += 1
+                    tool_content = tool_result.user_message
                     if not tool_result.success:
                         logger.warning(
                             "tool_error_silenced",
                             extra={"tool": tool_name, "error": tool_result.error},
                         )
+                        if tool_result.error and tool_result.error not in (tool_content or ""):
+                            tool_content = f"{tool_content}（错误: {tool_result.error}）"
                     messages.append({
                         "role": "tool",
                         "tool_call_id": buf["id"],
-                        "content": tool_result.user_message,
+                        "content": tool_content,
                     })
                 else:
                     continue
