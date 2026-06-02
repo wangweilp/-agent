@@ -1,6 +1,13 @@
-"""RememberTool 单元测试。"""
+"""RememberTool 单元测试（v2 — 统一 similarity 语义）。
+
+重构后关键变更：
+    - SearchResult.score 统一表示 cosine_similarity（0.0~1.0，越高越相似）
+    - embedding 在 normal path 只 encode 一次（_check_novelty 复用）
+    - merge 阈值 >= 0.85，downgrade >= 0.70，< 0.70 store
+    - merge 失败不再递归 execute()，而是回退到 _store_new_memory()
+"""
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -16,7 +23,10 @@ def mock_memory_store():
 
 @pytest.fixture
 def mock_vector_store():
-    return create_autospec(VectorStore, instance=True)
+    """★ v2: 默认返回空列表（无已有记忆），避免 autospec MagicMock 触发 novelty 误判。"""
+    store = create_autospec(VectorStore, instance=True)
+    store.search.return_value = []
+    return store
 
 
 @pytest.fixture
@@ -49,17 +59,28 @@ class TestRememberToolProtocol:
         assert "content" in s["function"]["parameters"]["properties"]
         assert "content" in s["function"]["parameters"]["required"]
 
+    def test_constructor_accepts_custom_thresholds(self, mock_memory_store, mock_vector_store, mock_embedding):
+        t = RememberTool(
+            mock_memory_store, mock_vector_store, mock_embedding,
+            merge_threshold=0.95,
+            downgrade_threshold=0.75,
+        )
+        assert t._merge_threshold == 0.95
+        assert t._downgrade_threshold == 0.75
+
 
 class TestRememberExecute:
-    def test_stores_memory_and_returns_success(self, tool, mock_memory_store, mock_vector_store, mock_embedding):
+    def test_stores_memory_and_returns_success(
+        self, tool, mock_memory_store, mock_vector_store, mock_embedding,
+    ):
         result = tool.execute({"content": "用户喜欢喝咖啡", "entities": ["咖啡"]})
 
         assert result.success is True
         assert "已存储记忆" in result.content
         mock_memory_store.store.assert_called_once()
         mock_vector_store.store.assert_called_once()
-        # encode 被调用两次：新颖度检测 + 实际存储
-        assert mock_embedding.encode.call_count == 2
+        # ★ v2: normal path 只 encode 一次（_check_novelty 复用）
+        assert mock_embedding.encode.call_count == 1
 
     def test_stores_memory_id_in_metadata(self, tool, mock_memory_store):
         result = tool.execute({"content": "测试记忆"})
@@ -147,8 +168,10 @@ class TestRememberErrorHandling:
 
 
 class TestNoveltyScoring:
+    """v2 重构：所有 score 统一表示 cosine_similarity（0.0~1.0）。"""
+
     def test_merge_when_highly_similar(self, tool, mock_vector_store, mock_memory_store):
-        """高相似度 → 合并更新已有记忆。"""
+        """similarity=0.95 >= 0.85 → 合并更新已有记忆。"""
         existing = Memory(
             id="existing_1",
             content="用户在学习 LangGraph",
@@ -157,7 +180,7 @@ class TestNoveltyScoring:
             timestamp=datetime(2026, 5, 25, tzinfo=timezone.utc),
         )
         mock_vector_store.search.return_value = [
-            SearchResult(doc_id="existing_1", score=0.10, metadata={}),
+            SearchResult(doc_id="existing_1", score=0.95, metadata={}),
         ]
         mock_memory_store.get_by_id.return_value = existing
 
@@ -168,23 +191,86 @@ class TestNoveltyScoring:
         assert result.metadata["existing_id"] == "existing_1"
 
     def test_downgrade_when_moderately_similar(self, tool, mock_vector_store):
-        """中等相似度 → 降权存储。"""
+        """similarity=0.80 (< 0.85, >= 0.70) → 降权存储。"""
         mock_vector_store.search.return_value = [
-            SearchResult(doc_id="existing_1", score=0.20, metadata={}),
+            SearchResult(doc_id="existing_1", score=0.80, metadata={}),
         ]
-        # 基础分 5，降权 -2 = 3
         result = tool.execute({"content": "普通信息"})
         assert result.success is True
         assert "merged" not in result.metadata
         assert result.metadata["importance"] == 3  # 5 - 2
 
     def test_normal_store_when_novel(self, tool, mock_vector_store):
-        """低相似度 → 正常存储。"""
+        """similarity=0.60 (< 0.70) → 正常存储。"""
         mock_vector_store.search.return_value = [
-            SearchResult(doc_id="existing_1", score=0.50, metadata={}),
+            SearchResult(doc_id="existing_1", score=0.60, metadata={}),
         ]
         result = tool.execute({"content": "全新信息"})
         assert result.success is True
         assert result.metadata["novelty"]["action"] == "store"
 
+    def test_boundary_merge_at_threshold(self, tool, mock_vector_store, mock_memory_store):
+        """similarity=0.85（等于阈值）→ 应 merge。"""
+        existing = Memory(
+            id="existing_1",
+            content="边界测试",
+            summary=None,
+            source="user",
+            timestamp=datetime(2026, 5, 25, tzinfo=timezone.utc),
+        )
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="existing_1", score=0.85, metadata={}),
+        ]
+        mock_memory_store.get_by_id.return_value = existing
 
+        result = tool.execute({"content": "边界测试"})
+        assert result.success is True
+        assert result.metadata["merged"] is True
+
+    def test_boundary_downgrade_at_threshold(self, tool, mock_vector_store):
+        """similarity=0.70（等于降级阈值）→ 应 downgrade。"""
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="existing_1", score=0.70, metadata={}),
+        ]
+        result = tool.execute({"content": "边界测试"})
+        assert result.success is True
+        assert result.metadata["importance"] == 3  # 5 - 2
+
+    def test_boundary_store_below_threshold(self, tool, mock_vector_store):
+        """similarity=0.69（略低于降级阈值）→ 应 store。"""
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="existing_1", score=0.69, metadata={}),
+        ]
+        result = tool.execute({"content": "边界测试"})
+        assert result.success is True
+        assert result.metadata["novelty"]["action"] == "store"
+
+    def test_merge_target_gone_falls_back_to_store(
+        self, tool, mock_vector_store, mock_memory_store,
+    ):
+        """合并目标已被删除 → 回退到正常存储，不递归 execute()。"""
+        mock_vector_store.search.return_value = [
+            SearchResult(doc_id="gone_id", score=0.95, metadata={}),
+        ]
+        mock_memory_store.get_by_id.return_value = None
+
+        result = tool.execute({"content": "无人认领的记忆"})
+
+        # ★ v2: 回退到 _store_new_memory()，不走递归 execute()
+        assert result.success is True
+        assert result.metadata.get("merged") is not True  # 不应标记为 merge
+        mock_memory_store.store.assert_called_once()
+
+    def test_novelty_search_returns_empty(self, tool, mock_vector_store):
+        """向量搜索返回空 → 正常存储。"""
+        mock_vector_store.search.return_value = []
+        result = tool.execute({"content": "第一条记忆"})
+        assert result.success is True
+        assert result.metadata["novelty"]["action"] == "store"
+
+    def test_novelty_search_falls_back_on_error(self, tool, mock_vector_store):
+        """向量搜索异常 → 安全回退到 store，不崩溃。"""
+        mock_vector_store.search.side_effect = RuntimeError("ChromaDB 挂了")
+        result = tool.execute({"content": "灾难恢复测试"})
+        assert result.success is True
+        assert result.metadata["novelty"]["action"] == "store"
