@@ -321,14 +321,14 @@ class CognitiveAgent:
                         })
                         continue
 
-                    # remember → 异步写入，不阻塞 LLM 响应
+                    # remember → 异步写入（有Worker）或同步降级（无Worker）
                     if tool_name == "remember":
-                        self._fire_and_forget_remember(tc.id, arguments)
+                        tool_msg = self._fire_and_forget_remember(tc.id, arguments)
                         tool_call_count += 1
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tc.id,
-                            "content": "已接受处理。",
+                            "content": tool_msg,
                         })
                         continue
 
@@ -534,14 +534,14 @@ class CognitiveAgent:
                             })
                             continue
 
-                    # remember → 异步写入，不阻塞 LLM 响应
+                    # remember → 异步写入（有Worker）或同步降级（无Worker）
                     if tool_name == "remember":
-                        self._fire_and_forget_remember(buf["id"], arguments)
+                        tool_msg = self._fire_and_forget_remember(buf["id"], arguments)
                         tool_call_count += 1
                         messages.append({
                             "role": "tool",
                             "tool_call_id": buf["id"],
-                            "content": "已接受处理。",
+                            "content": tool_msg,
                         })
                         continue
 
@@ -824,16 +824,39 @@ class CognitiveAgent:
 
     # ── 异步记忆写入 ──
 
-    def _fire_and_forget_remember(self, call_id: str, arguments: dict[str, Any]) -> None:
-        """异步写入记忆：入队到 MemoryWriteWorker，不阻塞 LLM 响应。
+    def _fire_and_forget_remember(self, call_id: str, arguments: dict[str, Any]) -> str:
+        """异步写入记忆，返回 tool response 中应填入的内容。
 
-        Worker 拥有独立的 SQLite 连接，不会触发跨线程错误。
-        写入失败进入 Dead Letter Queue，可重试。
+        有 MemoryWriteWorker → 异步入队，立即返回"已接受处理。"。
+        无 MemoryWriteWorker → 同步执行，返回真实结果（成功/失败）。
         """
-        if self._memory_writer is None:
-            logger.warning("no_memory_writer: dropping remember", extra={"call_id": call_id})
-            return
-        self._memory_writer.enqueue(MemoryWriteTask(arguments=arguments, call_id=call_id))
+        # 主路径：异步入队，不阻塞 LLM
+        if self._memory_writer is not None:
+            self._memory_writer.enqueue(MemoryWriteTask(arguments=arguments, call_id=call_id))
+            return "已接受处理。"
+
+        # 降级路径：无 Worker 时同步执行，保证测试/CLI模式记忆不丢失
+        logger.warning(
+            "remember_fallback_sync",
+            extra={"call_id": call_id, "reason": "MemoryWriteWorker 未配置，回退同步写入"},
+        )
+        try:
+            result = self._tool_executor.execute("remember", arguments)
+        except Exception:
+            logger.exception("remember_fallback_crashed")
+            return "写入失败，请稍后重试。"
+
+        if result.success:
+            logger.info(
+                "remember_fallback_sync_ok",
+                extra={"call_id": call_id, "memory_id": result.metadata.get("memory_id", "")},
+            )
+        else:
+            logger.warning(
+                "remember_fallback_sync_failed",
+                extra={"call_id": call_id, "error": result.error},
+            )
+        return result.user_message
 
     def shutdown(self) -> None:
         """关闭 MemoryWriteWorker，等待未完成的写入刷盘。"""

@@ -68,7 +68,7 @@ class RecallTool:
             service = MemoryRetrievalService(
                 self._memory_store, self._vector_store, self._embedding,
             )
-            memories = service.retrieve(query, top_k=top_k)
+            memories = service.retrieve(query, top_k=top_k, raise_on_error=True)
 
             if not memories:
                 return ToolResult(

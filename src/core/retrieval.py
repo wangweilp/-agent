@@ -43,6 +43,7 @@ class MemoryRetrievalService:
         *,
         entity_match_window: int = 100,
         with_breakdown: bool = False,
+        raise_on_error: bool = False,
     ) -> list[dict] | list[Memory]:
         """检索与 query 最相关的长期记忆。
 
@@ -51,11 +52,16 @@ class MemoryRetrievalService:
             top_k: 返回的记忆数量。
             entity_match_window: 实体匹配时检查的最近记忆数。
             with_breakdown: 是否返回详细分步 score（供 Retrieval Inspector 使用）。
+            raise_on_error: True 时传播异常供调用方做 success=False 判断；
+                           False 时静默返回 []（Agent 上下文构建降级策略）。
 
         Returns:
             with_breakdown=False: 按最终得分降序排列的记忆列表。
             with_breakdown=True: [{"memory": Memory, "vector_score": float, "rrf_score": float,
                                   "time_factor": float, "importance_factor": float, "final_score": float}]
+
+        Raises:
+            Exception: 仅当 raise_on_error=True 且底层（embedding/向量搜索/SQLite）失败时抛出。
         """
         if not query.strip():
             return []
@@ -104,6 +110,8 @@ class MemoryRetrievalService:
 
         except Exception:
             logger.warning("memory_retrieval_failed", exc_info=True)
+            if raise_on_error:
+                raise
             return []
 
     @staticmethod
