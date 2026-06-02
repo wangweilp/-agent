@@ -49,7 +49,10 @@ class TestEncode:
             provider = LocalEmbeddingProvider(settings)
             result = provider.encode("测试文本")
 
-            mock_st.assert_called_once_with("BAAI/bge-small-zh-v1.5")
+            # ★ 生产代码调用：SentenceTransformer(model_name, device="cpu", local_files_only=True)
+            mock_st.assert_called_once_with(
+                "BAAI/bge-small-zh-v1.5", device="cpu", local_files_only=True,
+            )
             mock_instance.encode.assert_called_once_with(
                 "测试文本", normalize_embeddings=True, show_progress_bar=False
             )
@@ -88,7 +91,7 @@ class TestThreadSafety:
         load_count = 0
         lock = threading.Lock()
 
-        def mock_load(model_name):
+        def mock_load(model_name, **kwargs):
             nonlocal load_count
             with lock:
                 load_count += 1
