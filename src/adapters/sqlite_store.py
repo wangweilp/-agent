@@ -32,7 +32,9 @@ CREATE TABLE IF NOT EXISTS notes (
     relations_json TEXT NOT NULL DEFAULT '[]',
     memory_type    TEXT DEFAULT 'episodic',
     access_count   INTEGER NOT NULL DEFAULT 0,
-    last_accessed  TEXT
+    last_accessed  TEXT,
+    status         TEXT NOT NULL DEFAULT 'active',
+    archived_at    TEXT
 );
 
 CREATE TABLE IF NOT EXISTS entities (
@@ -94,29 +96,49 @@ class SQLiteStoreAdapter:
             stmt = statement.strip()
             if stmt:
                 self._db.execute(stmt)
+        self._run_migrations()
+
+    def _run_migrations(self) -> None:
+        """幂等 migration：为存量数据库增加 lifecycle 字段。"""
+        existing = {r["name"] for r in self._db.execute("PRAGMA table_info(notes)").fetchall()}
+        if "status" not in existing:
+            self._db.execute("ALTER TABLE notes ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+            logger.info("migration: added notes.status")
+        if "archived_at" not in existing:
+            self._db.execute("ALTER TABLE notes ADD COLUMN archived_at TEXT")
+            logger.info("migration: added notes.archived_at")
+        if "last_accessed" not in existing:
+            self._db.execute("ALTER TABLE notes ADD COLUMN last_accessed TEXT")
+            logger.info("migration: added notes.last_accessed")
 
     # ── MemoryStore 协议 ──────────────────────────────────────────────
 
     def store(self, memory: Memory) -> str:
+        archived_at = memory.archived_at.isoformat() if memory.archived_at else None
         with self._write_lock:
             with self._db.conn:
                 self._db.execute(
                     """INSERT INTO notes (id, content, summary, source, timestamp,
-                       importance, entities_json, relations_json, memory_type)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       importance, entities_json, relations_json, memory_type,
+                       status, archived_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                        ON CONFLICT(id) DO UPDATE SET
                        content=excluded.content, summary=excluded.summary,
                        source=excluded.source, timestamp=excluded.timestamp,
                        importance=excluded.importance,
                        entities_json=excluded.entities_json,
                        relations_json=excluded.relations_json,
-                       memory_type=excluded.memory_type""",
+                       memory_type=excluded.memory_type,
+                       status=excluded.status,
+                       archived_at=excluded.archived_at""",
                     (
                         memory.id, memory.content, memory.summary, memory.source,
                         memory.timestamp.isoformat(), memory.importance,
                         json.dumps(memory.entities, ensure_ascii=False),
                         json.dumps(memory.relations, ensure_ascii=False),
                         memory.memory_type,
+                        memory.status,
+                        archived_at,
                     ),
                 )
 
@@ -200,6 +222,28 @@ class SQLiteStoreAdapter:
         ).fetchall()
         return [self._row_to_memory(dict(r)) for r in rows]
 
+    def list_all(self) -> list[Memory]:
+        """列出所有记忆（用于 lifecycle 批量操作）。"""
+        rows = self._db.execute(
+            "SELECT * FROM notes ORDER BY timestamp DESC"
+        ).fetchall()
+        return [self._row_to_memory(dict(r)) for r in rows]
+
+    def list_by_status(self, status: str) -> list[Memory]:
+        """按状态列出记忆。"""
+        rows = self._db.execute(
+            "SELECT * FROM notes WHERE status = ? ORDER BY timestamp DESC", (status,)
+        ).fetchall()
+        return [self._row_to_memory(dict(r)) for r in rows]
+
+    def update_status(self, memory_id: str, status: str) -> None:
+        """原子更新单条记忆状态。"""
+        with self._write_lock:
+            with self._db.conn:
+                self._db.execute(
+                    "UPDATE notes SET status = ? WHERE id = ?", (status, memory_id)
+                )
+
     # ── 内部方法 ──────────────────────────────────────────────────────
 
     def _ensure_entity(self, name: str) -> int:
@@ -223,6 +267,11 @@ class SQLiteStoreAdapter:
             if row.get("last_accessed")
             else None
         )
+        archived_at = (
+            datetime.fromisoformat(row["archived_at"])
+            if row.get("archived_at")
+            else None
+        )
         return Memory(
             id=row["id"],
             content=row["content"],
@@ -235,6 +284,8 @@ class SQLiteStoreAdapter:
             memory_type=row.get("memory_type", "episodic"),
             access_count=row.get("access_count", 0),
             last_accessed=last_accessed,
+            status=row.get("status", "active"),
+            archived_at=archived_at,
         )
 
     def close(self) -> None:

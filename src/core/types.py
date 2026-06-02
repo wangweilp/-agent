@@ -16,6 +16,8 @@ class Memory:
     memory_type: str = "episodic"
     access_count: int = 0
     last_accessed: datetime | None = None
+    status: str = "active"  # "active" | "archived" | "merged" | "deleted"
+    archived_at: datetime | None = None
 
 
 @dataclass
