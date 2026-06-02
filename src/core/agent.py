@@ -18,7 +18,8 @@ from src.core.constants import (
     TOOL_TIMEOUT_SECONDS,
 )
 from src.core.context import ContextBuilder
-from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
+from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, VectorStore
+from src.core.reflect import DefaultReflectionEngine, ReflectionEngine
 from src.core.retrieval import MemoryRetrievalService
 from src.core.events import emit, EventType
 from src.core.memory_queue import MemoryWriteWorker, MemoryWriteTask
@@ -116,54 +117,6 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         },
     },
 ]
-
-# ── Reflection 检查 prompt ──
-_REFLECTION_PROMPT = """请检查以下回答是否存在问题：
-
-用户问题：{user_input}
-回答：{answer}
-
-如果回答存在事实矛盾、遗漏关键记忆、或逻辑不自洽，请回复 "CORRECTION: <具体修正建议>"。
-如果回答没有问题，请回复 "OK"。"""
-
-
-# ── 可插拔 Reflection Engine ──
-
-class DefaultReflectionEngine:
-    """默认反思引擎 — 通过 LLM 自检回答质量。
-
-    实现 ReflectionEngine 协议，可被替换为更复杂的检查逻辑。
-    """
-
-    def reflect(
-        self, answer: str, user_input: str, llm: ChatModel
-    ) -> tuple[bool, str]:
-        """检查回答质量。
-
-        Returns:
-            (需要修正, 修正建议)
-        """
-        check_prompt = _REFLECTION_PROMPT.format(
-            user_input=user_input, answer=answer
-        )
-        try:
-            response = llm.chat(
-                messages=[{"role": "user", "content": check_prompt}],
-                tools=None,
-                tool_choice=None,
-            )
-            check_result = response.choices[0].message.content or ""
-            if check_result.strip().upper().startswith("CORRECTION:"):
-                correction = check_result[len("CORRECTION:"):].strip()
-                logger.info(
-                    "reflection:needs_correction",
-                    extra={"suggestion": correction[:200]},
-                )
-                return True, f"请根据以下反馈修正你的回答：{correction}"
-        except Exception:
-            logger.warning("reflection:failed", exc_info=True)
-        return False, ""
-
 
 # ── Agent ──
 

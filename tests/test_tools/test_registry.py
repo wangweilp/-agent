@@ -15,7 +15,9 @@ def mock_memory_store():
 
 @pytest.fixture
 def mock_vector_store():
-    return create_autospec(VectorStore, instance=True)
+    store = create_autospec(VectorStore, instance=True)
+    store.search.return_value = []  # 默认无已有记忆，避免 autospec MagicMock 触发 merge
+    return store
 
 
 @pytest.fixture

@@ -73,14 +73,3 @@ class Tool(Protocol):
     def execute(self, arguments: dict[str, Any]) -> ToolResult:
         """执行工具逻辑。"""
         ...
-
-
-@runtime_checkable
-class ReflectionEngine(Protocol):
-    """反思引擎协议 — 可插拔的反思检查。"""
-
-    def reflect(
-        self, answer: str, user_input: str, llm: ChatModel
-    ) -> tuple[bool, str]:
-        """检查回答质量，返回 (是否需要修正, 修正建议)。"""
-        ...

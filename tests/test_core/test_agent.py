@@ -11,9 +11,9 @@ from src.core.agent import (
     TOOL_DEFINITIONS,
     CognitiveAgent,
     ContextBuilder,
-    DefaultReflectionEngine,
 )
-from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, ReflectionEngine, VectorStore
+from src.core.memory import ChatModel, EmbeddingProvider, MemoryStore, VectorStore
+from src.core.reflect import DefaultReflectionEngine, ReflectionEngine
 from src.core.types import Memory, Message, ToolResult
 
 
