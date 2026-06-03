@@ -16,11 +16,26 @@ from src.adapters.embedding import LocalEmbeddingProvider
 from src.adapters.llm import DeepSeekAdapter
 from src.adapters.sqlite_store import SQLiteStoreAdapter
 from src.adapters.vector_store import ChromaDBAdapter
+from src.adapters.auth_store import SQLiteAuthStore, WorkspaceContext
+from src.adapters.collab_store import CollabStore, CollaborationService
+from src.api.audio import create_audio_router
+from src.api.auth_router import create_auth_router
 from src.api.dashboard import create_dashboard_router
+from src.api.graph import create_graph_router
+from src.api.middleware import JWTTokenService, init_auth
 from src.api.routes import create_router
+from src.api.timeline import create_timeline_router
 from src.api.upload import create_upload_router
+from src.api.video import create_video_router
+from src.api.workspace_router import create_workspace_router
+from src.api.analytics_router import create_analytics_router
+from src.api.agent_collab_router import create_agent_collab_router
+from src.api.import_router import create_import_router
+from src.adapters.collab_adapter import DefaultMultiAgentCoordinator
 from src.core.agent import CognitiveAgent
+from src.core.import_worker import ImportWorker
 from src.core.memory_queue import MemoryWriteWorker
+from src.core.retrieval import MemoryRetrievalService
 from src.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -75,6 +90,7 @@ async def lifespan(app: FastAPI):
     logger.info("服务启动")
     yield
     logger.info("服务关闭，等待后台任务刷盘...")
+    import_worker.shutdown()
     agent.shutdown()
 
 
@@ -99,9 +115,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── SaaS Multi-Tenant + Team Collaboration Bootstrap ──
+auth_store = SQLiteAuthStore(settings)
+token_service = JWTTokenService()
+init_auth(token_service, auth_store)
+collab_store = CollabStore(settings)
+collab_service = CollaborationService(collab_store, auth_store)
+
 app.include_router(create_router(agent))
 app.include_router(create_dashboard_router(agent, memory_writer))
+app.include_router(create_timeline_router(agent))
+app.include_router(create_graph_router(agent))
+app.include_router(create_audio_router(settings, llm, memory_writer, agent))
+app.include_router(create_video_router(settings, llm, memory_writer, agent))
 app.include_router(create_upload_router(settings, llm, memory_writer, agent))
+app.include_router(create_auth_router(token_service, auth_store))
+app.include_router(create_workspace_router(collab_service, auth_store, agent))
+app.include_router(create_analytics_router(collab_service, agent))
+
+# ── Multi-Agent Collaboration Router ──
+retrieval_service = MemoryRetrievalService(
+    agent._memory_store, agent._vector_store, agent._embedding,
+)
+agent_collab_coordinator = DefaultMultiAgentCoordinator(
+    collab_service=collab_service,
+    auth_store=auth_store,
+    retrieval_service=retrieval_service,
+    tool_registry=ToolRegistry(
+        memory_store=agent._memory_store,
+        vector_store=agent._vector_store,
+        embedding_provider=agent._embedding,
+        llm=llm,
+    ),
+)
+app.include_router(create_agent_collab_router(agent_collab_coordinator))
+
+# ── Import Hub ──
+import_worker = ImportWorker(settings, memory_writer=memory_writer, embedding_provider=agent._embedding)
+import_worker.start()
+logger.info("import_worker 线程已启动")
+
+app.include_router(create_import_router(settings, llm, memory_writer, import_worker, agent))
 
 
 def main() -> None:

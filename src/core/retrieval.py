@@ -44,6 +44,7 @@ class MemoryRetrievalService:
         entity_match_window: int = 100,
         with_breakdown: bool = False,
         raise_on_error: bool = False,
+        include_archived: bool = False,
     ) -> list[dict] | list[Memory]:
         """检索与 query 最相关的长期记忆。
 
@@ -54,6 +55,7 @@ class MemoryRetrievalService:
             with_breakdown: 是否返回详细分步 score（供 Retrieval Inspector 使用）。
             raise_on_error: True 时传播异常供调用方做 success=False 判断；
                            False 时静默返回 []（Agent 上下文构建降级策略）。
+            include_archived: 是否包含已归档记忆。默认 False，只检索 ACTIVE 状态。
 
         Returns:
             with_breakdown=False: 按最终得分降序排列的记忆列表。
@@ -89,6 +91,13 @@ class MemoryRetrievalService:
                 mem = self._memory_store.get_by_id(doc_id)
                 if mem is None:
                     continue
+
+                # 生命周期过滤：默认只搜索 ACTIVE，除非显式指定 include_archived
+                if not include_archived and mem.status != "active":
+                    continue
+                if mem.status in ("deleted", "merged"):
+                    continue
+
                 time_factor, importance_factor, access_bonus = self._score_breakdown(mem)
                 final_score = self._apply_scoring(mem, rrf_score)
                 scored.append({

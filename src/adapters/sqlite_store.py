@@ -21,6 +21,8 @@ _SCHEMA_SQL = """
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys = ON;
 
+-- ── Memory Tables (workspace_id + multi-tenant added by migration) ──
+
 CREATE TABLE IF NOT EXISTS notes (
     id             TEXT PRIMARY KEY,
     content        TEXT NOT NULL,
@@ -99,7 +101,7 @@ class SQLiteStoreAdapter:
         self._run_migrations()
 
     def _run_migrations(self) -> None:
-        """幂等 migration：为存量数据库增加 lifecycle 字段。"""
+        """幂等 migration：为存量数据库增加 lifecycle + 多租户字段。"""
         existing = {r["name"] for r in self._db.execute("PRAGMA table_info(notes)").fetchall()}
         if "status" not in existing:
             self._db.execute("ALTER TABLE notes ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
@@ -110,6 +112,66 @@ class SQLiteStoreAdapter:
         if "last_accessed" not in existing:
             self._db.execute("ALTER TABLE notes ADD COLUMN last_accessed TEXT")
             logger.info("migration: added notes.last_accessed")
+        if "workspace_id" not in existing:
+            self._db.execute("ALTER TABLE notes ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'")
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_notes_workspace ON notes(workspace_id)")
+            logger.info("migration: added notes.workspace_id")
+
+        # entities table workspace_id
+        ent_cols = {r["name"] for r in self._db.execute("PRAGMA table_info(entities)").fetchall()}
+        if "workspace_id" not in ent_cols:
+            self._db.execute("ALTER TABLE entities ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'")
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_entities_workspace ON entities(workspace_id)")
+            logger.info("migration: added entities.workspace_id")
+
+        # relations table workspace_id
+        rel_cols = {r["name"] for r in self._db.execute("PRAGMA table_info(relations)").fetchall()}
+        if "workspace_id" not in rel_cols:
+            self._db.execute("ALTER TABLE relations ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'")
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_rel_workspace ON relations(workspace_id)")
+            logger.info("migration: added relations.workspace_id")
+
+        # New multi-tenant tables
+        all_tables = {r["name"] for r in self._db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "users" not in all_tables:
+            self._db.execute("""
+                CREATE TABLE users (
+                    id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '',
+                    avatar_url TEXT, hashed_password TEXT,
+                    auth_provider TEXT NOT NULL DEFAULT 'email', auth_provider_id TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+            logger.info("migration: created users table")
+
+        if "workspaces" not in all_tables:
+            self._db.execute("""
+                CREATE TABLE workspaces (
+                    id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT 'My Workspace',
+                    owner_id TEXT NOT NULL REFERENCES users(id),
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+            """)
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_id)")
+            logger.info("migration: created workspaces table")
+
+        if "memberships" not in all_tables:
+            self._db.execute("""
+                CREATE TABLE memberships (
+                    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+                    role TEXT NOT NULL DEFAULT 'member',
+                    joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    PRIMARY KEY (user_id, workspace_id)
+                )
+            """)
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_memberships_workspace ON memberships(workspace_id)")
+            self._db.execute("CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id)")
+            logger.info("migration: created memberships table")
 
     # ── MemoryStore 协议 ──────────────────────────────────────────────
 

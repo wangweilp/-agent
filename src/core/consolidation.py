@@ -186,16 +186,24 @@ class DefaultMemoryConsolidator:
                     },
                 )
 
-        # 物理删除被合并方
-        delete_count = 0
+        # 标记被合并方为 MERGED（规则 3: Consolidation 后被吸收 → MERGED）
+        merge_count = 0
         for did in deleted_ids:
             try:
-                self._memory_store.delete(did)
-                delete_count += 1
+                other = self._memory_store.get_by_id(did)
+                if other is not None:
+                    other.status = "merged"
+                    self._memory_store.store(other)
+                    merge_count += 1
             except Exception:
-                logger.debug("consolidation_delete_failed", extra={"id": did}, exc_info=True)
+                # 降级：物理删除
+                try:
+                    self._memory_store.delete(did)
+                    merge_count += 1
+                except Exception:
+                    logger.debug("consolidation_delete_failed", extra={"id": did}, exc_info=True)
 
-        return merged, delete_count
+        return merged, merge_count
 
     @staticmethod
     def _merge_pair(primary: Memory, secondary: Memory) -> None:

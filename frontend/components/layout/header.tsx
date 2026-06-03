@@ -1,11 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { Building2, ChevronDown } from "lucide-react";
 
 export function Header() {
   const status = useAgentStore((s) => s.status);
   const traceId = useAgentStore((s) => s.traceId);
+  const currentWorkspace = useAuthStore((s) => s.currentWorkspace);
+  const user = useAuthStore((s) => s.user);
 
   const statusLabel: Record<string, string> = {
     idle: "就绪",
@@ -35,6 +40,25 @@ export function Header() {
         )}
       </div>
       <div className="flex items-center gap-3">
+        {/* Workspace indicator */}
+        {currentWorkspace && (
+          <Link
+            href="/workspace"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
+          >
+            <Building2 size={12} className="text-os-accent/70" />
+            <span className="max-w-[120px] truncate">{currentWorkspace.name}</span>
+            <ChevronDown size={10} />
+          </Link>
+        )}
+
+        {/* User indicator */}
+        {user && (
+          <span className="text-2xs text-os-muted">
+            {user.name || user.email}
+          </span>
+        )}
+
         <span className="text-2xs text-os-muted">v0.1.0</span>
       </div>
     </header>

@@ -13,6 +13,11 @@ import {
   ChevronRight,
   Zap,
   Bug,
+  Clock,
+  GitGraph,
+  Mic,
+  Video,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -21,6 +26,11 @@ const navItems = [
   { href: "/dashboard", label: "仪表盘", icon: LayoutDashboard, active: true },
   { href: "/chat", label: "对话", icon: MessageSquare },
   { href: "/memory", label: "记忆", icon: Brain },
+  { href: "/timeline", label: "时间轴", icon: Clock },
+  { href: "/graph", label: "知识图谱", icon: GitGraph },
+  { href: "/audio", label: "音频", icon: Mic },
+  { href: "/video", label: "视频", icon: Video },
+  { href: "/workspace", label: "工作区", icon: Building2 },
   { href: "/reflection", label: "反思", icon: Lightbulb },
   { href: "/tools", label: "工具中心", icon: Wrench },
   { href: "/debug", label: "Debug", icon: Bug },
