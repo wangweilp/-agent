@@ -271,6 +271,7 @@ class ImportWorker(threading.Thread):
                 with self._lock:
                     self._completed_count += 1
                     self._in_progress_count -= 1
+                    self._total_jobs += 1
                 self._record_job_history(job, elapsed_ms)
                 return
 
@@ -282,7 +283,10 @@ class ImportWorker(threading.Thread):
                     job_id=job.id,
                     chunk_index=idx,
                     content=chunk_data.get("content", ""),
-                    memory_type=chunk_data.get("memory_type", job.file_type_to_memory_type()),
+                    memory_type=chunk_data.get(
+                        "memory_type",
+                        _file_type_to_memory_type(job.file_type),
+                    ),
                 )
 
                 if self._memory_writer is not None:
@@ -331,7 +335,7 @@ class ImportWorker(threading.Thread):
                         self._write_dead_letter(task, reason=str(write_err))
 
                 job.processed_chunks = idx + 1
-                self._progress[job.id] = idx  # 标记此块已完成（断点续传用）
+                self._progress[job.id] = idx + 1  # 下一次重试从下一个块开始
 
                 # 每 10 块更新一次历史
                 if (idx + 1) % 10 == 0:
@@ -416,7 +420,7 @@ class ImportWorker(threading.Thread):
                 if "title" not in ch:
                     ch["title"] = job.title or generate_title(ch.get("content", ""))
                 if "memory_type" not in ch:
-                    ch["memory_type"] = job.file_type_to_memory_type()
+                    ch["memory_type"] = _file_type_to_memory_type(job.file_type)
 
             all_chunks.extend(chunks)
 

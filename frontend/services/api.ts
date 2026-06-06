@@ -5,6 +5,12 @@ import type {
   ActionPlan, Notification,
 } from "@/types";
 import type { ImportJobResponse, ImportJobListResponse } from "@/types/import";
+import type {
+  SyncConnector,
+  SyncJob,
+  SyncExecution,
+  SyncStats,
+} from "@/types/sync";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -429,5 +435,357 @@ export const api = {
       return request(`/import/${jobId}`, { method: "DELETE" });
     },
   },
-};
 
+  // ── Sync Hub ──
+
+  sync: {
+    // Stats
+    getStats(): Promise<SyncStats> {
+      return request("/sync/stats");
+    },
+
+    // Connectors
+    listConnectors(): Promise<{ connectors: SyncConnector[] }> {
+      return request("/sync/connectors");
+    },
+    createConnector(data: {
+      name: string;
+      connector_type: string;
+      credentials: Record<string, string>;
+    }): Promise<{ status: string; connector: SyncConnector }> {
+      return request("/sync/connectors", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    testConnector(
+      connectorId: string
+    ): Promise<{ connector_id: string; success: boolean; message: string }> {
+      return request(`/sync/connectors/${connectorId}/test`, { method: "POST" });
+    },
+    deleteConnector(connectorId: string): Promise<{ status: string; connector_id: string }> {
+      return request(`/sync/connectors/${connectorId}`, { method: "DELETE" });
+    },
+
+    // Jobs
+    listJobs(): Promise<{ jobs: SyncJob[] }> {
+      return request("/sync/jobs");
+    },
+    getJob(
+      jobId: string
+    ): Promise<{ job: SyncJob; recent_executions: SyncExecution[] }> {
+      return request(`/sync/jobs/${jobId}`);
+    },
+    createJob(data: {
+      connector_config_id: string;
+      name: string;
+      rule_type: string;
+      cron_expression?: string;
+    }): Promise<{ status: string; job: SyncJob }> {
+      return request("/sync/jobs", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    runJob(
+      jobId: string
+    ): Promise<{ status: string; execution_id: string }> {
+      return request(`/sync/jobs/${jobId}/run`, { method: "POST" });
+    },
+    retryJob(
+      jobId: string,
+      executionId?: string
+    ): Promise<{ status: string; execution_id: string }> {
+      return request(`/sync/jobs/${jobId}/retry`, {
+        method: "POST",
+        body: JSON.stringify({ execution_id: executionId || "" }),
+      });
+    },
+    deleteJob(jobId: string): Promise<{ status: string; job_id: string }> {
+      return request(`/sync/jobs/${jobId}`, { method: "DELETE" });
+    },
+
+    // History
+    getHistory(params?: {
+      connector_id?: string;
+      limit?: number;
+    }): Promise<{ executions: SyncExecution[] }> {
+      const sp = new URLSearchParams();
+      if (params?.connector_id) sp.set("connector_id", params.connector_id);
+      if (params?.limit) sp.set("limit", String(params.limit));
+      const qs = sp.toString();
+      return request(`/sync/history${qs ? `?${qs}` : ""}`);
+    },
+  },
+
+  // ── SaaS: Billing ──
+
+  billing: {
+    getAccount(): Promise<import("@/types").BillingAccount> {
+      return request("/billing/account");
+    },
+    createPaymentIntent(data: {
+      amount: number; currency?: string; provider?: string;
+      description?: string; invoice_id?: string;
+    }): Promise<import("@/types").PaymentIntent> {
+      return request("/billing/payment-intent", { method: "POST", body: JSON.stringify(data) });
+    },
+    listInvoices(params?: { status?: string }): Promise<import("@/types").Invoice[]> {
+      const sp = new URLSearchParams();
+      if (params?.status) sp.set("status", params.status);
+      const qs = sp.toString();
+      return request(`/billing/invoices${qs ? `?${qs}` : ""}`);
+    },
+    getInvoice(id: string): Promise<import("@/types").Invoice> {
+      return request(`/billing/invoices/${id}`);
+    },
+    listPayments(): Promise<import("@/types").Payment[]> {
+      return request("/billing/payments");
+    },
+    refundPayment(paymentId: string, data: { amount: number; reason?: string }): Promise<import("@/types").Refund> {
+      return request(`/billing/payments/${paymentId}/refund`, { method: "POST", body: JSON.stringify(data) });
+    },
+    listRefunds(): Promise<import("@/types").Refund[]> {
+      return request("/billing/refunds");
+    },
+  },
+
+  // ── SaaS: Subscription ──
+
+  subscription: {
+    get(): Promise<import("@/types").Subscription> {
+      return request("/subscription");
+    },
+    listPlans(): Promise<import("@/types").PlanPreview[]> {
+      return request("/subscription/plans");
+    },
+    getPlan(tier: string): Promise<import("@/types").PlanPreview> {
+      return request(`/subscription/plans/${tier}`);
+    },
+    changePlan(data: { target_tier: string; billing_cycle?: string }): Promise<import("@/types").Subscription> {
+      return request("/subscription/change-plan", { method: "POST", body: JSON.stringify(data) });
+    },
+    cancel(): Promise<{ tenant_id: string; status: string; canceled_at: string }> {
+      return request("/subscription/cancel", { method: "POST" });
+    },
+    resume(): Promise<import("@/types").Subscription> {
+      return request("/subscription/resume", { method: "POST" });
+    },
+    checkLimit(resource: string): Promise<import("@/types").LimitCheckResult> {
+      return request(`/subscription/check-limit?resource=${encodeURIComponent(resource)}`);
+    },
+    getLimits(): Promise<import("@/types").LimitCheckResult[]> {
+      return request("/subscription/limits");
+    },
+  },
+
+  // ── SaaS: Usage ──
+
+  usage: {
+    getStats(params?: { year?: number; month?: number }): Promise<import("@/types").UsageStats> {
+      const sp = new URLSearchParams();
+      if (params?.year) sp.set("year", String(params.year));
+      if (params?.month) sp.set("month", String(params.month));
+      const qs = sp.toString();
+      return request(`/usage/stats${qs ? `?${qs}` : ""}`);
+    },
+    getCost(params?: { year?: number; month?: number }): Promise<import("@/types").UsageStats> {
+      const sp = new URLSearchParams();
+      if (params?.year) sp.set("year", String(params.year));
+      if (params?.month) sp.set("month", String(params.month));
+      const qs = sp.toString();
+      return request(`/usage/cost${qs ? `?${qs}` : ""}`);
+    },
+    getDailyUsage(params: { resource: string; days?: number }): Promise<import("@/types").DailyUsage[]> {
+      const sp = new URLSearchParams();
+      sp.set("resource", params.resource);
+      if (params.days) sp.set("days", String(params.days));
+      return request(`/usage/daily?${sp.toString()}`);
+    },
+    getProfile(): Promise<import("@/types").UserProfile> {
+      return request("/usage/profile");
+    },
+    getTenantSummary(days?: number): Promise<Record<string, number>> {
+      const qs = days ? `?days=${days}` : "";
+      return request(`/usage/tenant-summary${qs}`);
+    },
+    getPlatformStats(): Promise<import("@/types").PlatformStats> {
+      return request("/usage/admin/platform-stats");
+    },
+  },
+
+  // ── SaaS: Tenant ──
+
+  tenant: {
+    getCurrent(): Promise<import("@/types").Tenant> {
+      return request("/tenants/current");
+    },
+    updateCurrent(data: Record<string, unknown>): Promise<import("@/types").Tenant> {
+      return request("/tenants/current", { method: "PATCH", body: JSON.stringify(data) });
+    },
+    listMembers(): Promise<import("@/types").TenantMember[]> {
+      return request("/tenants/current/members");
+    },
+    addMember(data: { user_id: string; role?: string }): Promise<import("@/types").TenantMember> {
+      return request("/tenants/current/members", { method: "POST", body: JSON.stringify(data) });
+    },
+    removeMember(userId: string): Promise<{ status: string }> {
+      return request(`/tenants/current/members/${userId}`, { method: "DELETE" });
+    },
+    listOrganizations(): Promise<import("@/types").Organization[]> {
+      return request("/tenants/current/organizations");
+    },
+    createOrganization(data: { name: string; description?: string; parent_org_id?: string }): Promise<import("@/types").Organization> {
+      return request("/tenants/current/organizations", { method: "POST", body: JSON.stringify(data) });
+    },
+    deleteOrganization(orgId: string): Promise<{ status: string }> {
+      return request(`/tenants/current/organizations/${orgId}`, { method: "DELETE" });
+    },
+  },
+
+  // ── SaaS: Growth ──
+
+  growth: {
+    // Invites
+    createInvite(data: { invitee_email: string; workspace_id?: string }): Promise<import("@/types").Invite> {
+      return request("/growth/invites", { method: "POST", body: JSON.stringify(data) });
+    },
+    listInvites(): Promise<import("@/types").Invite[]> {
+      return request("/growth/invites");
+    },
+    acceptInvite(inviteCode: string): Promise<import("@/types").Invite> {
+      return request("/growth/invites/accept", { method: "POST", body: JSON.stringify({ invite_code: inviteCode }) });
+    },
+    // Referrals
+    createReferral(): Promise<import("@/types").Referral> {
+      return request("/growth/referrals", { method: "POST" });
+    },
+    listReferrals(): Promise<import("@/types").Referral[]> {
+      return request("/growth/referrals");
+    },
+    getReferralStats(): Promise<import("@/types").ReferralStats> {
+      return request("/growth/referrals/stats");
+    },
+    // Coupons
+    listCoupons(): Promise<import("@/types").Coupon[]> {
+      return request("/growth/coupons");
+    },
+    lookupCoupon(code: string): Promise<import("@/types").Coupon> {
+      return request(`/growth/coupons/${encodeURIComponent(code)}`);
+    },
+    redeemCoupon(data: { code: string; invoice_id?: string }): Promise<import("@/types").RedeemedCoupon> {
+      return request("/growth/coupons/redeem", { method: "POST", body: JSON.stringify(data) });
+    },
+    // Trial
+    getTrial(): Promise<import("@/types").TrialRecord> {
+      return request("/growth/trial");
+    },
+  },
+
+  // ── Growth & Analytics Center ──
+
+  analytics: {
+    getMetrics(): Promise<import("@/types").AnalyticsMetrics> {
+      return request("/analytics/metrics");
+    },
+    getMemoryTrend(params?: { period?: string; days?: number }): Promise<import("@/types").MemoryTrend> {
+      const sp = new URLSearchParams();
+      if (params?.period) sp.set("period", params.period);
+      if (params?.days) sp.set("days", String(params.days));
+      const qs = sp.toString();
+      return request(`/analytics/memory-trend${qs ? `?${qs}` : ""}`);
+    },
+    getResourceUsage(params: { resource: string; days?: number }): Promise<import("@/types").ResourceUsageTrend> {
+      const sp = new URLSearchParams();
+      sp.set("resource", params.resource);
+      if (params.days) sp.set("days", String(params.days));
+      return request(`/analytics/resource-usage?${sp.toString()}`);
+    },
+    getImportChannels(days?: number): Promise<import("@/types").ImportChannelBreakdown> {
+      const qs = days ? `?days=${days}` : "";
+      return request(`/analytics/import-channels${qs}`);
+    },
+    getRetention(months?: number): Promise<import("@/types").RetentionCohort> {
+      const qs = months ? `?months=${months}` : "";
+      return request(`/analytics/retention${qs}`);
+    },
+    getRealtime(): Promise<import("@/types").RealtimeMetrics> {
+      return request("/analytics/realtime");
+    },
+  },
+
+  alerts: {
+    listRules(enabledOnly?: boolean): Promise<import("@/types").AlertRule[]> {
+      const qs = enabledOnly ? "?enabled_only=true" : "";
+      return request(`/alerts/rules${qs}`);
+    },
+    getRule(id: string): Promise<import("@/types").AlertRule> {
+      return request(`/alerts/rules/${id}`);
+    },
+    createRule(data: {
+      name: string; metric: string; condition?: string;
+      threshold: number; severity?: string; channel?: string;
+      cooldown_minutes?: number;
+    }): Promise<import("@/types").AlertRule> {
+      return request("/alerts/rules", { method: "POST", body: JSON.stringify(data) });
+    },
+    updateRule(id: string, data: Record<string, unknown>): Promise<import("@/types").AlertRule> {
+      return request(`/alerts/rules/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    },
+    deleteRule(id: string): Promise<{ status: string; rule_id: string }> {
+      return request(`/alerts/rules/${id}`, { method: "DELETE" });
+    },
+    listEvents(params?: {
+      rule_id?: string; severity?: string; acknowledged?: boolean;
+      limit?: number; offset?: number;
+    }): Promise<import("@/types").AlertEvent[]> {
+      const sp = new URLSearchParams();
+      if (params?.rule_id) sp.set("rule_id", params.rule_id);
+      if (params?.severity) sp.set("severity", params.severity);
+      if (params?.acknowledged !== undefined) sp.set("acknowledged", String(params.acknowledged));
+      if (params?.limit) sp.set("limit", String(params.limit));
+      if (params?.offset) sp.set("offset", String(params.offset));
+      const qs = sp.toString();
+      return request(`/alerts/events${qs ? `?${qs}` : ""}`);
+    },
+    acknowledgeEvent(eventId: string): Promise<{ status: string; event_id: string }> {
+      return request(`/alerts/events/${eventId}/acknowledge`, { method: "POST" });
+    },
+    testAlert(channel?: string): Promise<import("@/types").TestAlertResult> {
+      const qs = channel ? `?channel=${channel}` : "";
+      return request(`/alerts/test${qs}`, { method: "POST" });
+    },
+    seedPresets(): Promise<{ status: string; rule_ids: string[] }> {
+      return request("/alerts/rules/presets", { method: "POST" });
+    },
+  },
+
+  reports: {
+    generate(data: { report_type: string; format?: string }): Promise<import("@/types").Report> {
+      return request("/reports/generate", { method: "POST", body: JSON.stringify(data) });
+    },
+    list(reportType?: string, limit?: number): Promise<import("@/types").Report[]> {
+      const sp = new URLSearchParams();
+      if (reportType) sp.set("report_type", reportType);
+      if (limit) sp.set("limit", String(limit));
+      const qs = sp.toString();
+      return request(`/reports${qs ? `?${qs}` : ""}`);
+    },
+    get(id: string): Promise<import("@/types").Report> {
+      return request(`/reports/${id}`);
+    },
+    exportReport(id: string, format?: string): Promise<Blob> {
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const qs = format ? `?format=${format}` : "";
+      return fetch(`${BASE}/reports/${id}/export${qs}`, { headers }).then((res) => {
+        if (!res.ok) throw new ApiError(res.status, `导出失败: ${res.statusText}`);
+        return res.blob();
+      });
+    },
+    delete(id: string): Promise<{ status: string; report_id: string }> {
+      return request(`/reports/${id}`, { method: "DELETE" });
+    },
+  },
+};

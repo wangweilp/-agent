@@ -62,11 +62,35 @@ def _make_token(user_id: str = "u1", workspace_id: str = "ws1",
 
 def _make_auth_headers(user_id: str = "u1", workspace_id: str = "ws1") -> dict:
     token_svc = JWTTokenService()
-    # Create a quick user token
     from src.core.auth import User
-    user = User(id=user_id, email="test@test.com", name="Test")
+    user = User(id=user_id, email=f"{user_id}@seed.test", name="Test")
     tokens = token_svc.create_tokens(user, workspace_id, WorkspaceRole.ADMIN)
     return {"Authorization": f"Bearer {tokens.access_token}"}
+
+
+def _seed_access(auth_store: SQLiteAuthStore, user_id: str, ws_id: str, role: str = "admin") -> None:
+    """直接插入 user + workspace + membership，用已知 ID 匹配 JWT。"""
+    try:
+        auth_store._db.execute(
+            "INSERT OR IGNORE INTO users (id, email, name, auth_provider) VALUES (?, ?, ?, ?)",
+            (user_id, f"{user_id}@seed.test", f"User_{user_id}", "email"),
+        )
+    except Exception:
+        pass
+    try:
+        auth_store._db.execute(
+            "INSERT OR IGNORE INTO workspaces (id, name, owner_id) VALUES (?, ?, ?)",
+            (ws_id, f"WS_{ws_id}", user_id),
+        )
+    except Exception:
+        pass
+    try:
+        auth_store._db.execute(
+            "INSERT OR REPLACE INTO memberships (user_id, workspace_id, role) VALUES (?, ?, ?)",
+            (user_id, ws_id, role),
+        )
+    except Exception:
+        pass
 
 
 # ── Fixtures ──
@@ -141,6 +165,9 @@ def coordinator(collab_service, auth_store, mock_retrieval, mock_tool_registry):
 
 @pytest.fixture
 def client(auth_store, collab_service, token_service, coordinator):
+    # 预建 membership，使 _make_auth_headers 的 JWT 能通过 assert_workspace_access
+    _seed_access(auth_store, "u1", "ws1", "admin")
+    _seed_access(auth_store, "u2", "ws1", "member")
     app = FastAPI()
     init_auth(token_service, auth_store)
     app.include_router(create_agent_collab_router(coordinator))

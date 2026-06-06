@@ -8,9 +8,8 @@
     GET  /auth/workspaces
     POST /auth/workspaces
 """
-import hashlib
 import logging
-import secrets
+import bcrypt
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -65,16 +64,20 @@ class WorkspaceSwitchRequest(BaseModel):
 # ── Helpers ──
 
 
+# ── Password hashing (bcrypt) ──
+
+
 def _hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    return salt + ":" + hashlib.sha256((salt + password).encode()).hexdigest()
+    """Hash a password with bcrypt. The salt is embedded in the output."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def _verify_password(password: str, hashed: str) -> bool:
-    if ":" not in hashed:
+    """Verify a password against a bcrypt hash."""
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    except ValueError:
         return False
-    salt, h = hashed.split(":", 1)
-    return hashlib.sha256((salt + password).encode()).hexdigest() == h
 
 
 def _user_to_dict(u: User) -> dict:

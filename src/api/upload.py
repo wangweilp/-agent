@@ -25,6 +25,8 @@ from src.core.agent import CognitiveAgent
 from src.core.image_analyzer import ImageAnalyzer
 from src.core.memory import ChatModel
 from src.core.memory_queue import MemoryWriteWorker, MemoryWriteTask
+from src.api.errors import safe_error, MSG_UPLOAD_FAILED, MSG_ANALYSIS_FAILED
+from src.api.upload_utils import read_upload_chunked
 
 logger = logging.getLogger(__name__)
 
@@ -70,11 +72,9 @@ def create_upload_router(
             if not f.content_type or not f.content_type.startswith("image/"):
                 raise HTTPException(400, f"仅支持图片文件，{f.filename}: {f.content_type}")
 
-            content = await f.read()
-            size_bytes = len(content)
             max_bytes = settings.upload_max_size_mb * 1024 * 1024
-            if size_bytes > max_bytes:
-                raise HTTPException(413, f"文件过大: {f.filename} {size_bytes / 1024 / 1024:.1f}MB")
+            content = await read_upload_chunked(f, max_bytes, filename=f.filename)
+            size_bytes = len(content)
 
             upload_dir = Path(settings.upload_dir)
             upload_dir.mkdir(parents=True, exist_ok=True)
@@ -93,13 +93,13 @@ def create_upload_router(
                 "content_type": f.content_type,
             })
             file_paths.append(str(file_path))
-            logger.info("upload:saved", extra={"file_id": file_id, "filename": f.filename})
+            logger.info("upload:saved", extra={"file_id": file_id, "original_filename": f.filename})
 
         # ── Phase 2: 批量分析 ──
         t_analysis_start = time.monotonic()
         try:
             results = analyzer.analyze_batch(file_paths)
-        except Exception as e:
+        except Exception:
             logger.exception("upload:batch_analysis_failed")
             t_total_ms = int((time.monotonic() - t0) * 1000)
             return {
@@ -120,8 +120,7 @@ def create_upload_router(
                     {
                         "level": "critical",
                         "type": "analysis_failed",
-                        "message": f"批量图片分析失败: {str(e)[:200]}",
-                        "reason": str(e)[:200],
+                        "message": MSG_ANALYSIS_FAILED,
                         "affected_files": [m["filename"] for m in saved],
                     },
                     *writer.alerts,
@@ -267,11 +266,9 @@ def create_upload_router(
             if not f.content_type or not f.content_type.startswith("image/"):
                 raise HTTPException(400, f"仅支持图片文件，{f.filename}: {f.content_type}")
 
-            content = await f.read()
-            size_bytes = len(content)
             max_bytes = settings.upload_max_size_mb * 1024 * 1024
-            if size_bytes > max_bytes:
-                raise HTTPException(413, f"文件过大: {f.filename} {size_bytes / 1024 / 1024:.1f}MB")
+            content = await read_upload_chunked(f, max_bytes, filename=f.filename)
+            size_bytes = len(content)
 
             upload_dir = Path(settings.upload_dir)
             upload_dir.mkdir(parents=True, exist_ok=True)
@@ -290,7 +287,7 @@ def create_upload_router(
                 "content_type": f.content_type,
             })
             file_paths.append(str(file_path))
-            logger.info("upload:chat:saved", extra={"file_id": file_id, "filename": f.filename})
+            logger.info("upload:chat:saved", extra={"file_id": file_id, "original_filename": f.filename})
 
         # ── Phase 2: 构建上下文 ──
         if agent is not None and conversation_text:

@@ -57,6 +57,14 @@ class SQLiteAuthStore:
         );
         CREATE INDEX IF NOT EXISTS idx_memberships_workspace ON memberships(workspace_id);
         CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
+
+        CREATE TABLE IF NOT EXISTS revoked_tokens (
+            jti        TEXT PRIMARY KEY,
+            user_id    TEXT NOT NULL,
+            revoked_at TEXT NOT NULL DEFAULT (datetime('now')),
+            expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expiry ON revoked_tokens(expires_at);
     """
 
     def __init__(self, config: Settings, db_path: str | None = None) -> None:
@@ -138,7 +146,7 @@ class SQLiteAuthStore:
                    VALUES (?, ?, ?, ?)""",
                 (owner_id, ws.id, WorkspaceRole.OWNER.value, ws.created_at.isoformat()),
             )
-        logger.info("auth:workspace_created", extra={"ws_id": ws.id, "name": name})
+        logger.info("auth:workspace_created", extra={"ws_id": ws.id, "workspace_name": name})
         return ws
 
     def get_workspace_by_id(self, workspace_id: str) -> Workspace | None:
@@ -215,6 +223,36 @@ class SQLiteAuthStore:
                 "DELETE FROM memberships WHERE workspace_id = ? AND user_id = ?",
                 (workspace_id, user_id),
             )
+
+    # ── Token Revocation ──
+
+    def revoke_token(self, jti: str, user_id: str, expires_at: datetime) -> None:
+        """持久撤销一个 refresh token（存储 jti + 过期时间）。"""
+        with self._write_lock, self._db.conn:
+            self._db.execute(
+                "INSERT OR REPLACE INTO revoked_tokens (jti, user_id, revoked_at, expires_at) "
+                "VALUES (?, ?, ?, ?)",
+                (jti, user_id, datetime.now(timezone.utc).isoformat(), expires_at.isoformat()),
+            )
+
+    def is_token_revoked(self, jti: str) -> bool:
+        """检查 token 是否已被撤销。"""
+        row = self._db.execute(
+            "SELECT 1 FROM revoked_tokens WHERE jti = ?", (jti,)
+        ).fetchone()
+        return row is not None
+
+    def prune_expired_tokens(self) -> int:
+        """清理已过期的撤销记录，返回删除数量。"""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._write_lock, self._db.conn:
+            cur = self._db.execute(
+                "DELETE FROM revoked_tokens WHERE expires_at < ?", (now,)
+            )
+        deleted = cur.rowcount
+        if deleted:
+            logger.info("auth:pruned_expired_tokens", extra={"count": deleted})
+        return deleted
 
     # ── Internal ──
 

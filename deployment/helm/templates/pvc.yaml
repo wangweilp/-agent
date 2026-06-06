@@ -1,0 +1,20 @@
+{{- if .Values.backend.persistence.enabled }}
+{{- if not .Values.backend.persistence.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "enterprise-knowledge-os.fullname" . }}-data
+  labels:
+    {{- include "enterprise-knowledge-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - {{ .Values.backend.persistence.accessMode }}
+  {{- if .Values.backend.persistence.storageClass }}
+  storageClassName: {{ .Values.backend.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backend.persistence.size }}
+{{- end }}
+{{- end }}

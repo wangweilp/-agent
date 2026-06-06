@@ -24,7 +24,11 @@ from pydantic import BaseModel, Field
 
 from src.adapters.auth_store import SQLiteAuthStore, WorkspaceContext
 from src.adapters.collab_store import CollaborationService
-from src.api.middleware import require_auth, require_manage, require_write
+from src.api.middleware import (
+    assert_workspace_access,
+    assert_workspace_manage,
+    require_auth,
+)
 from src.core.auth import TokenPayload, WorkspaceRole
 from src.core.audit import NotificationPreferences
 from src.core.collaboration import ActionPlan, ActionPriority, ActionStatus, AuditLog
@@ -95,7 +99,7 @@ def create_workspace_router(
     # ── Members ──
 
     @router.get("/workspace/{id}/members")
-    async def list_members(id: str, payload: TokenPayload = Depends(require_auth)):
+    async def list_members(id: str, payload: TokenPayload = Depends(assert_workspace_access)):
         members = auth_store.list_members(id)
         result = []
         for m in members:
@@ -112,7 +116,7 @@ def create_workspace_router(
 
     @router.post("/workspace/{id}/members")
     async def add_member(id: str, body: AddMemberRequest,
-                         payload: TokenPayload = Depends(require_manage)):
+                         payload: TokenPayload = Depends(assert_workspace_manage)):
         _check_role(payload, WorkspaceRole.ADMIN)
         user = auth_store.get_by_email(body.email.lower())
         if user is None:
@@ -135,7 +139,7 @@ def create_workspace_router(
 
     @router.patch("/workspace/{id}/members/{user_id}")
     async def update_member_role(id: str, user_id: str, body: UpdateRoleRequest,
-                                  payload: TokenPayload = Depends(require_manage)):
+                                  payload: TokenPayload = Depends(assert_workspace_manage)):
         _check_role(payload, WorkspaceRole.ADMIN)
         try:
             role = WorkspaceRole(body.role)
@@ -146,7 +150,7 @@ def create_workspace_router(
 
     @router.delete("/workspace/{id}/members/{user_id}")
     async def remove_member(id: str, user_id: str,
-                            payload: TokenPayload = Depends(require_manage)):
+                            payload: TokenPayload = Depends(assert_workspace_manage)):
         _check_role(payload, WorkspaceRole.ADMIN)
         if user_id == payload.user_id:
             raise HTTPException(400, "不能移除自己")
@@ -157,7 +161,7 @@ def create_workspace_router(
 
     @router.post("/workspace/{id}/memory/merge")
     async def merge_memory(id: str, body: MemoryMergeRequest,
-                           payload: TokenPayload = Depends(require_write)):
+                           payload: TokenPayload = Depends(assert_workspace_manage)):
         if agent is None:
             raise HTTPException(500, "Agent 未初始化")
         count = collab_service.merge_workspace_memories(
@@ -171,7 +175,7 @@ def create_workspace_router(
 
     @router.post("/workspace/{id}/action-plan")
     async def create_action_plan(id: str, body: ActionPlanRequest,
-                                  payload: TokenPayload = Depends(require_write)):
+                                  payload: TokenPayload = Depends(assert_workspace_manage)):
         plan = ActionPlan(
             workspace_id=id, title=body.title, description=body.description,
             assigned_to=body.assigned_to, assigned_by=payload.user_id,
@@ -189,7 +193,7 @@ def create_workspace_router(
     @router.get("/workspace/{id}/action-plans")
     async def list_action_plans(id: str, assignee: str = "",
                                  status: str = "", limit: int = Query(default=50, le=100),
-                                 payload: TokenPayload = Depends(require_auth)):
+                                 payload: TokenPayload = Depends(assert_workspace_access)):
         plans = collab_service._store.list_action_plans(id, assignee, status, limit)
         return [
             {
@@ -206,7 +210,7 @@ def create_workspace_router(
 
     @router.patch("/workspace/{id}/action-plans/{plan_id}")
     async def update_action_plan(id: str, plan_id: str, body: ActionPlanUpdateRequest,
-                                  payload: TokenPayload = Depends(require_write)):
+                                  payload: TokenPayload = Depends(assert_workspace_manage)):
         plan = collab_service._store.get_action_plan(id, plan_id)
         if plan is None:
             raise HTTPException(404, "行动计划不存在")
@@ -227,7 +231,7 @@ def create_workspace_router(
 
     @router.post("/workspace/{id}/action-plans/{plan_id}/complete")
     async def complete_action_plan(id: str, plan_id: str,
-                                    payload: TokenPayload = Depends(require_write)):
+                                    payload: TokenPayload = Depends(assert_workspace_manage)):
         plan = collab_service.complete_action(plan_id, id, payload.user_id, payload.email)
         if plan is None:
             raise HTTPException(404, "行动计划不存在")
@@ -235,7 +239,7 @@ def create_workspace_router(
 
     @router.delete("/workspace/{id}/action-plans/{plan_id}")
     async def delete_action_plan(id: str, plan_id: str,
-                                  payload: TokenPayload = Depends(require_manage)):
+                                  payload: TokenPayload = Depends(assert_workspace_manage)):
         plan = collab_service._store.get_action_plan(id, plan_id)
         if plan is None:
             raise HTTPException(404, "行动计划不存在")
@@ -245,7 +249,7 @@ def create_workspace_router(
     # ── Dashboard ──
 
     @router.get("/workspace/{id}/dashboard")
-    async def workspace_dashboard(id: str, payload: TokenPayload = Depends(require_auth)):
+    async def workspace_dashboard(id: str, payload: TokenPayload = Depends(assert_workspace_access)):
         if agent is None:
             raise HTTPException(500, "Agent 未初始化")
         stats = collab_service.get_dashboard(id, agent._memory_store)
@@ -262,13 +266,13 @@ def create_workspace_router(
 
     @router.get("/workspace/{id}/activity-log")
     async def activity_log(id: str, limit: int = Query(default=30, le=100),
-                           payload: TokenPayload = Depends(require_auth)):
+                           payload: TokenPayload = Depends(assert_workspace_access)):
         return collab_service.get_activity_log(id, limit)
 
     @router.get("/workspace/{id}/audit-log")
     async def audit_log(id: str, action: str = "", user_id: str = "",
                         limit: int = Query(default=50, le=100),
-                        payload: TokenPayload = Depends(require_manage)):
+                        payload: TokenPayload = Depends(assert_workspace_manage)):
         logs = collab_service.get_audit_log(id, limit, action, user_id)
         return [
             {
@@ -306,7 +310,7 @@ def create_workspace_router(
     # ── Audit Summary ──
 
     @router.get("/workspace/{id}/audit-summary")
-    async def audit_summary(id: str, payload: TokenPayload = Depends(require_manage)):
+    async def audit_summary(id: str, payload: TokenPayload = Depends(assert_workspace_manage)):
         summary = collab_service._store.get_audit_summary(id)
         return {
             "workspace_id": summary.workspace_id,
@@ -321,7 +325,7 @@ def create_workspace_router(
     @router.get("/workspace/{id}/user-activity")
     async def user_activity_timeline(id: str,
                                      days: int = Query(default=7, ge=1, le=90),
-                                     payload: TokenPayload = Depends(require_auth)):
+                                     payload: TokenPayload = Depends(assert_workspace_access)):
         activity = collab_service._store.get_user_activity_timeline(
             payload.user_id, id, days=days,
         )

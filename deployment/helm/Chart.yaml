@@ -1,0 +1,18 @@
+apiVersion: v2
+name: enterprise-knowledge-os
+description: Enterprise Knowledge OS — AI Second Brain 知识管理系统
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - knowledge-management
+  - ai
+  - second-brain
+  - rag
+  - llm
+home: https://github.com/example/enterprise-knowledge-os
+sources:
+  - https://github.com/example/enterprise-knowledge-os
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com

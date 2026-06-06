@@ -31,6 +31,8 @@ from src.core.agent import CognitiveAgent
 from src.core.video_analyzer import VideoAnalyzer
 from src.core.memory import ChatModel
 from src.core.memory_queue import MemoryWriteWorker, MemoryWriteTask
+from src.api.errors import MSG_INTERNAL_ERROR
+from src.api.upload_utils import read_upload_chunked
 from src.api.schemas import MemoryUpdateRequest
 
 logger = logging.getLogger(__name__)
@@ -84,12 +86,8 @@ def create_video_router(
             if not f.filename:
                 raise HTTPException(400, "文件名为空")
 
-            content = await f.read()
+            content = await read_upload_chunked(f, max_bytes, filename=f.filename)
             size_bytes = len(content)
-            if size_bytes > max_bytes:
-                raise HTTPException(413,
-                    f"文件过大: {f.filename} {size_bytes / 1024 / 1024:.1f}MB "
-                    f"(上限 {settings.video_max_size_mb}MB)")
 
             ext = os.path.splitext(f.filename)[1] or ".mp4"
             supported = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".flv", ".wmv"}
@@ -109,7 +107,7 @@ def create_video_router(
             })
             file_paths.append(str(file_path))
             filenames.append(f.filename)
-            logger.info("video:saved", extra={"file_id": file_id, "filename": f.filename})
+            logger.info("video:saved", extra={"file_id": file_id, "original_filename": f.filename})
 
         # ── 分析 ──
         t_analysis_start = time.monotonic()
@@ -222,7 +220,7 @@ def create_video_router(
     async def get_video_memory(file_id: str):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:
@@ -235,7 +233,7 @@ def create_video_router(
     async def update_video_memory(file_id: str, body: MemoryUpdateRequest):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:
@@ -253,7 +251,7 @@ def create_video_router(
         try:
             store.store(m)
         except Exception:
-            raise HTTPException(500, "保存失败")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
         return _video_to_memory_dict(m)
 
     # ── DELETE /video/{file_id} ──
@@ -262,7 +260,7 @@ def create_video_router(
     async def delete_video_memory(file_id: str):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:
@@ -271,7 +269,7 @@ def create_video_router(
         try:
             store.update_status(file_id, "deleted")
         except Exception:
-            raise HTTPException(500, "删除失败")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
         return {"id": file_id, "status": "deleted"}
 
     # ── POST /video/{file_id}/archive ──
@@ -280,7 +278,7 @@ def create_video_router(
     async def archive_video_memory(file_id: str):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:

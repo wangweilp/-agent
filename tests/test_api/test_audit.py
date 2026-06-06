@@ -13,6 +13,31 @@ from src.core.auth import TokenPayload, User, WorkspaceRole
 from src.core.collaboration import AuditAction, AuditLog, Notification
 
 
+def _seed_access(auth_store, user_id: str, ws_id: str, role: str = "admin") -> None:
+    """直接插入 user + workspace + membership，用已知 ID 匹配 JWT。"""
+    try:
+        auth_store._db.execute(
+            "INSERT OR IGNORE INTO users (id, email, name, auth_provider) VALUES (?, ?, ?, ?)",
+            (user_id, f"{user_id}@seed.test", f"User_{user_id}", "email"),
+        )
+    except Exception:
+        pass
+    try:
+        auth_store._db.execute(
+            "INSERT OR IGNORE INTO workspaces (id, name, owner_id) VALUES (?, ?, ?)",
+            (ws_id, f"WS_{ws_id}", user_id),
+        )
+    except Exception:
+        pass
+    try:
+        auth_store._db.execute(
+            "INSERT OR REPLACE INTO memberships (user_id, workspace_id, role) VALUES (?, ?, ?)",
+            (user_id, ws_id, role),
+        )
+    except Exception:
+        pass
+
+
 # ── Fixtures ──
 
 
@@ -48,6 +73,9 @@ def token_service():
 
 @pytest.fixture
 def client(auth_store, collab_service, token_service):
+    _seed_access(auth_store, "u1", "ws1", "admin")
+    _seed_access(auth_store, "u2", "ws1", "member")
+    _seed_access(auth_store, "anon", "ws1", "member")
     app = FastAPI()
     init_auth(token_service, auth_store)
     app.include_router(create_workspace_router(collab_service, auth_store))

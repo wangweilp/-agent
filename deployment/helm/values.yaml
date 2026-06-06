@@ -1,0 +1,232 @@
+# ============================================================
+# Enterprise Knowledge OS — Helm Values
+# ============================================================
+# 覆盖方式：
+#   helm install ekos . -f custom-values.yaml
+#   helm install ekos . --set image.tag=v1.2.3
+# ============================================================
+
+# ── 全局设置 ────────────────────────────────────────────────
+global:
+  # 环境标识：dev / staging / production
+  environment: production
+  # 镜像拉取密钥（私有仓库时需要）
+  imagePullSecrets: []
+  #  - name: regcred
+
+# ── 后端服务镜像 ───────────────────────────────────────────
+backend:
+  # 副本数
+  replicaCount: 1
+
+  image:
+    # 镜像仓库地址（内网部署替换为私有仓库地址）
+    repository: enterprise-kos-backend
+    # 镜像标签（建议生产环境使用具体版本号而非 latest）
+    tag: latest
+    # 拉取策略：Always / IfNotPresent / Never
+    pullPolicy: IfNotPresent
+
+  # ── 服务配置 ──────────────────────────────────────────────
+  service:
+    # 服务类型：
+    #   ClusterIP  — 集群内部访问（默认，适用于 Ingress 前置）
+    #   NodePort   — 节点端口暴露（内网无 Ingress 时使用）
+    #   LoadBalancer — 云服务商负载均衡器
+    type: ClusterIP
+    port: 8000
+    # NodePort 模式下指定端口号（30000-32767），留空则自动分配
+    # nodePort: 30800
+
+  # ── 数据持久化 ───────────────────────────────────────────
+  persistence:
+    enabled: true
+    # 存储类名（留空使用默认 StorageClass）
+    # 内网/私有部署参考值：
+    #   - longhorn / rook-ceph / nfs-client 等
+    storageClass: ""
+    # 访问模式
+    accessMode: ReadWriteOnce
+    # 存储大小
+    size: 10Gi
+    # PVC 名称（留空自动生成）
+    existingClaim: ""
+
+  # ── 资源限制 ──────────────────────────────────────────────
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  # ── 健康检查 ──────────────────────────────────────────────
+  probes:
+    liveness:
+      enabled: true
+      httpGet:
+        path: /docs
+        port: 8000
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+    readiness:
+      enabled: true
+      httpGet:
+        path: /docs
+        port: 8000
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+  # ── 环境变量 ──────────────────────────────────────────────
+  env:
+    # 运行环境（production 时 JWT_SECRET_KEY 必须设置）
+    ENVIRONMENT: "production"
+    # DeepSeek API
+    DEEPSEEK_BASE_URL: "https://api.deepseek.com"
+    DEEPSEEK_MODEL: "deepseek-chat"
+    # 数据路径（容器内）
+    CHROMA_PERSIST_DIR: "/app/data/chroma_db"
+    SQLITE_DB_PATH: "/app/data/agent_memory.db"
+    UPLOAD_DIR: "/app/data/uploads"
+    AUDIO_UPLOAD_DIR: "/app/data/audio_uploads"
+    VIDEO_UPLOAD_DIR: "/app/data/video_uploads"
+    # Embedding
+    EMBEDDING_MODEL: "BAAI/bge-small-zh-v1.5"
+    # Agent 配置
+    AGENT_SHORT_TERM_MEMORY_SIZE: "20"
+    AGENT_MAX_TOOL_ROUNDS: "5"
+    AGENT_CONTEXT_WINDOW: "6"
+    # 上传限制
+    UPLOAD_MAX_SIZE_MB: "20"
+    AUDIO_MAX_SIZE_MB: "50"
+    VIDEO_MAX_SIZE_MB: "200"
+    VIDEO_KEYFRAME_INTERVAL: "5"
+    # Sync Hub — local folder 目录白名单（逗号分隔）
+    SYNC_LOCAL_FOLDER_ALLOWED_ROOTS: ""
+    # 日志
+    LOG_LEVEL: "INFO"
+
+  # ── Secret 引用（API Key 等敏感信息通过 K8s Secret 注入）─
+  secrets:
+    # DEEPSEEK_API_KEY 必须通过 Secret 提供
+    # 创建方式：kubectl create secret generic ekos-secrets --from-literal=DEEPSEEK_API_KEY=sk-xxx
+    name: "ekos-secrets"
+    # JWT 签名密钥（生产环境务必设置，缺失会启动失败）
+    # 创建方式：kubectl create secret generic ekos-jwt --from-literal=JWT_SECRET_KEY=$(openssl rand -hex 32)
+    jwtSecretName: "ekos-jwt"
+
+  # ── Pod 安全上下文 ────────────────────────────────────────
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  # ── Pod 调度配置 ──────────────────────────────────────────
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Pod 反亲和 — 多副本时分散调度到不同节点
+  podAntiAffinity:
+    enabled: false
+    # topologyKey: "kubernetes.io/hostname"
+
+# ── 前端服务镜像 ───────────────────────────────────────────
+frontend:
+  enabled: true
+  replicaCount: 1
+
+  image:
+    repository: enterprise-kos-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 3000
+    # NodePort 模式下指定端口
+    # nodePort: 30300
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  probes:
+    liveness:
+      enabled: true
+      httpGet:
+        path: /
+        port: 3000
+      initialDelaySeconds: 10
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      enabled: true
+      httpGet:
+        path: /
+        port: 3000
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+  env:
+    # 前端访问后端的 API 地址（集群内 DNS 名称）
+    NEXT_PUBLIC_API_URL: "http://enterprise-knowledge-os-backend:8000"
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# ── Ingress 配置 ────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: knowledge.example.com
+      paths:
+        - path: /api
+          pathType: Prefix
+          backendService: backend
+          backendPort: 8000
+        - path: /
+          pathType: Prefix
+          backendService: frontend
+          backendPort: 3000
+  tls: []
+  #  - secretName: knowledge-tls
+  #    hosts:
+  #      - knowledge.example.com
+
+# ── 内网/私有部署配置 ──────────────────────────────────────
+# 取消注释以下区块并对齐缩进即可启用
+#
+# privateDeploy:
+#   # 使用 NodePort 暴露服务（无 Ingress Controller 时）
+#   useNodePort: true
+#   # 忽略镜像拉取错误（使用本地镜像）
+#   skipImagePull: true
+#   # 模型目录挂载（离线环境预先下载的 embedding 模型）
+#   modelHostPath: "/data/models/sentence-transformers"
+#   # 私有镜像仓库
+#   registry: "registry.internal.example.com:5000"
+#   # 内网 DNS 后缀
+#   clusterDomain: "cluster.local"

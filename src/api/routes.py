@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
+from src.api.errors import safe_error, MSG_INTERNAL_ERROR
 from src.api.schemas import (
     ChatRequest,
     ChatResponse,
@@ -69,7 +70,8 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
             return ChatResponse(reply=reply)
         except Exception as e:
             logger.exception("chat endpoint error")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("chat_endpoint_error")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
     @router.post("/chat/stream")
     async def chat_stream(request: ChatRequest):

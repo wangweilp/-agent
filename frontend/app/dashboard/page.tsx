@@ -27,6 +27,7 @@ import { TopicList } from "@/components/dashboard/topic-list";
 import { RecentMemories } from "@/components/dashboard/recent-memories";
 import { RecentReflections } from "@/components/dashboard/recent-reflections";
 import { EntityList } from "@/components/dashboard/entity-list";
+import { SaaSMetrics } from "@/components/dashboard/saas-metrics";
 import { cn, formatNumber } from "@/lib/utils";
 
 // ── 辅助函数 ──
@@ -162,6 +163,9 @@ export default function DashboardPage() {
             实时监控中
           </div>
         </div>
+
+        {/* ── SaaS Metrics ── */}
+        <SaaSMetrics />
 
         {/* ── Memory Stats Cards (5 格) ── */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

@@ -1,0 +1,55 @@
+# ============================================================
+# Enterprise Knowledge OS — Frontend Dockerfile
+# Next.js multi-stage: deps → builder → runtime
+# ============================================================
+
+# ── Stage 1: Dependencies ──────────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# 利用 Docker 层缓存：先复制依赖文件
+COPY frontend/package.json frontend/package-lock.json* ./
+
+# 安装全部依赖（含 devDependencies，供构建使用）
+RUN npm ci
+
+# ── Stage 2: Builder ───────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY frontend/ .
+
+# 构建生产包
+RUN npm run build
+
+# ── Stage 3: Runtime ───────────────────────────────────────
+FROM node:20-alpine AS runtime
+
+LABEL org.opencontainers.image.title="Enterprise Knowledge OS — Frontend"
+LABEL org.opencontainers.image.description="AI Second Brain — 前端"
+LABEL org.opencontainers.image.version="0.1.0"
+
+# 创建非 root 用户
+RUN addgroup --system app && adduser --system --ingroup app app
+
+WORKDIR /app
+
+# 只复制生产依赖和构建产物
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+
+USER app
+
+EXPOSE 3000
+
+# 健康检查 — 纯 node 实现，无需安装 wget/curl
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000',r=>{process.exit(r.statusCode===200?0:1)})"
+
+CMD ["node_modules/.bin/next", "start", "--port", "3000"]

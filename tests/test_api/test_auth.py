@@ -29,8 +29,8 @@ def auth_store(settings):
 
 
 @pytest.fixture
-def token_service():
-    return JWTTokenService()
+def token_service(auth_store):
+    return JWTTokenService(auth_store=auth_store)
 
 
 @pytest.fixture
@@ -204,6 +204,36 @@ class TestJWTTokenService:
         # Revoke old refresh
         token_service.revoke_refresh_token(tokens.refresh_token)
         assert token_service.refresh_access_token(tokens.refresh_token) is None
+
+
+# ── Test: JWT_SECRET_KEY Production Enforcement ──
+
+
+class TestSecretKeyEnforcement:
+    def test_development_auto_generates_key(self, monkeypatch):
+        """非 production 模式自动生成 key，不抛异常。"""
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+
+        import importlib
+        from src.api import middleware
+        importlib.reload(middleware)
+
+        assert middleware.SECRET_KEY, "auto-generated key should exist"
+        assert len(middleware.SECRET_KEY) == 64  # 32 bytes hex = 64 chars
+
+    def test_explicit_key_is_used(self, monkeypatch):
+        """显式设置的 JWT_SECRET_KEY 被采用。"""
+        monkeypatch.setenv("JWT_SECRET_KEY", "my-production-key-32bytes!!")
+
+        import importlib
+        from src.api import middleware
+        importlib.reload(middleware)
+
+        assert middleware.SECRET_KEY == "my-production-key-32bytes!!"
+
+
+# ── Test: Workspace Role Permissions ──
 
 
 # ── Test: Workspace Role Permissions ──

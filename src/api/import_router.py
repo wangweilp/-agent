@@ -37,6 +37,26 @@ _ALLOWED_EXTENSIONS: set[str] = {
     ".csv", ".xml", ".rst",
 }
 _MAX_BATCH_FILES = 20
+_READ_CHUNK_SIZE = 1024 * 1024
+
+
+async def _read_upload_limited(file: UploadFile, max_bytes: int) -> bytes:
+    """Read an upload in bounded chunks so oversized files fail early."""
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(_READ_CHUNK_SIZE)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                413,
+                f"文件过大: {file.filename} {total / 1024 / 1024:.1f}MB "
+                f"(上限 {max_bytes / 1024 / 1024:.1f}MB)",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def create_import_router(
@@ -68,6 +88,7 @@ def create_import_router(
         saved: list[dict[str, Any]] = []
         import_dir = Path("./data/imports")
         import_dir.mkdir(parents=True, exist_ok=True)
+        max_bytes = settings.upload_max_size_mb * 1024 * 1024
 
         for f in files:
             if not f.filename:
@@ -77,11 +98,8 @@ def create_import_router(
             if ext not in _ALLOWED_EXTENSIONS:
                 raise HTTPException(400, f"不支持的文件类型: {ext}，支持: {sorted(_ALLOWED_EXTENSIONS)}")
 
-            content_bytes = await f.read()
+            content_bytes = await _read_upload_limited(f, max_bytes)
             size_bytes = len(content_bytes)
-
-            if size_bytes > settings.upload_max_size_mb * 1024 * 1024 * 2:
-                raise HTTPException(413, f"文件过大: {f.filename} {size_bytes / 1024 / 1024:.1f}MB (上限 {settings.upload_max_size_mb * 2}MB)")
 
             file_id = str(uuid.uuid4())
             saved_name = f"{file_id}{ext}"
@@ -96,7 +114,10 @@ def create_import_router(
                 "size_bytes": size_bytes,
                 "path": str(file_path),
             })
-            logger.info("import:file_saved", extra={"file_id": file_id, "filename": f.filename, "ext": ext})
+            logger.info(
+                "import:file_saved",
+                extra={"file_id": file_id, "original_filename": f.filename, "ext": ext},
+            )
 
         # ── Phase 2: 构建 ImportJob ──
         sources = [s["path"] for s in saved]

@@ -1,6 +1,6 @@
 "use client";
 
-import { Sidebar } from "./sidebar";
+import { Sidebar } from "./Sidebar";
 import { Header } from "./header";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

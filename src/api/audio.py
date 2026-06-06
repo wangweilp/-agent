@@ -32,6 +32,8 @@ from src.core.agent import CognitiveAgent
 from src.core.audio_analyzer import AudioAnalyzer
 from src.core.memory import ChatModel
 from src.core.memory_queue import MemoryWriteWorker, MemoryWriteTask
+from src.api.errors import MSG_INTERNAL_ERROR
+from src.api.upload_utils import read_upload_chunked
 from src.api.schemas import MemoryUpdateRequest
 
 logger = logging.getLogger(__name__)
@@ -85,10 +87,8 @@ def create_audio_router(
             if not f.filename:
                 raise HTTPException(400, "文件名为空")
 
-            content = await f.read()
+            content = await read_upload_chunked(f, max_bytes, filename=f.filename)
             size_bytes = len(content)
-            if size_bytes > max_bytes:
-                raise HTTPException(413, f"文件过大: {f.filename} {size_bytes / 1024 / 1024:.1f}MB")
 
             ext = os.path.splitext(f.filename)[1] or ".mp3"
             supported = {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".webm", ".opus"}
@@ -108,7 +108,7 @@ def create_audio_router(
             })
             file_paths.append(str(file_path))
             filenames.append(f.filename)
-            logger.info("audio:saved", extra={"file_id": file_id, "filename": f.filename})
+            logger.info("audio:saved", extra={"file_id": file_id, "original_filename": f.filename})
 
         # ── 分析 ──
         t_analysis_start = time.monotonic()
@@ -221,7 +221,7 @@ def create_audio_router(
         """查看单个音频记忆详情。"""
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:
@@ -234,7 +234,7 @@ def create_audio_router(
     async def update_audio_memory(file_id: str, body: MemoryUpdateRequest):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:
@@ -252,7 +252,7 @@ def create_audio_router(
         try:
             store.store(m)
         except Exception:
-            raise HTTPException(500, "保存失败")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
         return _audio_to_memory_dict(m)
 
     # ── DELETE /audio/{file_id} ──
@@ -261,7 +261,7 @@ def create_audio_router(
     async def delete_audio_memory(file_id: str):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:
@@ -270,7 +270,7 @@ def create_audio_router(
         try:
             store.update_status(file_id, "deleted")
         except Exception:
-            raise HTTPException(500, "删除失败")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
         return {"id": file_id, "status": "deleted"}
 
     # ── POST /audio/{file_id}/archive ──
@@ -279,7 +279,7 @@ def create_audio_router(
     async def archive_audio_memory(file_id: str):
         store = agent._memory_store if agent else None
         if store is None:
-            raise HTTPException(500, "记忆存储未初始化")
+            raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
         m = store.get_by_id(file_id)
         if m is None:

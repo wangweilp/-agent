@@ -18,6 +18,11 @@ import {
   Mic,
   Video,
   Building2,
+  Shield,
+  BarChart3,
+  CreditCard,
+  Crown,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -33,6 +38,11 @@ const navItems = [
   { href: "/workspace", label: "工作区", icon: Building2 },
   { href: "/reflection", label: "反思", icon: Lightbulb },
   { href: "/tools", label: "工具中心", icon: Wrench },
+  { href: "/admin", label: "管理", icon: Shield },
+  { href: "/pricing", label: "套餐", icon: Crown },
+  { href: "/billing", label: "账单", icon: CreditCard },
+  { href: "/analytics", label: "运营分析", icon: BarChart3 },
+  { href: "/account", label: "账户", icon: UserCircle },
   { href: "/debug", label: "Debug", icon: Bug },
 ];
 

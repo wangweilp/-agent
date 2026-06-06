@@ -558,3 +558,394 @@ export interface Notification {
   created_at: string;
   link: string;
 }
+
+// ── SaaS: Billing ──
+
+export interface BillingAccount {
+  id: string;
+  tenant_id: string;
+  currency: string;
+  balance: number;
+  billing_email: string;
+  created_at: string;
+}
+
+export interface PaymentIntent {
+  id: string;
+  client_secret: string;
+  qr_code_url: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  currency: string;
+  status: string;
+  description: string;
+  due_date: string | null;
+  paid_at: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  currency: string;
+  provider: string;
+  status: string;
+  description: string;
+  invoice_id: string | null;
+  created_at: string;
+}
+
+export interface Refund {
+  id: string;
+  payment_id: string;
+  amount: number;
+  status: string;
+  reason: string;
+  created_at: string;
+}
+
+// ── SaaS: Subscription ──
+
+export interface PlanPreview {
+  tier: string;
+  monthly_price: number;
+  yearly_price: number;
+  current: boolean;
+  limits: PlanLimit;
+}
+
+export interface PlanLimit {
+  tier: string;
+  memory_count: number;
+  search_count: number;
+  storage_mb: number;
+  import_per_day: number;
+  sync_connectors: number;
+  knowledge_graph: boolean;
+  ai_coach: boolean;
+  team_members: number;
+  api_access: boolean;
+  priority_support: boolean;
+  llm_calls_per_day: number;
+  embedding_calls_per_day: number;
+}
+
+export interface Subscription {
+  id: string;
+  tenant_id: string;
+  plan_tier: string;
+  status: string;
+  billing_cycle: string;
+  current_period_start: string;
+  current_period_end: string | null;
+  trial_start: string | null;
+  trial_end: string | null;
+  canceled_at: string | null;
+  auto_renew: boolean;
+  coupon_code: string | null;
+  days_remaining: number;
+  created_at: string;
+}
+
+export interface LimitCheckResult {
+  resource: string;
+  allowed: boolean;
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
+// ── SaaS: Usage ──
+
+export interface UsageStats {
+  tenant_id: string;
+  period_start: string;
+  period_end: string;
+  total_events: number;
+  by_resource: Record<string, number>;
+  total_cost_cents: number;
+  by_resource_cost: Record<string, number>;
+}
+
+export interface DailyUsage {
+  date: string;
+  count: number;
+  cost: number;
+}
+
+export interface UserProfile {
+  tenant_id: string;
+  user_id: string;
+  total_memories: number;
+  total_searches: number;
+  total_imports: number;
+  coach_sessions: number;
+  active_days: number;
+  last_active: string | null;
+  preferred_features: string[];
+  engagement_score: number;
+  is_power_user: boolean;
+}
+
+export interface PlatformStats {
+  mrr_cents: number;
+  arr_cents: number;
+  total_tenants: number;
+  active_tenants: number;
+  trial_tenants: number;
+  paying_tenants: number;
+  conversion_rate: number;
+  churn_rate: number;
+  retention_rate: number;
+  avg_revenue_per_user: number;
+  total_revenue_cents: number;
+}
+
+// ── SaaS: Tenant ──
+
+export interface Tenant {
+  id: string;
+  name: string;
+  email: string;
+  slug: string;
+  status: string;
+  owner_user_id: string;
+  org_size: string;
+  industry: string;
+  website: string;
+  created_at: string;
+}
+
+export interface TenantMember {
+  id: string;
+  tenant_id: string;
+  user_id: string;
+  role: string;
+  org_id: string | null;
+  joined_at: string;
+}
+
+export interface Organization {
+  id: string;
+  tenant_id: string;
+  name: string;
+  parent_org_id: string | null;
+  description: string;
+  created_at: string;
+}
+
+// ── SaaS: Growth ──
+
+export interface Invite {
+  id: string;
+  invite_code: string;
+  invitee_email: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface Referral {
+  id: string;
+  referral_code: string;
+  status: string;
+  reward_granted: boolean;
+  reward_amount_cents: number;
+  created_at: string;
+}
+
+export interface ReferralStats {
+  total_referrals: number;
+  completed_referrals: number;
+  total_rewards_cents: number;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  coupon_type: string;
+  value: number;
+  status: string;
+  usage_count: number;
+  usage_limit: number;
+  valid_until: string;
+}
+
+export interface RedeemedCoupon {
+  id: string;
+  code: string;
+  discount_cents: number;
+  redeemed_at: string;
+}
+
+export interface TrialRecord {
+  id: string;
+  tenant_id: string;
+  plan_tier: string;
+  status: string;
+  trial_days: number;
+  started_at: string;
+  ends_at: string;
+  converted_at: string | null;
+  converted_to_plan: string;
+  extended_count: number;
+}
+
+export interface TrialConversionStats {
+  total_trials: number;
+  converted_trials: number;
+  conversion_rate: number;
+  avg_days_to_convert: number;
+}
+
+// ── Growth & Analytics Center ──
+
+export interface AnalyticsMetrics {
+  mrr_cents: number;
+  arr_cents: number;
+  total_tenants: number;
+  active_tenants: number;
+  paying_tenants: number;
+  trial_tenants: number;
+  conversion_rate: number;
+  churn_rate: number;
+  retention_rate: number;
+  avg_revenue_per_user: number;
+  total_revenue_cents: number;
+}
+
+export interface MemoryTrend {
+  tenant_id: string;
+  period: string;
+  trend: Array<{ date: string; count: number; cost: number }>;
+}
+
+export interface ResourceUsageTrend {
+  tenant_id: string;
+  resource: string;
+  days: number;
+  trend: Array<{ date: string; count: number; cost: number }>;
+}
+
+export interface ImportChannelBreakdown {
+  tenant_id: string;
+  channels: Record<string, number>;
+  total_imports: number;
+}
+
+export interface RetentionCohort {
+  tenant_id: string;
+  months: number;
+  cohort: Array<{
+    month: string;
+    new_tenants: number;
+    retained: number;
+    retention_rate: number;
+  }>;
+}
+
+export interface RealtimeMetrics {
+  tenant_id: string;
+  today_events: number;
+  today_cost_cents: number;
+  active_users_today: number;
+  max_hourly_events: number;
+  hourly_breakdown: Record<string, number>;
+}
+
+// ── Alerts ──
+
+export interface AlertRule {
+  id: string;
+  tenant_id: string;
+  name: string;
+  metric: string;
+  condition: string;
+  threshold: number;
+  severity: "info" | "warning" | "critical";
+  channel: "email" | "system" | "both";
+  enabled: boolean;
+  cooldown_minutes: number;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertEvent {
+  id: string;
+  tenant_id: string;
+  rule_id: string;
+  rule_name: string;
+  metric: string;
+  current_value: number;
+  threshold: number;
+  severity: string;
+  channel: string;
+  message: string;
+  acknowledged: boolean;
+  triggered_at: string;
+}
+
+export interface TestAlertResult {
+  success: boolean;
+  message: string;
+  channel: string;
+}
+
+// ── Reports ──
+
+export interface ReportData {
+  report_type: string;
+  period_start: string;
+  period_end: string;
+  mrr_cents: number;
+  arr_cents: number;
+  total_tenants: number;
+  active_tenants: number;
+  paying_tenants: number;
+  trial_tenants: number;
+  conversion_rate: number;
+  churn_rate: number;
+  retention_rate: number;
+  total_memories_created: number;
+  total_llm_calls: number;
+  total_embedding_calls: number;
+  total_searches: number;
+  total_imports: number;
+  total_syncs: number;
+  total_coach_sessions: number;
+  total_cost_cents: number;
+  total_revenue_cents: number;
+  net_revenue_cents: number;
+  margin_percent: number;
+  active_users: number;
+  new_users: number;
+  top_entities: Array<Record<string, unknown>>;
+  top_contributors: Array<Record<string, unknown>>;
+  import_channels: Record<string, number>;
+  daily_usage_trend: Array<Record<string, unknown>>;
+  memory_growth_trend: Array<Record<string, unknown>>;
+}
+
+export interface Report {
+  id: string;
+  tenant_id: string;
+  report_type: "weekly" | "monthly" | "quarterly";
+  period_start: string;
+  period_end: string;
+  format: "json" | "csv" | "pdf";
+  status: "generating" | "ready" | "failed";
+  data: ReportData | null;
+  file_path: string | null;
+  created_at: string;
+}

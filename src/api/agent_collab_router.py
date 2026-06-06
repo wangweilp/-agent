@@ -12,8 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src.adapters.collab_adapter import DefaultMultiAgentCoordinator
-from src.adapters.auth_store import WorkspaceContext
-from src.api.middleware import require_auth, require_write
+from src.api.middleware import assert_workspace_access, assert_workspace_manage
 from src.core.auth import TokenPayload
 
 logger = logging.getLogger(__name__)
@@ -51,7 +50,7 @@ def create_agent_collab_router(
     async def delegate_agent(
         id: str,
         body: DelegateRequest,
-        payload: TokenPayload = Depends(require_write),
+        payload: TokenPayload = Depends(assert_workspace_manage),
     ) -> dict[str, Any]:
         """委托 Agent 执行 recall/remember/reflect 任务。
 
@@ -92,7 +91,7 @@ def create_agent_collab_router(
         id: str,
         query: str = Query(default="", max_length=500, description="检索查询"),
         top_k: int = Query(default=10, ge=1, le=50, description="返回记忆数量上限"),
-        payload: TokenPayload = Depends(require_auth),
+        payload: TokenPayload = Depends(assert_workspace_access),
     ) -> dict[str, Any]:
         """获取团队共享上下文。
 
@@ -139,7 +138,7 @@ def create_agent_collab_router(
     async def team_reason(
         id: str,
         body: ReasonRequest,
-        payload: TokenPayload = Depends(require_write),
+        payload: TokenPayload = Depends(assert_workspace_manage),
     ) -> dict[str, Any]:
         """多 Agent 联合推理。
 

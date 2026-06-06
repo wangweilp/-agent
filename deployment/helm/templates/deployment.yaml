@@ -1,0 +1,208 @@
+{{- /* ============================================================
+Enterprise Knowledge OS — Backend Deployment
+============================================================ */ -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "enterprise-knowledge-os.fullname" . }}-backend
+  labels:
+    {{- include "enterprise-knowledge-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "enterprise-knowledge-os.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "enterprise-knowledge-os.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "enterprise-knowledge-os.fullname" . }}
+      securityContext:
+        {{- toYaml .Values.backend.securityContext | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            {{- range $key, $val := .Values.backend.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+            {{- if .Values.backend.secrets.name }}
+            - name: DEEPSEEK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.secrets.name }}
+                  key: DEEPSEEK_API_KEY
+            {{- end }}
+            {{- if .Values.backend.secrets.jwtSecretName }}
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.secrets.jwtSecretName }}
+                  key: JWT_SECRET_KEY
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            {{- if .Values.privateDeploy.modelHostPath }}
+            - name: models
+              mountPath: /root/.cache/torch/sentence_transformers
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          {{- if .Values.backend.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.probes.liveness.httpGet.path }}
+              port: {{ .Values.backend.probes.liveness.httpGet.port }}
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.backend.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backend.probes.readiness.httpGet.path }}
+              port: {{ .Values.backend.probes.readiness.httpGet.port }}
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold }}
+          {{- end }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.persistence.existingClaim | default (printf "%s-data" (include "enterprise-knowledge-os.fullname" .)) }}
+        {{- if .Values.privateDeploy.modelHostPath }}
+        - name: models
+          hostPath:
+            path: {{ .Values.privateDeploy.modelHostPath }}
+            type: DirectoryOrCreate
+        {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.backend.podAntiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/component: backend
+                topologyKey: {{ .Values.backend.podAntiAffinity.topologyKey | default "kubernetes.io/hostname" }}
+      {{- end }}
+
+---
+{{- if .Values.frontend.enabled }}
+{{- /* ============================================================
+Enterprise Knowledge OS — Frontend Deployment
+============================================================ */ -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "enterprise-knowledge-os.fullname" . }}-frontend
+  labels:
+    {{- include "enterprise-knowledge-os.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "enterprise-knowledge-os.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "enterprise-knowledge-os.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.frontend.securityContext | nindent 8 }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            {{- range $key, $val := .Values.frontend.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+          {{- if .Values.frontend.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.liveness.httpGet.path }}
+              port: {{ .Values.frontend.probes.liveness.httpGet.port }}
+            initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold }}
+          {{- end }}
+          {{- if .Values.frontend.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.frontend.probes.readiness.httpGet.path }}
+              port: {{ .Values.frontend.probes.readiness.httpGet.port }}
+            initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold }}
+          {{- end }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
