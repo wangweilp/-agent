@@ -1,16 +1,25 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
 import { useAuthStore } from "@/stores/auth-store";
-import { Building2, ChevronDown } from "lucide-react";
+import { Building2, ChevronDown, LogOut } from "lucide-react";
 
 export function Header() {
   const status = useAgentStore((s) => s.status);
   const traceId = useAgentStore((s) => s.traceId);
   const currentWorkspace = useAuthStore((s) => s.currentWorkspace);
   const user = useAuthStore((s) => s.user);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const router = useRouter();
+
+  const handleLogout = useCallback(() => {
+    clearAuth();
+    router.push("/login");
+  }, [clearAuth, router]);
 
   const statusLabel: Record<string, string> = {
     idle: "就绪",
@@ -54,9 +63,18 @@ export function Header() {
 
         {/* User indicator */}
         {user && (
-          <span className="text-2xs text-os-muted">
-            {user.name || user.email}
-          </span>
+          <>
+            <span className="text-2xs text-os-muted">
+              {user.name || user.email}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="p-1 rounded text-os-muted hover:text-os-danger hover:bg-os-danger/10 transition-colors"
+              title="退出登录"
+            >
+              <LogOut size={13} />
+            </button>
+          </>
         )}
 
         <span className="text-2xs text-os-muted">v0.1.0</span>

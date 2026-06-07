@@ -11,6 +11,7 @@ import type {
   SyncExecution,
   SyncStats,
 } from "@/types/sync";
+import { getAccessToken } from "@/stores/auth-store";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -23,8 +24,11 @@ class ApiError extends Error {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
+  // 优先读取模块级同步变量（登录后立即可用，无需等待 Zustand persist 异步写入 localStorage）
+  const moduleToken = getAccessToken();
+  if (moduleToken) return moduleToken;
+  // 回退：页面刷新后从 localStorage 恢复（此时模块级变量还未初始化）
   try {
-    // Read from zustand persist localStorage (same key used by auth-store)
     const raw = localStorage.getItem("agent-os-auth");
     if (raw) {
       const parsed = JSON.parse(raw);

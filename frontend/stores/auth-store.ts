@@ -39,6 +39,17 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (tokens, user, workspace) => {
         setAccessToken(tokens.access_token);
         set({ token: tokens, user, currentWorkspace: workspace });
+        // 立即持久化到 localStorage，不等 Zustand persist 异步队列
+        // 避免登录后页面跳转时 API 调用读不到 token
+        try {
+          localStorage.setItem(
+            "agent-os-auth",
+            JSON.stringify({
+              state: { token: tokens, user, currentWorkspace: workspace },
+              version: 0,
+            })
+          );
+        } catch { /* ignore */ }
       },
 
       setWorkspaces: (list) => set({ workspaces: list }),
@@ -50,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => {
         setAccessToken(null);
         set({ token: null, user: null, currentWorkspace: null, workspaces: [] });
+        try { localStorage.removeItem("agent-os-auth"); } catch { /* ignore */ }
       },
 
       updateUser: (partial) => {
