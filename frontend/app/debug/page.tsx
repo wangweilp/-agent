@@ -83,7 +83,7 @@ function MemoryExplorer() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
 
-  const { data: memories = [], isLoading } = useQuery({
+  const { data: raw, isLoading } = useQuery({
     queryKey: ["debug-memory", query],
     queryFn: () =>
       fetch(
@@ -92,14 +92,19 @@ function MemoryExplorer() {
     refetchInterval: 15000,
   });
 
-  const filtered = (memories || []).filter((m: MemoryItem) =>
+  // 防御：确保 memories 始终是数组（API 可能返回对象/null/undefined）
+  const memories: MemoryItem[] = Array.isArray(raw) ? raw : [];
+
+  // 按 memory_type 过滤
+  const filtered = memories.filter((m) =>
     filter === "all" ? true : m.memory_type === filter
   );
 
+  // 统计（memories 已保证是数组，filter 调用安全）
   const stats = {
     total: memories.length,
-    vectorized: memories.filter((m: MemoryItem) => m.embedding_status === "vectorized").length,
-    missing: memories.filter((m: MemoryItem) => m.embedding_status === "missing").length,
+    vectorized: memories.filter((m) => m.embedding_status === "vectorized").length,
+    missing: memories.filter((m) => m.embedding_status === "missing").length,
   };
 
   return (
@@ -110,7 +115,7 @@ function MemoryExplorer() {
           { label: "总记忆", value: stats.total, icon: <Brain size={12} /> },
           { label: "已向量化", value: stats.vectorized, icon: <Zap size={12} />, good: true },
           { label: "向量缺失", value: stats.missing, icon: <AlertCircle size={12} />, good: false },
-          { label: "类型", value: [...new Set((memories || []).map((m: MemoryItem) => typeLabel[m.memory_type] || m.memory_type))].length, icon: <Layers size={12} /> },
+          { label: "类型", value: [...new Set(memories.map((m) => typeLabel[m.memory_type] || m.memory_type))].length, icon: <Layers size={12} /> },
         ].map((s, i) => (
           <div key={i} className="os-card p-3 flex items-center gap-2.5">
             <span className="text-os-muted">{s.icon}</span>

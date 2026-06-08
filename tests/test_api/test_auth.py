@@ -215,22 +215,28 @@ class TestSecretKeyEnforcement:
         monkeypatch.setenv("ENVIRONMENT", "development")
         monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
 
-        import importlib
         from src.api import middleware
-        importlib.reload(middleware)
+        key = middleware.resolve_jwt_secret_key(environment="development")
 
-        assert middleware.SECRET_KEY, "auto-generated key should exist"
-        assert len(middleware.SECRET_KEY) == 64  # 32 bytes hex = 64 chars
+        assert key, "auto-generated key should exist"
+        assert len(key) == 64  # 32 bytes hex = 64 chars
 
     def test_explicit_key_is_used(self, monkeypatch):
         """显式设置的 JWT_SECRET_KEY 被采用。"""
         monkeypatch.setenv("JWT_SECRET_KEY", "my-production-key-32bytes!!")
 
-        import importlib
         from src.api import middleware
-        importlib.reload(middleware)
 
-        assert middleware.SECRET_KEY == "my-production-key-32bytes!!"
+        assert middleware.resolve_jwt_secret_key() == "my-production-key-32bytes!!"
+        assert middleware.JWTTokenService()._secret == "my-production-key-32bytes!!"
+
+    def test_production_requires_explicit_key(self, monkeypatch):
+        monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+
+        from src.api import middleware
+
+        with pytest.raises(RuntimeError):
+            middleware.resolve_jwt_secret_key(environment="production")
 
 
 # ── Test: Workspace Role Permissions ──

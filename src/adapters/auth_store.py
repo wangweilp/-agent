@@ -84,25 +84,36 @@ class SQLiteAuthStore:
             s = stmt.strip()
             if s:
                 self._db.execute(s)
+        # 迁移：为已有 users 表添加 is_super_admin 列（SQLite 不支持 IF NOT EXISTS for ALTER）
+        try:
+            self._db.execute(
+                "ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0"
+            )
+        except Exception:
+            pass  # 列已存在
 
     # ── User CRUD ──
 
     def create_user(self, email: str, name: str = "",
                     hashed_password: str | None = None,
                     auth_provider: str = "email",
-                    auth_provider_id: str | None = None) -> User:
+                    auth_provider_id: str | None = None,
+                    is_super_admin: bool = False) -> User:
         user = User(email=email, name=name, hashed_password=hashed_password,
-                     auth_provider=auth_provider, auth_provider_id=auth_provider_id)
+                     auth_provider=auth_provider, auth_provider_id=auth_provider_id,
+                     is_super_admin=is_super_admin)
         with self._write_lock, self._db.conn:
             self._db.execute(
                 """INSERT INTO users (id, email, name, hashed_password,
-                   auth_provider, auth_provider_id, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   auth_provider, auth_provider_id, is_super_admin, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (user.id, user.email, user.name, hashed_password,
                  auth_provider, auth_provider_id,
+                 int(user.is_super_admin),
                  user.created_at.isoformat(), user.updated_at.isoformat()),
             )
-        logger.info("auth:user_created", extra={"user_id": user.id, "email": email})
+        logger.info("auth:user_created", extra={"user_id": user.id, "email": email,
+                                                "is_super_admin": is_super_admin})
         return user
 
     def get_user_by_id(self, user_id: str) -> User | None:
@@ -254,6 +265,55 @@ class SQLiteAuthStore:
             logger.info("auth:pruned_expired_tokens", extra={"count": deleted})
         return deleted
 
+    # ── Super Admin Bootstrap ──
+
+    def ensure_super_admin(self, email: str, password: str, name: str = "Super Admin") -> User | None:
+        """确保存在一个超级管理员账号。
+
+        如果 email 对应的用户已存在但非超级管理员，将其提升为超级管理员。
+        如果 email 对应的用户不存在，创建新的超级管理员账号。
+        密码通过 bcrypt 哈希存储（与 auth_router 一致）。
+
+        Returns:
+            创建/更新后的 User，如果无 email/password 则返回 None。
+        """
+        if not email or not password:
+            logger.debug("auth:super_admin_skipped", extra={"reason": "no env credentials"})
+            return None
+
+        import bcrypt
+        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+        existing = self.get_by_email(email.lower())
+        if existing is not None:
+            if existing.is_super_admin:
+                logger.info("auth:super_admin_exists", extra={"user_id": existing.id, "email": email})
+                return existing
+            # 提升已有用户为超级管理员
+            existing.is_super_admin = True
+            existing.hashed_password = hashed  # 同步更新密码
+            existing.updated_at = datetime.now(timezone.utc)
+            with self._write_lock, self._db.conn:
+                self._db.execute(
+                    """UPDATE users SET is_super_admin=1, hashed_password=?, updated_at=?
+                       WHERE id=?""",
+                    (existing.hashed_password, existing.updated_at.isoformat(), existing.id),
+                )
+            logger.info("auth:user_promoted_to_super_admin",
+                        extra={"user_id": existing.id, "email": email})
+            return existing
+
+        # 创建新的超级管理员
+        user = self.create_user(
+            email=email.lower(),
+            name=name,
+            hashed_password=hashed,
+            is_super_admin=True,
+        )
+        logger.info("auth:super_admin_created",
+                    extra={"user_id": user.id, "email": email})
+        return user
+
     # ── Internal ──
 
     @staticmethod
@@ -266,6 +326,7 @@ class SQLiteAuthStore:
             hashed_password=row.get("hashed_password"),
             auth_provider=row.get("auth_provider", "email"),
             auth_provider_id=row.get("auth_provider_id"),
+            is_super_admin=bool(row.get("is_super_admin", 0)),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )

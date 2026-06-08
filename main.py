@@ -50,6 +50,7 @@ from src.adapters.alert_store import AlertStoreAdapter
 from src.adapters.report_store import ReportStoreAdapter
 from src.adapters.usage_collector import UsageCollector
 from src.api.alert_router import create_alert_router
+from src.api.admin_router import create_admin_router
 from src.api.billing_router import create_billing_router
 from src.api.growth_router import create_growth_router
 from src.api.report_router import create_report_router
@@ -101,6 +102,7 @@ def bootstrap() -> Settings:
         stream=sys.stderr,
     )
     settings = Settings()  # type: ignore[call-arg]
+    logging.getLogger().setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
     logger.info("服务启动完成", extra={"event": "bootstrap_complete"})
     return settings
 
@@ -169,8 +171,18 @@ app.add_middleware(RateLimitMiddleware, max_requests=30, window_seconds=60.0)
 
 # ── SaaS Multi-Tenant + Team Collaboration Bootstrap ──
 auth_store = SQLiteAuthStore(settings)
-token_service = JWTTokenService(auth_store=auth_store)
+token_service = JWTTokenService(secret_key=settings.jwt_secret_key, auth_store=auth_store)
 init_auth(token_service, auth_store)
+
+# ── Super Admin Auto-Create（从环境变量） ──
+if settings.admin_email and settings.admin_password:
+    admin_user = auth_store.ensure_super_admin(
+        email=settings.admin_email,
+        password=settings.admin_password,
+    )
+    if admin_user:
+        logger.info("super_admin_ready",
+                    extra={"user_id": admin_user.id, "email": admin_user.email})
 collab_store = CollabStore(settings)
 collab_service = CollaborationService(collab_store, auth_store)
 
@@ -266,6 +278,7 @@ app.include_router(create_org_router(org_store, auth_store, rbac_store))
 app.include_router(create_rbac_router(rbac_store, org_store))
 app.include_router(create_audit_router(collab_store))
 app.include_router(create_compliance_router(compliance_store, org_store))
+app.include_router(create_admin_router(settings, org_store, auth_store, collab_store, agent._memory_store))
 
 # ── Step 19: SaaS Platform ──
 billing_store = BillingStoreAdapter(settings)
@@ -454,12 +467,36 @@ logger.info("enterprise_agent_platform_bootstrap_complete",
 
 def main() -> None:
     import argparse
+    import getpass
 
     parser = argparse.ArgumentParser(description="Agent Memory — AI Second Brain")
+    subparsers = parser.add_subparsers(dest="command", help="可用命令")
+
+    # 子命令: create-admin
+    create_admin_parser = subparsers.add_parser(
+        "create-admin", help="交互式创建超级管理员账号"
+    )
+    create_admin_parser.add_argument(
+        "--email", type=str, default=None,
+        help="管理员邮箱（不提供则交互输入）"
+    )
+    create_admin_parser.add_argument(
+        "--name", type=str, default="Super Admin",
+        help="管理员显示名称"
+    )
+    create_admin_parser.add_argument(
+        "--password", type=str, default=None,
+        help="管理员密码（不提供则交互输入）"
+    )
+
+    # 兼容旧用法: --cli
     parser.add_argument("--cli", action="store_true", help="以 CLI 交互模式运行")
+
     args = parser.parse_args()
 
-    if args.cli:
+    if args.command == "create-admin":
+        _cmd_create_admin(args)
+    elif args.cli:
         from src.tools.cli import run_cli
 
         run_cli(agent)
@@ -467,6 +504,48 @@ def main() -> None:
         import uvicorn
 
         uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+def _cmd_create_admin(args) -> None:
+    """CLI: python main.py create-admin — 交互式创建超级管理员账号。"""
+    import getpass
+
+    email: str = args.email or ""
+    while not email or "@" not in email:
+        if not args.email:
+            email = input("管理员邮箱: ").strip()
+        else:
+            break
+
+    name: str = args.name or "Super Admin"
+
+    # 密码：优先用 --password 参数，否则交互式输入
+    password: str = args.password or ""
+    if not password:
+        while len(password) < 6:
+            password = getpass.getpass("管理员密码 (最少6位): ")
+            if len(password) < 6:
+                print("密码长度不足 6 位，请重新输入")
+
+        password_confirm: str = getpass.getpass("确认密码: ")
+        if password != password_confirm:
+            print("错误: 两次密码不一致")
+            return
+
+    # 创建/更新超级管理员
+    auth_store = SQLiteAuthStore(settings)
+    try:
+        user = auth_store.ensure_super_admin(email=email, password=password, name=name)
+        if user is None:
+            print("错误: 创建失败")
+            return
+        print(f"\n✓ 超级管理员已就绪")
+        print(f"  用户ID: {user.id}")
+        print(f"  邮箱:   {user.email}")
+        print(f"  名称:   {user.name}")
+        print(f"  角色:   super_admin (拥有所有权限)")
+    finally:
+        auth_store.close()
 
 
 if __name__ == "__main__":

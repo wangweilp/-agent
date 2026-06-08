@@ -125,17 +125,21 @@ function formatBool(v: number | boolean): string {
   return v ? "支持" : "不支持";
 }
 
-function isTruthy(v: number | boolean): boolean {
-  if (typeof v === "boolean") return v;
-  return v > 0;
-}
-
 function computeSavings(monthly: number, yearly: number): number {
   return monthly * 12 - yearly;
 }
 
 function computeSavingsPercent(monthly: number, yearly: number): number {
+  if (monthly <= 0) return 0;
   return Math.round((1 - yearly / (monthly * 12)) * 100);
+}
+
+function formatPrice(cents: number): string {
+  const yuan = cents / 100;
+  return yuan.toLocaleString("zh-CN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: yuan % 1 === 0 ? 0 : 2,
+  });
 }
 
 // ── 子组件 ──
@@ -279,17 +283,17 @@ function PlanCard({
       {/* 价格 */}
       <div className="mb-5">
         <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold text-os-text-high">{"¥"}{price.toLocaleString()}</span>
+          <span className="text-3xl font-bold text-os-text-high">{"¥"}{formatPrice(price)}</span>
           <span className="text-sm text-os-muted">{periodLabel}</span>
         </div>
         {isYearly && savings > 0 && (
           <p className="mt-1 text-xs text-emerald-400">
-            节省 {"¥"}{savings.toLocaleString()}（{savingsPct}%）
+            节省 {"¥"}{formatPrice(savings)}（{savingsPct}%）
           </p>
         )}
         {!isYearly && tierKey !== "free" && (
           <p className="mt-1 text-xs text-os-muted">
-            或 {"¥"}{plan.yearly_price.toLocaleString()}/年
+            或 {"¥"}{formatPrice(plan.yearly_price)}/年
           </p>
         )}
       </div>
@@ -419,8 +423,6 @@ export default function PricingPage() {
   useEffect(() => {
     fetchPlans();
   }, [fetchPlans]);
-
-  const currentTier = plans.find((p) => p.current)?.tier ?? null;
 
   return (
     <div className="min-h-screen">

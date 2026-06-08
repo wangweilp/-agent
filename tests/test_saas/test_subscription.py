@@ -393,8 +393,8 @@ class TestPlanPrices:
 
     def test_plan_prices_enterprise(self) -> None:
         prices = PLAN_PRICES[PlanTier.ENTERPRISE]
-        assert prices[BillingCycle.MONTHLY] == 99900
-        assert prices[BillingCycle.YEARLY] == 999000
+        assert prices[BillingCycle.MONTHLY] == 100000
+        assert prices[BillingCycle.YEARLY] == 1000000
 
     def test_plan_prices_all_tiers_have_monthly_and_yearly(self) -> None:
         """Every tier defines both MONTHLY and YEARLY prices."""

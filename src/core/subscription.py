@@ -161,7 +161,7 @@ PLAN_PRICES: dict[PlanTier, dict[BillingCycle, int]] = {
     PlanTier.PERSONAL:    {BillingCycle.MONTHLY: 2900,  BillingCycle.YEARLY: 29000},   # ¥29/月  ¥290/年
     PlanTier.PROFESSIONAL:{BillingCycle.MONTHLY: 9900,  BillingCycle.YEARLY: 99000},   # ¥99/月  ¥990/年
     PlanTier.TEAM:        {BillingCycle.MONTHLY: 29900, BillingCycle.YEARLY: 299000},  # ¥299/月 ¥2990/年
-    PlanTier.ENTERPRISE:  {BillingCycle.MONTHLY: 99900, BillingCycle.YEARLY: 999000},  # ¥999/月 ¥9990/年
+    PlanTier.ENTERPRISE:  {BillingCycle.MONTHLY: 100000, BillingCycle.YEARLY: 1000000},  # ¥1000/月 ¥10000/年
 }
 
 

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Shield,
-  Search,
   Download,
   RefreshCw,
   Filter,
@@ -11,15 +10,14 @@ import {
   Calendar,
   Clock,
   AlertTriangle,
-  CheckCircle2,
   Info,
   Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/services/api";
+import { useAuthStore } from "@/stores/auth-store";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-// ── Types ──
+// 鈹€鈹€ Types 鈹€鈹€
 
 interface AuditEvent {
   id: string;
@@ -42,28 +40,26 @@ interface AuditSummary {
   by_action: Record<string, number>;
 }
 
-// ── API helper ──
-
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers as Record<string, string> || {}) },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    let msg = `API ${res.status}`;
-    try {
-      const j = JSON.parse(body);
-      if (j.detail) msg = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
-  return res.json();
+interface AuditApiEvent {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  detail: string;
+  timestamp: string;
 }
 
-// ── Helpers ──
+interface AuditApiSummary {
+  workspace_id: string;
+  last_24h: Record<string, number>;
+  last_7d: Record<string, number>;
+  last_30d: Record<string, number>;
+  total: number;
+}
+
+// 鈹€鈹€ Helpers 鈹€鈹€
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -110,7 +106,49 @@ function severityIcon(severity: string) {
   }
 }
 
-// ── Page ──
+function severityFromAction(action: string): string {
+  const a = action.toLowerCase();
+  if (/(delete|remove|revoke|disable|deny|fail|terminate)/.test(a)) return "high";
+  if (/(update|change|create|assign|approve)/.test(a)) return "medium";
+  return "info";
+}
+
+function sumCounts(counts: Record<string, number> | undefined): number {
+  return Object.values(counts || {}).reduce((sum, count) => sum + count, 0);
+}
+
+function mapApiEvent(event: AuditApiEvent): AuditEvent {
+  const resource = [event.resource_type, event.resource_id].filter(Boolean).join(":");
+  return {
+    id: event.id,
+    action: event.action,
+    user: event.user_id,
+    user_id: event.user_id,
+    org_id: event.workspace_id,
+    resource,
+    timestamp: event.timestamp,
+    severity: severityFromAction(event.action),
+    detail: event.detail,
+  };
+}
+
+function mapApiSummary(summary: AuditApiSummary): AuditSummary {
+  const bySeverity: Record<string, number> = {};
+  Object.entries(summary.last_30d || {}).forEach(([action, count]) => {
+    const severity = severityFromAction(action);
+    bySeverity[severity] = (bySeverity[severity] || 0) + count;
+  });
+
+  return {
+    last_24h: sumCounts(summary.last_24h),
+    last_7d: sumCounts(summary.last_7d),
+    last_30d: sumCounts(summary.last_30d),
+    by_severity: bySeverity,
+    by_action: summary.last_30d || {},
+  };
+}
+
+// 鈹€鈹€ Page 鈹€鈹€
 
 export default function AuditCenterPage() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -126,41 +164,48 @@ export default function AuditCenterPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const workspaceId = useAuthStore((s) => s.currentWorkspace?.id || "default");
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
+      params.set("workspace_id", workspaceId);
       if (actionFilter) params.set("action", actionFilter);
-      if (userFilter) params.set("user", userFilter);
-      if (severityFilter) params.set("severity", severityFilter);
-      if (dateFrom) params.set("date_from", dateFrom);
-      if (dateTo) params.set("date_to", dateTo);
+      if (userFilter) params.set("user_id", userFilter);
       params.set("limit", "100");
 
-      const qs = params.toString();
-      const data = await apiFetch<AuditEvent[]>(`/api/audit/events${qs ? `?${qs}` : ""}`);
-      setEvents(Array.isArray(data) ? data : []);
+      const data = await apiFetch<AuditApiEvent[]>(`/api/audit?${params.toString()}`);
+      const mapped = (Array.isArray(data) ? data : []).map(mapApiEvent);
+      const filtered = mapped.filter((event) => {
+        if (severityFilter && event.severity !== severityFilter) return false;
+        if (dateFrom && new Date(event.timestamp) < new Date(`${dateFrom}T00:00:00`)) return false;
+        if (dateTo && new Date(event.timestamp) > new Date(`${dateTo}T23:59:59`)) return false;
+        return true;
+      });
+      setEvents(filtered);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load audit events");
     } finally {
       setLoading(false);
     }
-  }, [actionFilter, userFilter, severityFilter, dateFrom, dateTo]);
+  }, [actionFilter, userFilter, severityFilter, dateFrom, dateTo, workspaceId]);
 
   const fetchSummary = useCallback(async () => {
     setSummaryLoading(true);
     try {
-      const data = await apiFetch<AuditSummary>("/api/audit/summary");
-      setSummary(data);
+      const data = await apiFetch<AuditApiSummary>(
+        `/api/audit/summary?workspace_id=${encodeURIComponent(workspaceId)}`
+      );
+      setSummary(mapApiSummary(data));
     } catch {
       // summary may not be available
       setSummary(null);
     } finally {
       setSummaryLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     fetchEvents();
@@ -187,7 +232,7 @@ export default function AuditCenterPage() {
     URL.revokeObjectURL(url);
   };
 
-  // ── Render ──
+  // 鈹€鈹€ Render 鈹€鈹€
 
   return (
     <div className="p-6 space-y-4 max-w-[1440px] mx-auto">
@@ -211,7 +256,10 @@ export default function AuditCenterPage() {
             Export JSON
           </button>
           <button
-            onClick={fetchEvents}
+            onClick={() => {
+              fetchEvents();
+              fetchSummary();
+            }}
             disabled={loading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
           >

@@ -24,10 +24,9 @@ class ApiError extends Error {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  // 优先读取模块级同步变量（登录后立即可用，无需等待 Zustand persist 异步写入 localStorage）
   const moduleToken = getAccessToken();
   if (moduleToken) return moduleToken;
-  // 回退：页面刷新后从 localStorage 恢复（此时模块级变量还未初始化）
+
   try {
     const raw = localStorage.getItem("agent-os-auth");
     if (raw) {
@@ -38,23 +37,56 @@ function getToken(): string | null {
   return null;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = { "Content-Type": "application/json", ...(init?.headers as Record<string, string> || {}) };
+function getAuthHeaders(): Record<string, string> {
   const token = getToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function _handleAuthExpired() {
+  if (typeof window === "undefined") return;
+  const current = window.location.pathname;
+  try {
+    localStorage.removeItem("agent-os-auth");
+  } catch { /* ignore */ }
+  if (current !== "/login") {
+    window.location.href = `/login?redirect=${encodeURIComponent(current)}`;
   }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...getAuthHeaders(),
+    ...((init?.headers as Record<string, string>) || {}),
+  };
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers,
   });
+
+  if (res.status === 401) {
+    _handleAuthExpired();
+    const body = await res.text();
+    let msg = "Login expired, please sign in again";
+    try { const j = JSON.parse(body); if (j.detail) msg = j.detail; } catch { /* use raw */ }
+    throw new ApiError(401, msg);
+  }
+
   if (!res.ok) {
     const body = await res.text();
     let msg = `API ${res.status}`;
     try { const j = JSON.parse(body); if (j.detail) msg = j.detail; } catch { /* use raw */ }
     throw new ApiError(res.status, msg);
   }
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
   return res.json();
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  return request<T>(path, init);
 }
 
 export const api = {
@@ -73,11 +105,23 @@ export const api = {
     const ctrl = new AbortController();
     fetch(`${BASE}/chat/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify(payload),
       signal: ctrl.signal,
     }).then(async (res) => {
-      if (!res.ok) { onError(`HTTP ${res.status}`); return; }
+      if (!res.ok) {
+        if (res.status === 401) _handleAuthExpired();
+        const body = await res.text();
+        let msg = `HTTP ${res.status}`;
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.detail) msg = parsed.detail;
+        } catch {
+          // Use status fallback.
+        }
+        onError(msg);
+        return;
+      }
       const reader = res.body?.getReader();
       if (!reader) { onError("No stream body"); return; }
       const dec = new TextDecoder();
@@ -174,6 +218,7 @@ export const api = {
     files.forEach((f) => form.append("files", f));
     return fetch(`${BASE}/upload`, {
       method: "POST",
+      headers: getAuthHeaders(),
       body: form,
     }).then((res) => {
       if (!res.ok) throw new ApiError(res.status, `上传失败: ${res.statusText}`);
@@ -268,7 +313,7 @@ export const api = {
     upload(files: File[]): Promise<import("@/types").AudioUploadResult> {
       const form = new FormData();
       files.forEach((f) => form.append("files", f));
-      return fetch(`${BASE}/audio/upload`, { method: "POST", body: form }).then((res) => {
+      return fetch(`${BASE}/audio/upload`, { method: "POST", headers: getAuthHeaders(), body: form }).then((res) => {
         if (!res.ok) throw new ApiError(res.status, `上传失败: ${res.statusText}`);
         return res.json();
       });
@@ -298,7 +343,7 @@ export const api = {
     upload(files: File[]): Promise<import("@/types").VideoUploadResult> {
       const form = new FormData();
       files.forEach((f) => form.append("files", f));
-      return fetch(`${BASE}/video/upload`, { method: "POST", body: form }).then((res) => {
+      return fetch(`${BASE}/video/upload`, { method: "POST", headers: getAuthHeaders(), body: form }).then((res) => {
         if (!res.ok) throw new ApiError(res.status, `上传失败: ${res.statusText}`);
         return res.json();
       });

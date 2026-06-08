@@ -14,9 +14,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { apiFetch } from "@/services/api";
 
 // ── Types ──
 
@@ -51,26 +49,43 @@ interface Member {
 
 // ── Helpers ──
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers as Record<string, string> || {}) },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    let msg = `API ${res.status}`;
-    try {
-      const j = JSON.parse(body);
-      if (j.detail) msg = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
-  return res.json();
-}
 
 // ── Modal Component ──
+
+interface OrganizationSummary {
+  id: string;
+  name: string;
+  industry: string;
+  created_at?: string;
+}
+
+interface OrgTreeNode {
+  id: string;
+  name: string;
+  node_type: string;
+  member_count: number;
+  children: OrgTreeNode[];
+}
+
+function toOrganization(summary: OrganizationSummary, tree: OrgTreeNode | null): Organization {
+  return {
+    id: summary.id,
+    name: summary.name,
+    industry: summary.industry,
+    created_at: summary.created_at,
+    business_units: (tree?.children || []).map((bu) => ({
+      id: bu.id,
+      name: bu.name,
+      org_id: summary.id,
+      departments: (bu.children || []).map((dept) => ({
+        id: dept.id,
+        name: dept.name,
+        bu_id: bu.id,
+        members: [],
+      })),
+    })),
+  };
+}
 
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
   if (!open) return null;
@@ -133,8 +148,15 @@ export default function OrganizationPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<Organization[]>("/api/org/list");
-      setOrgs(Array.isArray(data) ? data : []);
+      const data = await apiFetch<OrganizationSummary[]>("/api/org");
+      const summaries = Array.isArray(data) ? data : [];
+      const orgsWithTrees = await Promise.all(
+        summaries.map(async (summary) => {
+          const tree = await apiFetch<OrgTreeNode>(`/api/org/${summary.id}/tree`);
+          return toOrganization(summary, tree);
+        })
+      );
+      setOrgs(orgsWithTrees);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load organizations");
     } finally {
@@ -156,7 +178,7 @@ export default function OrganizationPage() {
     if (!newOrgName.trim()) return;
     setCreating(true);
     try {
-      await apiFetch("/api/org/create", {
+      await apiFetch("/api/org", {
         method: "POST",
         body: JSON.stringify({ name: newOrgName.trim(), industry: newOrgIndustry.trim() }),
       });
@@ -186,7 +208,7 @@ export default function OrganizationPage() {
     if (!newBUName.trim() || !targetOrgId) return;
     setCreatingBU(true);
     try {
-      await apiFetch(`/api/org/${targetOrgId}/bu`, {
+      await apiFetch(`/api/org/${targetOrgId}/business-units`, {
         method: "POST",
         body: JSON.stringify({ name: newBUName.trim() }),
       });
@@ -203,7 +225,7 @@ export default function OrganizationPage() {
   const handleDeleteBU = async (orgId: string, buId: string) => {
     if (!confirm("Delete this business unit and all its departments?")) return;
     try {
-      await apiFetch(`/api/org/${orgId}/bu/${buId}`, { method: "DELETE" });
+      await apiFetch(`/api/org/${orgId}/business-units/${buId}`, { method: "DELETE" });
       await fetchOrgs();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to delete business unit");
@@ -211,12 +233,12 @@ export default function OrganizationPage() {
   };
 
   const handleCreateDept = async () => {
-    if (!newDeptName.trim() || !targetBUId) return;
+    if (!newDeptName.trim() || !targetBUId || !targetOrgId) return;
     setCreatingDept(true);
     try {
-      await apiFetch(`/api/org/bu/${targetBUId}/dept`, {
+      await apiFetch(`/api/org/${targetOrgId}/departments`, {
         method: "POST",
-        body: JSON.stringify({ name: newDeptName.trim() }),
+        body: JSON.stringify({ name: newDeptName.trim(), business_unit_id: targetBUId }),
       });
       setNewDeptName("");
       setShowCreateDeptModal(false);
@@ -228,10 +250,10 @@ export default function OrganizationPage() {
     }
   };
 
-  const handleDeleteDept = async (buId: string, deptId: string) => {
+  const handleDeleteDept = async (orgId: string, deptId: string) => {
     if (!confirm("Delete this department and remove all member assignments?")) return;
     try {
-      await apiFetch(`/api/org/bu/${buId}/dept/${deptId}`, { method: "DELETE" });
+      await apiFetch(`/api/org/${orgId}/departments/${deptId}`, { method: "DELETE" });
       await fetchOrgs();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to delete department");
@@ -239,16 +261,16 @@ export default function OrganizationPage() {
   };
 
   const handleAssignMember = async () => {
-    if (!assignUserId.trim() || !targetDeptId) return;
+    if (!assignUserId.trim() || !targetDeptId || !targetOrgId) return;
     setAssigning(true);
     try {
-      await apiFetch(`/api/org/dept/${targetDeptId}/members`, {
+      await apiFetch(`/api/org/${targetOrgId}/positions`, {
         method: "POST",
         body: JSON.stringify({
           user_id: assignUserId.trim(),
-          name: assignName.trim(),
-          email: assignEmail.trim(),
-          position: assignPosition.trim(),
+          department_id: targetDeptId,
+          title: assignPosition.trim() || "Member",
+          is_manager: false,
         }),
       });
       setAssignUserId("");
@@ -405,6 +427,7 @@ export default function OrganizationPage() {
                           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => {
+                                setTargetOrgId(org.id);
                                 setTargetBUId(bu.id);
                                 setShowCreateDeptModal(true);
                               }}
@@ -440,6 +463,7 @@ export default function OrganizationPage() {
                                     <div className="flex items-center gap-1">
                                       <button
                                         onClick={() => {
+                                          setTargetOrgId(org.id);
                                           setTargetDeptId(dept.id);
                                           setShowAssignModal(true);
                                         }}
@@ -449,7 +473,7 @@ export default function OrganizationPage() {
                                         <UserPlus size={13} />
                                       </button>
                                       <button
-                                        onClick={() => handleDeleteDept(bu.id, dept.id)}
+                                        onClick={() => handleDeleteDept(org.id, dept.id)}
                                         className="p-1 rounded text-2xs text-os-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
                                         title="Delete Department"
                                       >

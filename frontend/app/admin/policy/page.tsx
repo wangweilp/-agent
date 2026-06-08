@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  FileText,
   Shield,
   Plus,
   X,
@@ -15,8 +14,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { apiFetch } from "@/services/api";
 
 // ── Types ──
 
@@ -124,7 +122,6 @@ export default function PolicyCenterPage() {
 
   // Roles
   const [roles, setRoles] = useState<Role[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
 
   // Org ID (lazy init)
   const [orgId, setOrgId] = useState("");
@@ -153,27 +150,10 @@ export default function PolicyCenterPage() {
     conditionsJson: "{}",
   });
 
-  // ── API helper ──
-
-  async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers as Record<string, string> || {}) },
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      let msg = `API ${res.status}`;
-      try { const j = JSON.parse(body); if (j.detail) msg = j.detail; } catch { /* ignore */ }
-      throw new Error(msg);
-    }
-    return res.json();
-  }
-
   // ── Fetch org ID ──
 
   useEffect(() => {
-    fetch(`${BASE}/api/org/list`)
-      .then((r) => r.ok ? r.json() : [])
+    apiFetch<Array<{ id: string }>>("/api/org")
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setOrgId(data[0].id);
@@ -213,15 +193,12 @@ export default function PolicyCenterPage() {
   }, [orgId]);
 
   const fetchRoles = useCallback(async () => {
-    setRolesLoading(true);
     try {
       const qs = orgId ? `?org_id=${orgId}` : "";
       const data = await apiFetch<Role[]>(`/api/rbac/roles${qs}`);
       setRoles(Array.isArray(data) ? data : []);
     } catch {
       setRoles([]);
-    } finally {
-      setRolesLoading(false);
     }
   }, [orgId]);
 

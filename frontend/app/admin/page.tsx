@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Building2,
   Users,
@@ -19,12 +19,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
 } from "recharts";
 import { cn, formatNumber } from "@/lib/utils";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { apiFetch } from "@/services/api";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ── Types ──
 
@@ -75,6 +73,13 @@ function severityColor(s: string): string {
     default:
       return "text-emerald-400";
   }
+}
+
+function severityFromAction(action: string): string {
+  const a = action.toLowerCase();
+  if (/(delete|remove|revoke|disable|deny|fail|terminate)/.test(a)) return "high";
+  if (/(update|change|create|assign|approve)/.test(a)) return "medium";
+  return "info";
 }
 
 // ── Card Component ──
@@ -131,38 +136,52 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const workspaceId = useAuthStore((s) => s.currentWorkspace?.id || "default");
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, auditRes, growthRes] = await Promise.all([
-        fetch(`${BASE}/api/admin/summary`),
-        fetch(`${BASE}/api/audit/events?limit=10`),
-        fetch(`${BASE}/api/admin/growth?weeks=12`),
+      const [summaryData, auditData, growthData] = await Promise.all([
+        apiFetch<AdminSummary>("/api/admin/summary"),
+        apiFetch<Array<{
+          id: string;
+          action: string;
+          user_id: string;
+          workspace_id: string;
+          resource_type: string;
+          resource_id: string;
+          detail: string;
+          timestamp: string;
+        }>>(`/api/audit?workspace_id=${encodeURIComponent(workspaceId)}&limit=10`),
+        apiFetch<GrowthDataPoint[]>("/api/admin/growth?weeks=12"),
       ]);
 
-      if (summaryRes.ok) {
-        const data = await summaryRes.json();
-        setSummary(data);
-      }
-      if (auditRes.ok) {
-        const data = await auditRes.json();
-        setAuditEvents(Array.isArray(data) ? data : data.events || []);
-      }
-      if (growthRes.ok) {
-        const data = await growthRes.json();
-        setGrowthData(Array.isArray(data) ? data : data.weeks || []);
-      }
+      setSummary(summaryData);
+      setAuditEvents(
+        Array.isArray(auditData)
+          ? auditData.map((event) => ({
+              id: event.id,
+              action: event.action,
+              user: event.user_id,
+              org_id: event.workspace_id || workspaceId,
+              timestamp: event.timestamp,
+              severity: severityFromAction(event.action),
+              detail: event.detail || event.resource_type || "",
+            }))
+          : [],
+      );
+      setGrowthData(Array.isArray(growthData) ? growthData : []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   return (
     <div className="p-6 space-y-5 max-w-[1440px] mx-auto">

@@ -43,6 +43,7 @@ class User:
     hashed_password: str | None = None
     auth_provider: str = "email"    # email | google | github
     auth_provider_id: str | None = None
+    is_super_admin: bool = False    # 超级管理员 — 绕过所有 RBAC 检查
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -88,6 +89,7 @@ class TokenPayload:
     workspace_id: str
     role: WorkspaceRole
     email: str = ""
+    is_super_admin: bool = False  # 超级管理员 — 绕过所有权限检查
 
     def has_write_access(self) -> bool:
         return WorkspaceRole(self.role).can_write()

@@ -21,26 +21,39 @@ from src.adapters.auth_store import SQLiteAuthStore, WorkspaceContext
 from src.core.auth import AuthTokens, TokenPayload, User, WorkspaceRole
 
 logger = logging.getLogger(__name__)
+_GENERATED_DEV_SECRET: str | None = None
 
 # ── Config ──
 
-_PROD_MODE = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
 _DEFAULT_MSG = (
     "JWT_SECRET_KEY environment variable is required in production. "
     "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
 )
 
-_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
-if not _SECRET_KEY:
-    if _PROD_MODE:
+
+def _is_production(environment: str) -> bool:
+    return environment.lower() in ("production", "prod")
+
+
+def resolve_jwt_secret_key(
+    secret_key: str | None = None,
+    environment: str | None = None,
+) -> str:
+    global _GENERATED_DEV_SECRET
+    configured_secret = (secret_key or os.getenv("JWT_SECRET_KEY", "")).strip()
+    if configured_secret:
+        return configured_secret
+    if _is_production(environment or os.getenv("ENVIRONMENT", "")):
         raise RuntimeError(_DEFAULT_MSG)
-    _SECRET_KEY = secrets.token_hex(32)
-    os.environ["JWT_SECRET_KEY"] = _SECRET_KEY
-    logger.warning(
-        "JWT_SECRET_KEY not set — auto-generated temporary key "
-        "(set ENVIRONMENT=production to enforce explicit configuration)"
-    )
-SECRET_KEY: str = _SECRET_KEY
+    if _GENERATED_DEV_SECRET is None:
+        _GENERATED_DEV_SECRET = secrets.token_hex(32)
+        logger.warning(
+            "JWT_SECRET_KEY not set; generated temporary development key "
+            "(set ENVIRONMENT=production to require explicit configuration)"
+        )
+    return _GENERATED_DEV_SECRET
+
+SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE = 3600       # 1 hour
 REFRESH_TOKEN_EXPIRE = 2592000   # 30 days
@@ -59,11 +72,11 @@ class JWTTokenService:
 
     def __init__(
         self,
-        secret_key: str = SECRET_KEY,
+        secret_key: str | None = None,
         algorithm: str = ALGORITHM,
         auth_store: "SQLiteAuthStore | None" = None,
     ) -> None:
-        self._secret = secret_key
+        self._secret = resolve_jwt_secret_key(secret_key)
         self._algorithm = algorithm
         self._auth_store = auth_store
 
@@ -74,6 +87,7 @@ class JWTTokenService:
             "email": user.email,
             "workspace_id": workspace_id,
             "role": role.value,
+            "is_super_admin": user.is_super_admin,
             "exp": now + timedelta(seconds=ACCESS_TOKEN_EXPIRE),
             "iat": now,
             "type": "access",
@@ -82,6 +96,7 @@ class JWTTokenService:
             "sub": user.id,
             "workspace_id": workspace_id,
             "role": role.value,
+            "is_super_admin": user.is_super_admin,
             "exp": now + timedelta(seconds=REFRESH_TOKEN_EXPIRE),
             "iat": now,
             "type": "refresh",
@@ -107,6 +122,7 @@ class JWTTokenService:
                 workspace_id=payload.get("workspace_id", "default"),
                 role=WorkspaceRole(payload.get("role", "member")),
                 email=payload.get("email", ""),
+                is_super_admin=payload.get("is_super_admin", False),
             )
         except JWTError:
             return None
@@ -126,7 +142,7 @@ class JWTTokenService:
             if datetime.now(timezone.utc).timestamp() > exp:
                 return None
 
-            # Issue new tokens (keep same workspace/role)
+            # Issue new tokens (keep same workspace/role/super_admin)
             now = datetime.now(timezone.utc)
             new_jti = secrets.token_hex(8)
             access_payload = {
@@ -134,6 +150,7 @@ class JWTTokenService:
                 "email": payload.get("email", ""),
                 "workspace_id": payload.get("workspace_id", "default"),
                 "role": payload.get("role", "member"),
+                "is_super_admin": payload.get("is_super_admin", False),
                 "exp": now + timedelta(seconds=ACCESS_TOKEN_EXPIRE),
                 "iat": now,
                 "type": "access",
@@ -142,6 +159,7 @@ class JWTTokenService:
                 "sub": payload["sub"],
                 "workspace_id": payload.get("workspace_id", "default"),
                 "role": payload.get("role", "member"),
+                "is_super_admin": payload.get("is_super_admin", False),
                 "exp": now + timedelta(seconds=REFRESH_TOKEN_EXPIRE),
                 "iat": now,
                 "type": "refresh",
@@ -228,7 +246,9 @@ async def require_auth(
 async def require_write(
     payload: TokenPayload = Depends(require_auth),
 ) -> TokenPayload:
-    """要求 write 权限（member+）。"""
+    """要求 write 权限（member+）。超级管理员直接通过。"""
+    if payload.is_super_admin:
+        return payload
     if not payload.has_write_access():
         raise HTTPException(status_code=403, detail="权限不足: 需要 member 或以上角色")
     return payload
@@ -237,7 +257,9 @@ async def require_write(
 async def require_manage(
     payload: TokenPayload = Depends(require_auth),
 ) -> TokenPayload:
-    """要求 manage 权限（admin+）。"""
+    """要求 manage 权限（admin+）。超级管理员直接通过。"""
+    if payload.is_super_admin:
+        return payload
     if not payload.has_manage_access():
         raise HTTPException(status_code=403, detail="权限不足: 需要 admin 或以上角色")
     return payload
@@ -252,11 +274,15 @@ async def assert_workspace_access(
     request: Request,
     payload: TokenPayload = Depends(require_auth),
 ) -> TokenPayload:
-    """验证当前用户是目标 workspace 的成员（viewer+）。
+    """验证当前用户是目标 workspace 的成员（viewer+）。超级管理员直接通过。"""
+    if payload.is_super_admin:
+        # 超级管理员：将 workspace_id 更新为请求中的目标
+        ws_id: str = request.path_params.get("id", "")
+        if ws_id:
+            payload.workspace_id = ws_id
+            WorkspaceContext.set(payload)
+        return payload
 
-    从 URL path parameter ``id`` 提取 workspace_id，
-    查 memberships 表确认成员关系存在。
-    """
     ws_id: str = request.path_params.get("id", "")
     if not ws_id:
         raise HTTPException(status_code=400, detail="请求路径缺少工作区 ID")
@@ -288,7 +314,9 @@ async def assert_workspace_manage(
     request: Request,
     payload: TokenPayload = Depends(assert_workspace_access),
 ) -> TokenPayload:
-    """验证当前用户对目标 workspace 有管理权限（admin/owner）。"""
+    """验证当前用户对目标 workspace 有管理权限（admin/owner）。超级管理员直接通过。"""
+    if payload.is_super_admin:
+        return payload
     if not payload.has_manage_access():
         raise HTTPException(status_code=403,
                             detail="权限不足: 需要该工作区的 admin 或以上角色")

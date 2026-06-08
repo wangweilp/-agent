@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Server,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -18,6 +17,7 @@ import {
   Container,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/services/api";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -113,12 +113,8 @@ export default function DeploymentStatusPage() {
 
     // Check DB via dashboard endpoint
     try {
-      const res = await fetch(`${BASE}/dashboard/summary`);
-      if (res.ok) {
-        setHealth((h) => ({ ...h, database: "healthy" }));
-      } else {
-        setHealth((h) => ({ ...h, database: "unhealthy" }));
-      }
+      await apiFetch("/dashboard/summary");
+      setHealth((h) => ({ ...h, database: "healthy" }));
     } catch {
       setHealth((h) => ({ ...h, database: "unhealthy" }));
     }
@@ -134,10 +130,7 @@ export default function DeploymentStatusPage() {
 
   const fetchConfig = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/admin/config`);
-      if (res.ok) {
-        setConfig(await res.json());
-      }
+      setConfig(await apiFetch<ConfigSummary>("/api/admin/config"));
     } catch {
       // config endpoint optional
     }

@@ -435,10 +435,18 @@ class RBACStoreAdapter:
         """完整的 RBAC + ABAC 权限检查。
 
         流程：
+        0. 超级管理员直接通过（绕过所有检查）
         1. ABAC 策略检查（跨组织隔离等）
         2. RBAC 角色权限检查
         3. 合并结果：两者都允许才允许
         """
+        # Step 0: 超级管理员绕过所有检查
+        if request.is_super_admin:
+            return AccessDecision(
+                allowed=True,
+                reason="Super admin — bypass all RBAC/ABAC checks",
+            )
+
         # Step 1: ABAC check
         policies = self.list_policies(request.organization_id)
         subject_attrs = {

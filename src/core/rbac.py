@@ -161,6 +161,7 @@ class AccessRequest:
     resource: ResourceType
     action: ActionType
     resource_id: str = ""               # 具体资源 ID
+    is_super_admin: bool = False        # 超级管理员 — 绕过所有检查
     context: dict[str, Any] = field(default_factory=dict)  # 额外上下文（IP、时间等）
 
 
