@@ -1,23 +1,92 @@
 "use client";
-/** Agent Marketplace — 内部 Agent 市场 */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  Bot,
+  Filter,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Tags,
+  TrendingUp,
+} from "lucide-react";
+
 import { AgentCard } from "@/components/agents/AgentCard";
 import { AgentRunDialog } from "@/components/agents/AgentRunDialog";
-import { listAgents, enableAgent, disableAgent } from "@/services/agents";
+import { disableAgent, enableAgent, listAgents } from "@/services/agents";
 import type { AgentSummary } from "@/types/agents";
+
+type AgentFilter = "all" | "enabled" | "disabled";
+
+const FILTERS: Array<{ value: AgentFilter; label: string }> = [
+  { value: "all", label: "全部" },
+  { value: "enabled", label: "已启用" },
+  { value: "disabled", label: "已停用" },
+];
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: typeof Bot;
+  label: string;
+  value: string | number;
+  hint: string;
+}) {
+  return (
+    <div className="os-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs text-os-muted">{label}</p>
+          <p className="mt-2 text-2xl font-semibold text-os-text-high">{value}</p>
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-os-accent">
+          <Icon size={18} />
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-os-subtle">{hint}</p>
+    </div>
+  );
+}
+
+function LoadingGrid() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="os-card h-56 overflow-hidden p-5">
+          <div className="shimmer-bg h-5 w-36 rounded bg-os-elevated" />
+          <div className="mt-4 space-y-2">
+            <div className="shimmer-bg h-3 w-full rounded bg-os-elevated" />
+            <div className="shimmer-bg h-3 w-5/6 rounded bg-os-elevated" />
+            <div className="shimmer-bg h-3 w-3/5 rounded bg-os-elevated" />
+          </div>
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            <div className="shimmer-bg h-14 rounded bg-os-elevated" />
+            <div className="shimmer-bg h-14 rounded bg-os-elevated" />
+            <div className="shimmer-bg h-14 rounded bg-os-elevated" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AgentMarketplacePage() {
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "enabled" | "disabled">("all");
+  const [filter, setFilter] = useState<AgentFilter>("all");
   const [tagFilter, setTagFilter] = useState("");
+  const [query, setQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<AgentSummary | null>(null);
   const [runDialogOpen, setRunDialogOpen] = useState(false);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
 
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -28,22 +97,53 @@ export default function AgentMarketplacePage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchAgents();
   }, [filter, tagFilter]);
 
-  const allTags = [...new Set(agents.flatMap((a) => a.tags))].sort();
+  useEffect(() => {
+    void fetchAgents();
+  }, [fetchAgents]);
 
-  const filteredAgents = agents.filter((a) => {
-    if (filter === "enabled") return a.enabled;
-    if (filter === "disabled") return !a.enabled;
-    return true;
-  });
+  const allTags = useMemo(
+    () => [...new Set(agents.flatMap((agent) => agent.tags))].sort(),
+    [agents],
+  );
+
+  const filteredAgents = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return agents.filter((agent) => {
+      if (filter === "enabled" && !agent.enabled) return false;
+      if (filter === "disabled" && agent.enabled) return false;
+
+      if (!normalizedQuery) return true;
+      const haystack = [agent.name, agent.description, agent.agent_id, ...agent.tags]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [agents, filter, query]);
+
+  const stats = useMemo(() => {
+    const enabled = agents.filter((agent) => agent.enabled).length;
+    const totalUsage = agents.reduce((sum, agent) => sum + agent.usage_count, 0);
+    const avgSuccessRate =
+      agents.length > 0
+        ? agents.reduce((sum, agent) => sum + agent.success_rate, 0) / agents.length
+        : 0;
+
+    return {
+      total: agents.length,
+      enabled,
+      disabled: agents.length - enabled,
+      totalUsage,
+      avgSuccessRate,
+    };
+  }, [agents]);
 
   const handleToggle = async (agentId: string, enable: boolean) => {
     setToggling((prev) => new Set(prev).add(agentId));
+    setError(null);
+
     try {
       if (enable) await enableAgent(agentId);
       else await disableAgent(agentId);
@@ -59,119 +159,149 @@ export default function AgentMarketplacePage() {
     }
   };
 
-  const stats = {
-    total: agents.length,
-    enabled: agents.filter((a) => a.enabled).length,
-    totalUsage: agents.reduce((s, a) => s + a.usage_count, 0),
-    avgSuccessRate:
-      agents.length > 0
-        ? agents.reduce((s, a) => s + a.success_rate, 0) / agents.length
-        : 0,
+  const openRunDialog = (agentId: string) => {
+    const agent = agents.find((item) => item.agent_id === agentId) || null;
+    setSelectedAgent(agent);
+    setRunDialogOpen(Boolean(agent));
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Agent Marketplace</h1>
-        <p className="text-gray-500 mt-1">企业内部 AI Agent 市场 — 让知识变成行动力</p>
-      </div>
-
-      {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Agent 总数", value: stats.total },
-          { label: "已启用", value: stats.enabled },
-          { label: "总调用", value: stats.totalUsage },
-          { label: "平均成功率", value: `${(stats.avgSuccessRate * 100).toFixed(0)}%` },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <div className="text-2xl font-bold text-gray-900">{s.value}</div>
-            <div className="text-sm text-gray-500">{s.label}</div>
+    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
+            <Bot size={14} className="text-os-accent" />
+            企业内部 Agent 能力目录
           </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-          {(["all", "enabled", "disabled"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                filter === f
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {f === "all" ? "全部" : f === "enabled" ? "已启用" : "已停用"}
-            </button>
-          ))}
+          <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">Agent 市场</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
+            以卡片方式浏览、筛选和试运行可用 Agent，所有数据通过后端 Agent API 获取。
+          </p>
         </div>
 
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-        >
-          <option value="">所有标签</option>
-          {allTags.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-
         <button
-          onClick={fetchAgents}
-          className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+          type="button"
+          onClick={() => void fetchAgents()}
+          disabled={loading}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-os-border bg-os-surface px-3 text-xs font-medium text-os-subtle transition-colors hover:text-os-text-high disabled:cursor-not-allowed disabled:opacity-60"
         >
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
           刷新
         </button>
-      </div>
+      </header>
 
-      {/* Error */}
+      <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard icon={Bot} label="Agent 总数" value={stats.total} hint="当前可被编排或试运行的能力" />
+        <StatCard
+          icon={ShieldCheck}
+          label="已启用"
+          value={stats.enabled}
+          hint={`${stats.disabled} 个处于停用状态`}
+        />
+        <StatCard icon={Activity} label="总调用" value={stats.totalUsage} hint="来自后端统计的累计调用量" />
+        <StatCard
+          icon={TrendingUp}
+          label="平均成功率"
+          value={`${(stats.avgSuccessRate * 100).toFixed(0)}%`}
+          hint="按当前列表 Agent 计算"
+        />
+      </section>
+
+      <section className="os-card mb-6 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            <label className="relative block flex-1">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-os-muted"
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜索名称、描述、标签或 ID"
+                className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+              />
+            </label>
+
+            <label className="relative block sm:w-56">
+              <Tags
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-os-muted"
+              />
+              <select
+                value={tagFilter}
+                onChange={(event) => setTagFilter(event.target.value)}
+                className="h-10 w-full appearance-none rounded-md border border-os-border bg-os-elevated pl-9 pr-8 text-sm text-os-text-high outline-none transition-colors focus:border-os-accent"
+              >
+                <option value="">所有标签</option>
+                {allTags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="inline-flex h-10 overflow-hidden rounded-md border border-os-border bg-os-elevated">
+            {FILTERS.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setFilter(item.value)}
+                className={`inline-flex min-w-20 items-center justify-center gap-1.5 px-3 text-xs font-medium transition-colors ${
+                  filter === item.value
+                    ? "bg-os-accent text-white"
+                    : "text-os-subtle hover:bg-os-surface hover:text-os-text-high"
+                }`}
+              >
+                <Filter size={13} />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {error && (
-        <div className="p-4 rounded-lg bg-red-50 text-red-700 mb-6">{error}</div>
+        <div className="mb-6 rounded-md border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-200">
+          {error}
+        </div>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <div className="text-center py-12 text-gray-500">加载中...</div>
-      )}
-
-      {/* Agent Grid */}
-      {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {loading ? (
+        <LoadingGrid />
+      ) : filteredAgents.length > 0 ? (
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredAgents.map((agent) => (
             <AgentCard
               key={agent.agent_id}
               agent={agent}
-              onRun={(id) => {
-                const a = agents.find((x) => x.agent_id === id) || null;
-                setSelectedAgent(a);
-                setRunDialogOpen(true);
-              }}
+              busy={toggling.has(agent.agent_id)}
+              onRun={openRunDialog}
               onToggle={handleToggle}
             />
           ))}
-        </div>
+        </section>
+      ) : (
+        <section className="os-card flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
+          <Bot size={28} className="text-os-muted" />
+          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的 Agent</h2>
+          <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">
+            调整搜索词、状态或标签筛选后再试。
+          </p>
+        </section>
       )}
 
-      {!loading && filteredAgents.length === 0 && (
-        <div className="text-center py-12 text-gray-400">暂无 Agent</div>
-      )}
-
-      {/* Run Dialog */}
       <AgentRunDialog
         agent={selectedAgent}
         open={runDialogOpen}
         onClose={() => {
           setRunDialogOpen(false);
-          fetchAgents();
+          void fetchAgents();
         }}
       />
-    </div>
+    </main>
   );
 }

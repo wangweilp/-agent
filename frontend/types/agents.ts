@@ -95,10 +95,18 @@ export interface AgentStats {
   agents: AgentSummary[];
 }
 
+export interface WorkflowCreateNode {
+  name: string;
+  node_type: WorkflowNode["node_type"];
+  agent_id?: string;
+  description?: string;
+  is_start?: boolean;
+}
+
 export interface WorkflowCreateRequest {
   name: string;
   description?: string;
-  nodes: WorkflowNode[];
+  nodes: WorkflowCreateNode[];
   start_node_id?: string;
   tags?: string[];
 }
