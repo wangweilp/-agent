@@ -23,17 +23,9 @@ import {
 import { cn, formatNumber } from "@/lib/utils";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
+import type { AdminSummary, GrowthDataPoint } from "@/types";
 
 // ── Types ──
-
-interface AdminSummary {
-  total_orgs: number;
-  total_users: number;
-  total_memories: number;
-  growth_rate_weekly: number;
-  audit_events_30d: number;
-  risk_events: number;
-}
 
 interface RecentAuditEvent {
   id: string;
@@ -43,11 +35,6 @@ interface RecentAuditEvent {
   timestamp: string;
   severity: string;
   detail: string;
-}
-
-interface GrowthDataPoint {
-  week: string;
-  count: number;
 }
 
 // ── Helpers ──

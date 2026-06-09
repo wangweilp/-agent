@@ -28,13 +28,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-full">
       {/* Admin Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-os-border bg-os-surface/50 flex flex-col">
-        <div className="px-4 py-4 border-b border-os-border">
-          <h1 className="text-sm font-semibold text-os-text-high tracking-tight">
-            Enterprise Admin
-          </h1>
-          <p className="text-2xs text-os-muted mt-0.5">
-            System administration
+      <aside className="w-56 shrink-0 border-r border-os-border/60 bg-os-base/80 backdrop-blur-sm flex flex-col">
+        <div className="px-4 py-4 border-b border-os-border/60">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-6 h-6 rounded-lg bg-os-accent/10 flex items-center justify-center">
+              <Shield size={13} className="text-os-accent" />
+            </div>
+            <h1 className="text-sm font-semibold text-os-text-high tracking-tight">
+              企业管理
+            </h1>
+          </div>
+          <p className="text-2xs text-os-muted ml-8">
+            系统管理控制台
           </p>
         </div>
 
@@ -49,13 +54,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2.5 h-9 px-2.5 rounded-md text-xs transition-all duration-150 group",
+                  "flex items-center gap-2.5 h-9 px-2.5 rounded-lg text-xs transition-all duration-150 group",
                   isActive
-                    ? "bg-os-accent/10 text-os-accent"
-                    : "text-os-text hover:text-os-text-high hover:bg-os-elevated"
+                    ? "bg-os-accent/10 text-os-accent border border-os-accent/10"
+                    : "text-os-text hover:text-os-text-high hover:bg-os-elevated/80 border border-transparent"
                 )}
               >
-                <item.icon size={15} className="shrink-0" />
+                <div className={cn(
+                  "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
+                  isActive ? "bg-os-accent/15" : "bg-os-elevated/50"
+                )}>
+                  <item.icon size={14} className={isActive ? "text-os-accent" : "text-os-subtle"} />
+                </div>
                 <span className="whitespace-nowrap">{item.label}</span>
                 {isActive && (
                   <ChevronRight size={12} className="ml-auto text-os-accent" />
@@ -65,13 +75,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="border-t border-os-border px-4 py-3">
+        <div className="border-t border-os-border/60 px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="relative">
               <div className="w-2 h-2 rounded-full bg-emerald-400" />
               <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-status-breathe" />
             </div>
-            <span className="text-2xs text-os-subtle">Admin Panel Active</span>
+            <span className="text-2xs text-os-subtle">管理面板运行中</span>
           </div>
         </div>
       </aside>

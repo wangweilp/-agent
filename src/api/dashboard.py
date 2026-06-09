@@ -115,7 +115,7 @@ def create_dashboard_router(
             return DashboardSummary()
 
     @router.get("/topics", response_model=list[TopicItem])
-    async def topics(limit: int = Query(default=10, ge=1, le=100)):
+    async def topics(limit: int = Query(default=10, ge=1, le=200)):
         """Top Topics — 按 mention_count 降序排列的实体。"""
         try:
             rows = _db().execute(
@@ -140,7 +140,7 @@ def create_dashboard_router(
             return []
 
     @router.get("/entities", response_model=list[EntityItem])
-    async def entities(limit: int = Query(default=20, ge=1, le=100)):
+    async def entities(limit: int = Query(default=20, ge=1, le=200)):
         """Top Entities — 按 mention_count 降序排列的实体排行榜。"""
         try:
             rows = _db().execute(
@@ -164,7 +164,7 @@ def create_dashboard_router(
             return []
 
     @router.get("/recent", response_model=list[RecentMemoryItem])
-    async def recent(limit: int = Query(default=20, ge=1, le=200)):
+    async def recent(limit: int = Query(default=50, ge=1, le=2000)):
         """最近记忆流 — 按 timestamp 降序排列的最新 N 条记忆。"""
         try:
             memories = agent._memory_store.get_recent(limit=limit)
@@ -186,7 +186,7 @@ def create_dashboard_router(
             return []
 
     @router.get("/reflections", response_model=list[RecentReflectionItem])
-    async def reflections(limit: int = Query(default=10, ge=1, le=100)):
+    async def reflections(limit: int = Query(default=10, ge=1, le=200)):
         """最近反思 — 来源为 reflect 的最近记忆。"""
         try:
             recent = agent._memory_store.get_recent(limit=200)

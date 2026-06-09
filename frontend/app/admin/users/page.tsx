@@ -10,29 +10,13 @@ import {
   RefreshCw,
   UserCog,
   Building2,
+  UserPlus,
+  Key,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-
-// ── Types ──
-
-interface UserRecord {
-  id: string;
-  name: string;
-  email: string;
-  roles: string[];
-  department?: string;
-  org_id?: string;
-  org_name?: string;
-  created_at?: string;
-}
-
-interface Role {
-  id: string;
-  name: string;
-  permissions: string[];
-}
+import { api } from "@/services/api";
+import type { RbacUser, RbacRole } from "@/types";
 
 // ── Constants ──
 
@@ -54,34 +38,14 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   Guest: "Read-only access to shared resources",
 };
 
-// ── API helper ──
-
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers as Record<string, string> || {}) },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    let msg = `API ${res.status}`;
-    try {
-      const j = JSON.parse(body);
-      if (j.detail) msg = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
-  return res.json();
-}
-
 // ── Page ──
 
 export default function UserManagementPage() {
-  const [users, setUsers] = useState<UserRecord[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [users, setUsers] = useState<RbacUser[]>([]);
+  const [roles, setRoles] = useState<RbacRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -89,7 +53,7 @@ export default function UserManagementPage() {
   const [roleFilter, setRoleFilter] = useState("");
 
   // Role assignment modal
-  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
+  const [selectedUser, setSelectedUser] = useState<RbacUser | null>(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [assigningRole, setAssigningRole] = useState("");
 
@@ -100,36 +64,45 @@ export default function UserManagementPage() {
   const [orgs, setOrgs] = useState<string[]>([]);
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<UserRecord[]>("/api/rbac/users");
+      const data = await api.rbac.users();
       const userList = Array.isArray(data) ? data : [];
       setUsers(userList);
       // Extract unique org names for filter
-      const orgNames = [...new Set(userList.map((u) => u.org_name || u.org_id || "").filter(Boolean))];
+      const orgNames = [...new Set(
+        userList.map((u) => u.org_name || u.org_id || "").filter(Boolean)
+      )] as string[];
       setOrgs(orgNames);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
-    } finally {
-      setLoading(false);
+      setError(err instanceof Error ? err.message : "加载用户列表失败");
     }
   }, []);
 
   const fetchRoles = useCallback(async () => {
     try {
-      const data = await apiFetch<Role[]>("/api/rbac/roles");
+      const data = await api.rbac.roles();
       setRoles(Array.isArray(data) ? data : []);
     } catch {
-      // roles endpoint may not exist, fall back to defaults
+      // Fallback to defaults if roles endpoint returns empty
       setRoles(AVAILABLE_ROLES.map((r) => ({ id: r, name: r, permissions: [] })));
     }
   }, []);
 
   useEffect(() => {
-    fetchUsers();
-    fetchRoles();
+    async function load() {
+      setLoading(true);
+      await Promise.all([fetchUsers(), fetchRoles()]);
+      setLoading(false);
+    }
+    load();
   }, [fetchUsers, fetchRoles]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchUsers();
+    setRefreshing(false);
+  }, [fetchUsers]);
 
   // ── Filtering ──
 
@@ -142,21 +115,30 @@ export default function UserManagementPage() {
     return true;
   });
 
+  // ── Stats ──
+
+  const stats = {
+    total: users.length,
+    withRoles: users.filter((u) => (u.roles || []).length > 0).length,
+    orgs: orgs.length,
+    rolesAvailable: roles.length,
+  };
+
   // ── Handlers ──
 
   const handleAssignRole = async () => {
     if (!selectedUser || !assigningRole) return;
     try {
-      const newRoles = [...new Set([...(selectedUser.roles || []), assigningRole])];
-      await apiFetch(`/api/rbac/users/${selectedUser.id}/roles`, {
-        method: "PUT",
-        body: JSON.stringify({ roles: newRoles }),
+      await api.rbac.assignRole({
+        user_id: selectedUser.id,
+        role_id: assigningRole,
+        organization_id: selectedUser.org_id || "default",
       });
       setShowRoleModal(false);
       setAssigningRole("");
       await fetchUsers();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to assign role");
+      alert(err instanceof Error ? err.message : "分配角色失败");
     }
   };
 
@@ -166,177 +148,247 @@ export default function UserManagementPage() {
     if (!user) return;
     try {
       const newRoles = (user.roles || []).filter((r) => r !== role);
-      await apiFetch(`/api/rbac/users/${userId}/roles`, {
+      // 通过 update user roles 方式
+      await fetch(`/api/rbac/users/${userId}/roles`, {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roles: newRoles }),
       });
       await fetchUsers();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to remove role");
+      alert(err instanceof Error ? err.message : "移除角色失败");
     }
   };
 
-  const handleFetchPermissions = async (userId: string) => {
-    if (showPermsFor === userId) {
-      setShowPermsFor(null);
-      return;
-    }
-    setShowPermsFor(userId);
+  const handleFetchPermissions = (userId: string) => {
+    setShowPermsFor(showPermsFor === userId ? null : userId);
   };
 
   // ── Render ──
 
   return (
-    <div className="p-6 space-y-4 max-w-[1440px] mx-auto">
+    <div className="p-6 space-y-5 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
-            User Management
+            用户管理
           </h1>
           <p className="text-xs text-os-subtle mt-0.5">
-            {users.length} user{users.length !== 1 ? "s" : ""} registered
+            {loading ? "加载中..." : `${stats.total} 位用户`}
           </p>
         </div>
         <button
-          onClick={fetchUsers}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-os-subtle hover:text-os-text hover:bg-os-elevated border border-transparent hover:border-os-border/50 transition-all disabled:opacity-50"
         >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          Refresh
+          <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+          刷新
         </button>
       </div>
 
-      {/* Filters */}
+      {/* ── Stats Cards ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { icon: Users, label: "总用户", value: stats.total, accent: "indigo" as const },
+          { icon: Shield, label: "已授权", value: stats.withRoles, accent: "emerald" as const },
+          { icon: Building2, label: "组织", value: stats.orgs, accent: "violet" as const },
+          { icon: Key, label: "可用角色", value: stats.rolesAvailable, accent: "amber" as const },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="os-card p-3.5 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-border/60 transition-colors"
+          >
+            <div className="flex items-start justify-between">
+              <p className="text-2xs text-os-muted uppercase tracking-wider">{s.label}</p>
+              <s.icon size={14} className={
+                s.accent === "indigo" ? "text-indigo-400" :
+                s.accent === "emerald" ? "text-emerald-400" :
+                s.accent === "violet" ? "text-violet-400" : "text-amber-400"
+              } />
+            </div>
+            <p className="text-lg font-mono font-semibold text-os-text-high mt-1">
+              {loading ? "..." : s.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Filters ── */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-os-muted" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+            placeholder="按姓名或邮箱搜索..."
+            className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-lg text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/10 transition-all"
           />
         </div>
-        <select
-          value={orgFilter}
-          onChange={(e) => setOrgFilter(e.target.value)}
-          className="h-9 px-3 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high focus:outline-none focus:border-os-accent transition-colors appearance-none cursor-pointer"
-        >
-          <option value="">All Organizations</option>
-          {orgs.map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="h-9 px-3 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high focus:outline-none focus:border-os-accent transition-colors appearance-none cursor-pointer"
-        >
-          <option value="">All Roles</option>
-          {AVAILABLE_ROLES.map((r) => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={orgFilter}
+            onChange={(e) => setOrgFilter(e.target.value)}
+            className="h-9 pl-3 pr-8 bg-os-surface border border-os-border rounded-lg text-xs text-os-text-high focus:outline-none focus:border-os-accent/50 transition-all appearance-none cursor-pointer"
+          >
+            <option value="">所有组织</option>
+            {orgs.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-os-muted pointer-events-none" />
+        </div>
+        <div className="relative">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="h-9 pl-3 pr-8 bg-os-surface border border-os-border rounded-lg text-xs text-os-text-high focus:outline-none focus:border-os-accent/50 transition-all appearance-none cursor-pointer"
+          >
+            <option value="">所有角色</option>
+            {AVAILABLE_ROLES.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-os-muted pointer-events-none" />
+        </div>
         {(search || orgFilter || roleFilter) && (
           <button
             onClick={() => { setSearch(""); setOrgFilter(""); setRoleFilter(""); }}
-            className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-muted hover:text-os-text transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-2xs text-os-muted hover:text-os-text bg-os-elevated/50 hover:bg-os-elevated transition-all border border-os-border/30"
           >
             <X size={12} />
-            Clear
+            清除
           </button>
         )}
       </div>
 
-      {/* Error */}
+      {/* ── Error ── */}
       {error && (
-        <div className="os-card p-3 rounded-lg border border-red-400/20 bg-red-400/5 text-red-400 text-xs">
-          {error}
+        <div className="flex items-start gap-3 rounded-lg border border-red-400/15 bg-red-400/5 p-3">
+          <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs text-red-400 font-medium">请求失败</p>
+            <p className="text-2xs text-red-400/70 mt-0.5">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="text-2xs text-red-400 hover:text-red-300 underline mt-1"
+            >
+              点击重试
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Loading */}
-      {loading && (
+      {/* ── Loading ── */}
+      {loading && !error && (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 bg-os-elevated rounded-lg animate-pulse" />
+            <div key={i} className="h-14 bg-os-surface rounded-lg animate-pulse border border-os-border/20 shimmer-bg" />
           ))}
         </div>
       )}
 
-      {/* Empty */}
-      {!loading && filteredUsers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-os-muted">
-          <Users size={48} className="mb-4 opacity-30" />
-          <p className="text-sm">No users found</p>
-          <p className="text-2xs mt-1">
-            {search || orgFilter || roleFilter ? "Try adjusting your filters" : "No users registered yet"}
+      {/* ── Empty ── */}
+      {!loading && !error && filteredUsers.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-os-muted">
+          <div className="w-16 h-16 rounded-2xl bg-os-elevated border border-os-border/40 flex items-center justify-center mb-4">
+            <Users size={28} className="opacity-40" />
+          </div>
+          <p className="text-sm text-os-text-high/80 font-medium">
+            {users.length === 0 ? "暂无用户" : "无匹配结果"}
           </p>
+          <p className="text-2xs text-os-muted mt-1.5 text-center max-w-xs">
+            {users.length === 0
+              ? "系统尚未注册任何用户。启动服务时将根据 .env 配置自动创建管理员账号。"
+              : "尝试调整搜索条件或筛选器。"}
+          </p>
+          {users.length === 0 && (
+            <button
+              onClick={handleRefresh}
+              className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-os-accent bg-os-accent/5 border border-os-accent/10 hover:bg-os-accent/10 transition-colors"
+            >
+              <RefreshCw size={12} />
+              重新加载
+            </button>
+          )}
         </div>
       )}
 
-      {/* User Table */}
-      {!loading && filteredUsers.length > 0 && (
+      {/* ── User Table ── */}
+      {!loading && !error && filteredUsers.length > 0 && (
         <div className="os-card rounded-lg border border-os-border/30 bg-os-surface overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/30">
-                  <th className="text-left py-2.5 px-3 font-medium">Name</th>
-                  <th className="text-left py-2.5 px-3 font-medium">Email</th>
-                  <th className="text-left py-2.5 px-3 font-medium hidden md:table-cell">Organization</th>
-                  <th className="text-left py-2.5 px-3 font-medium">Roles</th>
-                  <th className="text-left py-2.5 px-3 font-medium hidden lg:table-cell">Department</th>
-                  <th className="text-right py-2.5 px-3 font-medium">Actions</th>
+                <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/20">
+                  <th className="text-left py-2.5 px-4 font-medium">姓名</th>
+                  <th className="text-left py-2.5 px-4 font-medium">邮箱</th>
+                  <th className="text-left py-2.5 px-4 font-medium hidden md:table-cell">组织</th>
+                  <th className="text-left py-2.5 px-4 font-medium">角色</th>
+                  <th className="text-left py-2.5 px-4 font-medium hidden lg:table-cell">部门</th>
+                  <th className="text-right py-2.5 px-4 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((user) => (
                   <>
                     <tr key={user.id} className="border-b border-os-border/10 hover:bg-os-elevated/30 transition-colors">
-                      <td className="py-2.5 px-3 text-os-text-high font-medium">{user.name}</td>
-                      <td className="py-2.5 px-3 text-os-text">{user.email}</td>
-                      <td className="py-2.5 px-3 text-os-subtle hidden md:table-cell">
-                        {user.org_name || user.org_id || "-"}
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-os-accent/10 flex items-center justify-center shrink-0">
+                            <UserPlus size={13} className="text-os-accent/70" />
+                          </div>
+                          <span className="text-os-text-high font-medium">{user.name || "—"}</span>
+                        </div>
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-2.5 px-4 text-os-text">{user.email}</td>
+                      <td className="py-2.5 px-4 text-os-subtle hidden md:table-cell">
+                        {user.org_name || user.org_id ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs bg-os-elevated border border-os-border/30">
+                            <Building2 size={10} />
+                            {user.org_name || user.org_id}
+                          </span>
+                        ) : (
+                          <span className="text-os-muted">—</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4">
                         <div className="flex flex-wrap gap-1">
                           {(user.roles || []).length === 0 ? (
-                            <span className="text-2xs text-os-muted">No roles</span>
+                            <span className="text-2xs text-os-muted">未分配</span>
                           ) : (
                             (user.roles || []).map((role) => (
                               <span
                                 key={role}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs bg-os-accent/10 text-os-accent cursor-pointer hover:bg-os-accent/20 transition-colors group relative"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs bg-os-accent/10 text-os-accent border border-os-accent/10 cursor-default hover:border-os-accent/20 transition-colors group relative"
                               >
                                 {role}
                                 <button
                                   onClick={() => handleRemoveRole(user.id, role)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-sm hover:bg-red-400/10 text-os-accent hover:text-red-400"
                                 >
-                                  <X size={10} />
+                                  <X size={9} />
                                 </button>
                               </span>
                             ))
                           )}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-os-subtle hidden lg:table-cell">
-                        {user.department || "-"}
+                      <td className="py-2.5 px-4 text-os-subtle hidden lg:table-cell">
+                        {user.department || "—"}
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-2.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleFetchPermissions(user.id)}
                             className={cn(
-                              "p-1.5 rounded text-2xs transition-colors",
+                              "p-1.5 rounded-lg text-2xs transition-all border",
                               showPermsFor === user.id
-                                ? "bg-os-accent/10 text-os-accent"
-                                : "text-os-subtle hover:text-os-text hover:bg-os-elevated"
+                                ? "bg-os-accent/10 text-os-accent border-os-accent/15"
+                                : "text-os-subtle hover:text-os-text hover:bg-os-elevated border-transparent"
                             )}
-                            title="View Permissions"
+                            title="查看权限"
                           >
                             <Shield size={13} />
                           </button>
@@ -346,8 +398,8 @@ export default function UserManagementPage() {
                               setAssigningRole("");
                               setShowRoleModal(true);
                             }}
-                            className="p-1.5 rounded text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
-                            title="Assign Role"
+                            className="p-1.5 rounded-lg text-2xs text-os-subtle hover:text-os-accent hover:bg-os-accent/5 border border-transparent hover:border-os-accent/10 transition-all"
+                            title="分配角色"
                           >
                             <UserCog size={13} />
                           </button>
@@ -359,7 +411,7 @@ export default function UserManagementPage() {
                       <tr key={`${user.id}-perms`} className="bg-os-elevated/10">
                         <td colSpan={6} className="py-3 px-6 animate-slide-up">
                           <div className="text-xs">
-                            <p className="text-os-subtle mb-2 font-medium">Permissions for {user.name}:</p>
+                            <p className="text-os-subtle mb-2 font-medium">权限：{user.name}</p>
                             {roles.length > 0 ? (
                               <div className="space-y-2">
                                 {(user.roles || []).map((role) => {
@@ -386,7 +438,7 @@ export default function UserManagementPage() {
                                 })}
                               </div>
                             ) : (
-                              <span className="text-2xs text-os-muted">No roles assigned — no permissions.</span>
+                              <span className="text-2xs text-os-muted">未分配角色 — 无权限。</span>
                             )}
                           </div>
                         </td>
@@ -400,24 +452,27 @@ export default function UserManagementPage() {
         </div>
       )}
 
-      {/* Role Assignment Modal */}
+      {/* ── Role Assignment Modal ── */}
       {showRoleModal && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowRoleModal(false)} />
-          <div className="relative bg-os-surface border border-os-border rounded-lg shadow-os-lg w-full max-w-md mx-4 p-5 z-10 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowRoleModal(false)} />
+          <div className="relative bg-os-surface border border-os-border rounded-xl shadow-os-lg w-full max-w-md mx-4 p-5 z-10 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-os-text-high">
-                Assign Role — {selectedUser.name}
+                分配角色 — {selectedUser.name}
               </h3>
-              <button onClick={() => setShowRoleModal(false)} className="text-os-muted hover:text-os-text transition-colors">
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="p-1 rounded-lg text-os-muted hover:text-os-text hover:bg-os-elevated transition-colors"
+              >
                 <X size={16} />
               </button>
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs text-os-text mb-2">
-                <span>Current roles:</span>
+                <span>当前角色：</span>
                 {(selectedUser.roles || []).length === 0 ? (
-                  <span className="text-os-muted">None</span>
+                  <span className="text-os-muted">无</span>
                 ) : (
                   selectedUser.roles.map((r) => (
                     <span key={r} className="px-1.5 py-0.5 rounded text-2xs bg-os-accent/10 text-os-accent">{r}</span>
@@ -425,33 +480,36 @@ export default function UserManagementPage() {
                 )}
               </div>
               <div>
-                <label className="text-2xs text-os-subtle block mb-1">Select Role</label>
+                <label className="text-2xs text-os-subtle block mb-1">选择角色</label>
                 <select
                   value={assigningRole}
                   onChange={(e) => setAssigningRole(e.target.value)}
-                  className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high focus:outline-none focus:border-os-accent transition-colors"
+                  className="w-full h-9 px-3 bg-os-base border border-os-border rounded-lg text-xs text-os-text-high focus:outline-none focus:border-os-accent/50 transition-all"
                 >
-                  <option value="">— Choose a role —</option>
+                  <option value="">— 选择角色 —</option>
                   {AVAILABLE_ROLES.filter((r) => !(selectedUser.roles || []).includes(r)).map((r) => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
                 {assigningRole && (
-                  <p className="text-2xs text-os-muted mt-1.5">
+                  <p className="text-2xs text-os-muted mt-1.5 leading-relaxed">
                     {ROLE_DESCRIPTIONS[assigningRole]}
                   </p>
                 )}
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowRoleModal(false)} className="px-3 py-1.5 rounded-md text-xs text-os-subtle hover:text-os-text transition-colors">
-                  Cancel
+                <button
+                  onClick={() => setShowRoleModal(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
+                >
+                  取消
                 </button>
                 <button
                   onClick={handleAssignRole}
                   disabled={!assigningRole}
-                  className="px-3 py-1.5 rounded-md text-xs font-medium bg-os-accent text-white hover:bg-os-accent/90 transition-colors disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-os-accent text-white hover:bg-os-accent/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Assign
+                  确认分配
                 </button>
               </div>
             </div>

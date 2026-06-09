@@ -275,7 +275,7 @@ rbac_store = RBACStoreAdapter(settings)
 compliance_store = ComplianceStoreAdapter(settings)
 
 app.include_router(create_org_router(org_store, auth_store, rbac_store))
-app.include_router(create_rbac_router(rbac_store, org_store))
+app.include_router(create_rbac_router(rbac_store, org_store, auth_store))
 app.include_router(create_audit_router(collab_store))
 app.include_router(create_compliance_router(compliance_store, org_store))
 app.include_router(create_admin_router(settings, org_store, auth_store, collab_store, agent._memory_store))

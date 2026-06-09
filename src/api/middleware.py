@@ -343,11 +343,69 @@ async def optional_auth(
 # ═══════════════════════════════════════════
 
 
+# ── Dev mode auto-auth token cache ──
+_dev_token_cache: dict = {}  # {token_str: expiry_timestamp}
+
+
+def _is_dev_mode() -> bool:
+    """判断当前是否为开发模式（非生产环境）。"""
+    env = os.getenv("ENVIRONMENT", "development").lower()
+    return env not in ("production", "prod")
+
+
+def _get_dev_token() -> str | None:
+    """获取或创建开发模式管理员 token。
+
+    仅在非生产环境下生效。使用缓存避免每次请求都查询数据库。
+    """
+    global _dev_token_cache
+    now_ts = datetime.now(timezone.utc).timestamp()
+    # 检查缓存是否有效（提前 60 秒过期以留出缓冲）
+    for token, expiry in list(_dev_token_cache.items()):
+        if expiry > now_ts + 60:
+            return token
+        else:
+            del _dev_token_cache[token]
+
+    # 创建或获取 dev admin 用户
+    if _auth_store is None or _token_service is None:
+        return None
+
+    try:
+        dev_email = os.getenv("ADMIN_EMAIL", "dev-admin@agent-os.local")
+        dev_password = os.getenv("ADMIN_PASSWORD", "dev-admin-agent-os-2024")
+        dev_user = _auth_store.ensure_super_admin(
+            email=dev_email,
+            password=dev_password,
+            name="Dev Admin",
+        )
+        if dev_user is None:
+            return None
+
+        # 创建 token
+        from src.core.auth import WorkspaceRole
+        tokens = _token_service.create_tokens(
+            user=dev_user,
+            workspace_id="default",
+            role=WorkspaceRole.ADMIN,
+        )
+        _dev_token_cache[tokens.access_token] = now_ts + 3300  # 55 min cache
+        logger.info("dev_auth_token_created",
+                    extra={"user_id": dev_user.id, "dev_mode": True})
+        return tokens.access_token
+    except Exception:
+        logger.warning("dev_auth_token_failed", exc_info=True)
+        return None
+
+
 class AuthMiddleware:
     """全局鉴权中间件。
 
-    所有 HTTP 请求必须通过 JWT 验证，除非路径在公开白名单中。
+    所有 HTTP 请求必须通过 JWT 验证，除非路径在公开白名单中
+    或当前为开发模式（ENVIRONMENT != production）。
+
     公开入口：/, /health, /docs, /openapi.json, /redoc, /auth/*
+    开发模式：无 token 时自动注入 dev admin 身份
     """
 
     _PUBLIC_EXACT: frozenset[str] = frozenset({
@@ -380,6 +438,11 @@ class AuthMiddleware:
             await self._app(scope, receive, send)
             return
 
+        # OPTIONS (CORS preflight) — 无条件放行，CORS 中间件会处理
+        if scope.get("method") == "OPTIONS":
+            await self._app(scope, receive, send)
+            return
+
         # 提取 Authorization header
         headers: dict[bytes, bytes] = dict(scope.get("headers", []))
         auth_value = headers.get(b"authorization", b"").decode("latin-1")
@@ -388,10 +451,30 @@ class AuthMiddleware:
         if auth_value.startswith("Bearer "):
             token_str = auth_value[7:].strip()
 
-        # 无 token → 401
+        # 无 token
         if not token_str:
-            await self._send_401(send, "缺少认证信息，请先登录")
-            return
+            # 开发模式：自动注入 dev admin token
+            if _is_dev_mode():
+                dev_token = _get_dev_token()
+                if dev_token:
+                    token_str = dev_token
+                    # 注入到 scope headers 中，下游 FastAPI dependencies 可正常解析
+                    new_headers = [(k, v) for k, v in scope.get("headers", [])
+                                   if k != b"authorization"]
+                    new_headers.append(
+                        (b"authorization", f"Bearer {dev_token}".encode("latin-1"))
+                    )
+                    scope["headers"] = new_headers
+                    logger.debug("dev_auth_injected", extra={"path": path})
+                else:
+                    logger.warning("dev_auth_unavailable",
+                                   extra={"path": path,
+                                          "hint": "检查 ADMIN_EMAIL/ADMIN_PASSWORD 环境变量或 .env 配置"})
+                    await self._send_401(send, "开发模式认证不可用，请检查 .env 配置")
+                    return
+            else:
+                await self._send_401(send, "缺少认证信息，请先登录")
+                return
 
         # 验证 JWT
         if _token_service is None:

@@ -196,16 +196,25 @@ export default function WorkspacePage() {
 
                     {/* Settings & Arrow */}
                     <div className="flex items-center gap-2 shrink-0">
-                      <button
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           router.push(`/workspace/settings?id=${ws.id}`);
                         }}
-                        className="p-1.5 rounded-md text-os-muted hover:text-os-text hover:bg-os-elevated transition-colors"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/workspace/settings?id=${ws.id}`);
+                          }
+                        }}
+                        className="p-1.5 rounded-md text-os-muted hover:text-os-text hover:bg-os-elevated transition-colors cursor-pointer"
                         title="设置"
                       >
                         <Shield size={14} />
-                      </button>
+                      </div>
                       <ChevronRight size={16} className="text-os-muted" />
                     </div>
                   </button>

@@ -68,8 +68,88 @@ class CheckAccessRequest(BaseModel):
 
 # ── Factory ──────────────────────────────────────────────────────────────────
 
-def create_rbac_router(rbac_store, org_store=None) -> APIRouter:
+def create_rbac_router(rbac_store, org_store=None, auth_store=None) -> APIRouter:
     router = APIRouter(prefix="/api/rbac", tags=["RBAC"])
+
+    # ── Users ─────────────────────────────────────────────────────────────
+
+    @router.get("/users")
+    async def list_users(
+        token=Depends(require_auth),
+    ):
+        """List all registered users with their organizations and roles."""
+        result: list[dict] = []
+        if auth_store is None:
+            return result
+
+        try:
+            # 从 users 表查询所有用户
+            rows = auth_store._db.execute(
+                "SELECT * FROM users ORDER BY created_at DESC"
+            ).fetchall()
+
+            for row in rows:
+                user = dict(row)
+                user_id = user["id"]
+
+                # 获取用户所属组织
+                orgs = []
+                if org_store is not None:
+                    try:
+                        org_list = org_store.list_organizations(user_id=user_id)
+                        orgs = [
+                            {"id": o.id, "name": o.name}
+                            for o in org_list
+                        ]
+                    except Exception:
+                        pass
+
+                # 获取用户角色（从 memberships 表或 role_assignments 表）
+                roles: list[str] = []
+                try:
+                    # 先尝试从 role_assignments 获取
+                    role_rows = rbac_store._db.execute(
+                        """SELECT r.name FROM roles r
+                           JOIN role_assignments ra ON r.id = ra.role_id
+                           WHERE ra.user_id = ?""",
+                        (user_id,),
+                    ).fetchall()
+                    if role_rows:
+                        roles = [r["name"] for r in role_rows]
+                except Exception:
+                    pass
+
+                # 如果 RBAC 没有角色，从 memberships 获取
+                if not roles:
+                    try:
+                        member_rows = auth_store._db.execute(
+                            "SELECT role FROM memberships WHERE user_id = ?",
+                            (user_id,),
+                        ).fetchall()
+                        roles = [r["role"] for r in member_rows]
+                    except Exception:
+                        pass
+
+                # 超级管理员标记
+                if user.get("is_super_admin"):
+                    if "SuperAdmin" not in roles:
+                        roles.insert(0, "SuperAdmin")
+
+                result.append({
+                    "id": user_id,
+                    "name": user.get("name", ""),
+                    "email": user.get("email", ""),
+                    "roles": roles,
+                    "org_id": orgs[0]["id"] if orgs else None,
+                    "org_name": orgs[0]["name"] if orgs else None,
+                    "department": None,
+                    "created_at": user.get("created_at"),
+                })
+        except Exception:
+            logger.warning("rbac:list_users_failed", exc_info=True)
+            return []
+
+        return result
 
     # ── Roles ─────────────────────────────────────────────────────────────
 

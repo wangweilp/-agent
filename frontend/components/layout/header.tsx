@@ -36,7 +36,9 @@ export function Header() {
   };
 
   return (
-    <header className="h-12 border-b border-os-border bg-os-base/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0">
+    <header className="h-12 border-b border-os-border/60 bg-os-base/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 relative">
+      {/* 底部光条 */}
+      <div className="absolute bottom-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-os-accent/10 to-transparent" />
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <div className={cn("w-2 h-2 rounded-full", statusDot[status] || "bg-zinc-600")} />

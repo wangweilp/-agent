@@ -36,7 +36,7 @@
     @apply bg-os-elevated/70 backdrop-blur-xl border border-white/[0.06] shadow-os-md;
   }
   .os-card {
-    @apply bg-os-surface border border-os-border rounded-os shadow-os;
+    @apply bg-os-surface border border-os-border rounded-os shadow-os-sm;
   }
   .os-card-hover {
     @apply transition-all duration-200 hover:border-os-muted hover:shadow-os-md;
@@ -50,6 +50,61 @@
   .text-gradient {
     @apply bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-transparent;
   }
+
+  /* ── 新增：科技感面板 ── */
+  .os-panel {
+    @apply bg-os-surface/80 backdrop-blur-sm border border-os-border/70 rounded-os shadow-os-sm;
+  }
+  .os-panel-elevated {
+    @apply bg-os-elevated/90 backdrop-blur-md border border-white/[0.05] rounded-os shadow-os-md;
+  }
+
+  /* ── 新增：发光边框容器 ── */
+  .os-glow-border {
+    @apply relative;
+  }
+  .os-glow-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(129,140,248,0.15), transparent 40%, transparent 60%, rgba(129,140,248,0.08));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ── 新增：扫描线动画 ── */
+  .scanline {
+    @apply relative overflow-hidden;
+  }
+  .scanline::after {
+    content: "";
+    position: absolute;
+    top: -100%;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, transparent 0%, rgba(129,140,248,0.02) 50%, transparent 100%);
+    animation: scan 6s linear infinite;
+    pointer-events: none;
+  }
+
+  /* ── 新增：脉冲环 ── */
+  .pulse-ring {
+    @apply relative;
+  }
+  .pulse-ring::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    border: 1px solid rgba(129,140,248,0.3);
+    animation: pulseRing 2s ease-out infinite;
+    pointer-events: none;
+  }
 }
 
 @layer utilities {
@@ -57,5 +112,57 @@
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
+  }
+
+  /* ── 新增：网格背景纹理 ── */
+  .bg-grid-subtle {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── 新增：噪点纹理 ── */
+  .bg-noise {
+    position: relative;
+  }
+  .bg-noise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.012;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 128px 128px;
+    pointer-events: none;
+  }
+
+  /* ── 新增：顶部渐变光晕 ── */
+  .bg-glow-top {
+    background:
+      radial-gradient(ellipse 600px 300px at 50% 0%, rgba(129,140,248,0.04), transparent 70%),
+      radial-gradient(ellipse 400px 200px at 80% 0%, rgba(99,102,241,0.03), transparent 60%);
+  }
+
+  /* ── 新增：底部光晕 ── */
+  .bg-glow-bottom {
+    background:
+      radial-gradient(ellipse 500px 200px at 50% 100%, rgba(129,140,248,0.03), transparent 70%);
+  }
+}
+
+/* ── 动画关键帧 ── */
+@keyframes scan {
+  0% { top: -100%; }
+  100% { top: 200%; }
+}
+
+@keyframes pulseRing {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
   }
 }

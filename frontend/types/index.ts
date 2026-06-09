@@ -949,3 +949,51 @@ export interface Report {
   file_path: string | null;
   created_at: string;
 }
+
+// ── RBAC ──
+
+export interface RbacUser {
+  id: string;
+  name: string;
+  email: string;
+  roles: string[];
+  org_id: string | null;
+  org_name: string | null;
+  department: string | null;
+  created_at?: string;
+}
+
+export interface RbacRole {
+  id: string;
+  name: string;
+  permissions: string[];
+  is_system?: boolean;
+  description?: string;
+}
+
+// ── Admin ──
+
+export interface AdminSummary {
+  total_orgs: number;
+  total_users: number;
+  total_memories: number;
+  growth_rate_weekly: number;
+  audit_events_30d: number;
+  risk_events: number;
+}
+
+export interface GrowthDataPoint {
+  week: string;
+  count: number;
+}
+
+export interface AdminConfig {
+  db_type: string;
+  vector_store: string;
+  llm_provider: string;
+  embedding_model: string;
+  auth_enabled: boolean;
+  cors_origins: string[];
+  log_level: string;
+  environment: string;
+}

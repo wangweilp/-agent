@@ -837,4 +837,41 @@ export const api = {
       return request(`/reports/${id}`, { method: "DELETE" });
     },
   },
+
+  // ── RBAC ──
+
+  rbac: {
+    users(): Promise<import("@/types").RbacUser[]> {
+      return request("/api/rbac/users");
+    },
+    roles(orgId?: string): Promise<import("@/types").RbacRole[]> {
+      const qs = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
+      return request(`/api/rbac/roles${qs}`);
+    },
+    assignRole(data: { user_id: string; role_id: string; organization_id: string; scope_type?: string; scope_id?: string }): Promise<unknown> {
+      return request("/api/rbac/assign", { method: "POST", body: JSON.stringify(data) });
+    },
+    removeAssignment(assignmentId: string): Promise<{ detail: string }> {
+      return request(`/api/rbac/assignments/${assignmentId}`, { method: "DELETE" });
+    },
+    userRoles(userId: string, orgId?: string): Promise<import("@/types").RbacRole[]> {
+      const qs = orgId ? `?org_id=${encodeURIComponent(orgId)}` : "";
+      return request(`/api/rbac/users/${userId}/roles${qs}`);
+    },
+  },
+
+  // ── Admin ──
+
+  admin: {
+    summary(): Promise<import("@/types").AdminSummary> {
+      return request("/api/admin/summary");
+    },
+    growth(weeks?: number): Promise<import("@/types").GrowthDataPoint[]> {
+      const qs = weeks ? `?weeks=${weeks}` : "";
+      return request(`/api/admin/growth${qs}`);
+    },
+    config(): Promise<import("@/types").AdminConfig> {
+      return request("/api/admin/config");
+    },
+  },
 };
