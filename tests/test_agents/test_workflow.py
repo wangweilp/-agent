@@ -297,7 +297,7 @@ class TestPresetWorkflows:
     def test_meeting_to_training_workflow(self):
         wf = create_meeting_to_training_workflow()
         assert wf.name == "会议知识沉淀工作流"
-        assert len(wf.nodes) == 5
+        assert len(wf.nodes) == 7
         errors = wf.validate()
         assert errors == [], f"验证错误: {errors}"
 
@@ -313,7 +313,7 @@ class TestPresetWorkflows:
             next_id = current.next_nodes[0]
             current = wf.nodes[next_id]
             path.append(current.name)
-        assert path == ["开始", "会议要点提取", "知识入库", "生成培训材料", "结束"]
+        assert path == ["开始", "会议要点提取", "知识入库", "图谱关联", "记忆持久化", "生成培训材料", "结束"]
 
     def test_research_to_report_workflow(self):
         wf = create_research_to_report_workflow()
@@ -339,7 +339,7 @@ class TestExecutePresetWorkflows:
         })
         assert execution.status == WorkflowStatus.COMPLETED
         # 应该有至少 3 个节点的结果 (Meeting, Knowledge, Training)
-        assert len(execution.node_results) == 3
+        assert len(execution.node_results) == 5
 
     def test_execute_research_to_report(self, engine):
         wf = create_research_to_report_workflow()

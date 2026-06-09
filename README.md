@@ -32,3 +32,22 @@
 - `docs/ARCHITECTURE.md` — 当需要确认模块边界时
 - `docs/DESIGN.md` — 当需要确认 Memory 字段或 Agent 循环细节时
 - `CLAUDE.md` — 当 Claude 违反了架构隔离规则时（作为追加约束）
+
+---
+## Quick Start: Enterprise AI Agent Demo
+
+```bash
+# Start backend
+python main.py
+
+# Start frontend (in separate terminal)
+cd frontend && npm run dev
+
+# Initialize demo data
+python scripts/seed_agent_demo.py --apply
+
+# Open browser
+# http://localhost:3000/agents/scenarios
+```
+
+See [Step 20-D Demo Script](docs/STEP20D_DEMO_SCRIPT.md) for full demo walkthrough.

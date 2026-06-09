@@ -29,6 +29,8 @@ class ResourceType(StrEnum):
     ORGANIZATION = "organization"
     AUDIT = "audit"
     COMPLIANCE = "compliance"
+    AGENT = "agent"             # Enterprise AI Agent
+    WORKFLOW = "workflow"       # Agent Workflow
 
 
 class ActionType(StrEnum):

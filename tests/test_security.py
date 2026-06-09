@@ -103,8 +103,13 @@ def expired_token(token_service, test_user, test_workspace):
 
 
 @pytest.fixture
-def app_with_middleware(token_service, auth_store):
-    """创建一个带 AuthMiddleware 的 FastAPI app 用于测试。"""
+def app_with_middleware(token_service, auth_store, monkeypatch):
+    """创建一个带 AuthMiddleware 的 FastAPI app 用于测试。
+
+    DISABLE_DEV_AUTH=true 确保 dev admin token 不会自动注入，
+    使无 token / 无效 token 的请求正确返回 401。
+    """
+    monkeypatch.setenv("DISABLE_DEV_AUTH", "true")
     init_auth(token_service, auth_store)
 
     app = FastAPI()

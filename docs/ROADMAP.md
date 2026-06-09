@@ -127,3 +127,19 @@
 2. 完成 checklist → 合并到 develop
 3. develop 稳定 → tag → 合并 master
 4. tag 命名：`v0.1.0`, `v0.2.0`...
+
+
+---
+## Step 20-D: Enterprise AI Agent (Demo Ready)
+
+当前状态（2026-06-09）:
+- Cognitive OS: AI Coach / KG / Memory Search / Import / Sync Hub
+- Team Brain / Enterprise Brain / SaaS / Growth Analytics
+- **Enterprise AI Agent Platform**: 12 内置 Agent + 6 部门 Agent
+- WorkflowEngine: 9 种节点类型, WorkflowExecutionStep 完整追溯
+- 业务场景: Meeting-to-Training + Department Assistant
+- [演示文档](STEP20D_DEMO_SCRIPT.md)
+- 演示数据: `python scripts/seed_agent_demo.py --apply`
+- 测试: 530 passed (agent 235 + security 49 + rbac/saas 246)
+
+Next: Step 21 Agent Marketplace

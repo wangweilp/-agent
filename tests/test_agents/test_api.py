@@ -12,9 +12,24 @@ from src.agents.builtin.knowledge_agent import KnowledgeAgent
 from src.agents.builtin.meeting_agent import MeetingAgent
 from src.agents.builtin.training_agent import TrainingAgent
 from src.api.agent_router import create_agent_router
+from src.api.middleware import require_auth, TokenPayload
+from src.core.auth import WorkspaceRole
 from tests.test_agents.test_runtime import FakeMemoryProvider, FakeKGProvider
 
 from fastapi import FastAPI
+
+
+# 测试用 TokenPayload
+_TEST_PAYLOAD = TokenPayload(
+    user_id="test-user-001",
+    workspace_id="test-ws-001",
+    role=WorkspaceRole.ADMIN,
+)
+
+
+async def _test_require_auth_override() -> TokenPayload:
+    """测试用认证替代 — 返回固定测试 payload，跳过 JWT 验证。"""
+    return _TEST_PAYLOAD
 
 
 @pytest.fixture
@@ -35,6 +50,8 @@ def client():
     engine.register_workflow(wf)
 
     app = FastAPI()
+    # 覆盖认证依赖 — 测试环境跳过 JWT
+    app.dependency_overrides[require_auth] = _test_require_auth_override
     app.include_router(create_agent_router(registry, engine))
     return TestClient(app)
 

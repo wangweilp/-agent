@@ -19,6 +19,7 @@ from src.agents.runtime import (
     AgentTask,
     KnowledgeGraphProvider,
     MemoryProvider,
+    PermissionChecker,
     ToolProvider,
 )
 
@@ -94,6 +95,7 @@ class AgentRegistry:
         self._tools: ToolProvider | None = None
         self._memory: MemoryProvider | None = None
         self._kg: KnowledgeGraphProvider | None = None
+        self._metrics_store: Any = None  # AgentMetricsStore, 延迟注入
 
     # ── 依赖注入 ──
 
@@ -106,6 +108,10 @@ class AgentRegistry:
         self._tools = tools
         self._memory = memory
         self._kg = kg
+
+    def set_metrics_store(self, metrics_store: Any) -> None:
+        """注入 Agent 指标存储（AgentMetricsStore 协议）。"""
+        self._metrics_store = metrics_store
 
     # ── 注册 / 注销 ──
 
@@ -201,7 +207,22 @@ class AgentRegistry:
 
     # ── 执行 ──
 
-    def run(self, agent_id: str, task: AgentTask) -> AgentResult | None:
+    def run(
+        self,
+        agent_id: str,
+        task: AgentTask,
+        *,
+        tenant_id: str = "",
+        user_id: str = "",
+        workspace_id: str = "",
+        user_roles: list[str] | None = None,
+        permission_checker: "PermissionChecker | None" = None,
+    ) -> AgentResult | None:
+        """执行 Agent 任务（含权限和租户隔离）。
+
+        如果提供了 permission_checker，会先验证用户是否有该 Agent 的执行权限。
+        如果提供了 tenant_id，会将其注入执行上下文。
+        """
         agent = self._agents.get(agent_id)
         reg = self._registrations.get(agent_id)
         if agent is None or reg is None:
@@ -211,8 +232,73 @@ class AgentRegistry:
             logger.warning("agent_disabled", extra={"agent_id": agent_id})
             return None
 
-        result = agent.run(task)
+        # 权限检查：验证用户是否有权执行该 Agent
+        if permission_checker is not None and user_id:
+            if not permission_checker.check(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                resource=f"agent:{agent_id}",
+                action="execute",
+            ):
+                logger.warning(
+                    "agent_permission_denied",
+                    extra={
+                        "agent_id": agent_id,
+                        "user_id": user_id,
+                        "tenant_id": tenant_id,
+                    },
+                )
+                return AgentResult(
+                    task_id=task.task_id,
+                    agent_id=agent_id,
+                    agent_name=agent.name,
+                    success=False,
+                    error=f"权限不足：用户 {user_id} 无权执行 Agent {agent_id}",
+                )
+
+        # 租户隔离：记录租户信息（Agent 内部可通过 context 访问）
+        if tenant_id:
+            logger.info(
+                "agent_run_tenant_context",
+                extra={
+                    "agent_id": agent_id,
+                    "tenant_id": tenant_id,
+                    "user_id": user_id,
+                },
+            )
+
+        result = agent.run(
+            task,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            workspace_id=workspace_id,
+            user_roles=user_roles,
+            permission_checker=permission_checker,
+        )
         reg.record_usage(result)
+
+        # 记录到 Agent Metrics Store
+        if result is not None and self._metrics_store is not None:
+            try:
+                from src.agents.metrics import AgentUsageEvent
+                event = AgentUsageEvent(
+                    agent_id=agent_id,
+                    agent_name=agent.name,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    task_id=task.task_id,
+                    success=result.success,
+                    duration_ms=result.duration_ms,
+                    tool_calls=result.tool_calls_count,
+                    memory_calls=result.memory_calls_count,
+                    kg_calls=result.kg_calls_count,
+                    tokens_used=result.tokens_used,
+                    department=reg.tags[0] if reg.tags else "",
+                )
+                self._metrics_store.record_event(event)
+            except Exception as e:
+                logger.warning("agent_metrics_record_failed", extra={"error": str(e)})
+
         return result
 
     # ── 统计 ──

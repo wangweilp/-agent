@@ -31,10 +31,13 @@ logger = logging.getLogger(__name__)
 
 
 class NodeType(str, Enum):
-    AGENT = "agent"          # Agent 执行节点
-    HUMAN = "human"          # 人工节点（审批/确认）
-    CONDITION = "condition"  # 条件分支
-    PARALLEL = "parallel"    # 并行执行
+    AGENT = "agent"                     # Agent 执行节点
+    HUMAN = "human"                     # 人工节点（审批/确认）
+    CONDITION = "condition"             # 条件分支
+    PARALLEL = "parallel"               # 并行执行
+    TOOL = "tool"                       # 工具调用节点
+    MEMORY = "memory"                   # 记忆检索/写入节点
+    KNOWLEDGE_GRAPH = "knowledge_graph" # 知识图谱查询节点
     START = "start"
     END = "end"
 
@@ -156,6 +159,21 @@ class Workflow:
 
 
 @dataclass
+class WorkflowExecutionStep:
+    """工作流单步执行记录。"""
+    step_index: int = 0
+    node_id: str = ""
+    node_name: str = ""
+    node_type: str = ""
+    status: str = "pending"  # pending | running | completed | failed
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    duration_ms: float = 0.0
+    error: str | None = None
+    output_summary: str = ""  # 前 200 字符
+
+
+@dataclass
 class WorkflowExecution:
     """工作流执行实例。"""
     execution_id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -166,6 +184,11 @@ class WorkflowExecution:
     node_statuses: dict[str, str] = field(default_factory=dict)  # node_id → status
     current_node_id: str = ""
     error: str | None = None
+    steps: list[WorkflowExecutionStep] = field(default_factory=list)
+    # 租户/用户上下文
+    tenant_id: str = ""
+    user_id: str = ""
+    workspace_id: str = ""
     started_at: datetime | None = None
     finished_at: datetime | None = None
     duration_ms: float = 0.0
@@ -192,6 +215,24 @@ class WorkflowExecution:
             "node_statuses": self.node_statuses,
             "current_node_id": self.current_node_id,
             "error": self.error,
+            "steps": [
+                {
+                    "step_index": s.step_index,
+                    "node_id": s.node_id,
+                    "node_name": s.node_name,
+                    "node_type": s.node_type,
+                    "status": s.status,
+                    "started_at": s.started_at.isoformat() if s.started_at else None,
+                    "finished_at": s.finished_at.isoformat() if s.finished_at else None,
+                    "duration_ms": s.duration_ms,
+                    "error": s.error,
+                    "output_summary": s.output_summary,
+                }
+                for s in self.steps
+            ],
+            "tenant_id": self.tenant_id,
+            "user_id": self.user_id,
+            "workspace_id": self.workspace_id,
             "duration_ms": self.duration_ms,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
@@ -234,7 +275,15 @@ class WorkflowEngine:
 
     # ── 执行 ──
 
-    def execute(self, workflow_id: str, input_data: dict[str, Any] | None = None) -> WorkflowExecution:
+    def execute(
+        self,
+        workflow_id: str,
+        input_data: dict[str, Any] | None = None,
+        *,
+        tenant_id: str = "",
+        user_id: str = "",
+        workspace_id: str = "",
+    ) -> WorkflowExecution:
         workflow = self._workflows.get(workflow_id)
         if workflow is None:
             raise ValueError(f"工作流 {workflow_id} 不存在")
@@ -243,6 +292,9 @@ class WorkflowEngine:
             workflow_id=workflow_id,
             workflow_name=workflow.name,
             status=WorkflowStatus.RUNNING,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            workspace_id=workspace_id,
             started_at=datetime.now(timezone.utc),
         )
         t_start = time.monotonic()
@@ -260,6 +312,14 @@ class WorkflowEngine:
                 if node is None:
                     execution.error = f"节点 {current_id} 不存在"
                     execution.status = WorkflowStatus.FAILED
+                    execution.steps.append(WorkflowExecutionStep(
+                        step_index=len(execution.steps),
+                        node_id=current_id,
+                        node_name="<unknown>",
+                        node_type="",
+                        status="failed",
+                        error=f"节点 {current_id} 不存在",
+                    ))
                     break
 
                 # 防止循环
@@ -269,7 +329,9 @@ class WorkflowEngine:
 
                 execution.current_node_id = current_id
                 node.status = "running"
+                node_start = time.monotonic()
                 node.started_at = datetime.now(timezone.utc)
+                step_index = len(execution.steps)
 
                 if node.node_type == NodeType.AGENT:
                     result = self._execute_agent_node(node, input_data or {})
@@ -321,6 +383,31 @@ class WorkflowEngine:
                         node.finished_at = datetime.now(timezone.utc)
                         next_nodes = node.next_nodes
 
+                elif node.node_type == NodeType.TOOL:
+                    result = self._execute_tool_node(node, input_data or {})
+                    execution.record_node_result(node.node_id, result)
+                    node.result = result
+                    node.finished_at = datetime.now(timezone.utc)
+                    if not result.success and not node.config.get("continue_on_error"):
+                        execution.status = WorkflowStatus.FAILED
+                        execution.error = result.error
+                        break
+                    next_nodes = execution.get_next_nodes(node, result)
+
+                elif node.node_type == NodeType.MEMORY:
+                    result = self._execute_memory_node(node, input_data or {})
+                    execution.record_node_result(node.node_id, result)
+                    node.result = result
+                    node.finished_at = datetime.now(timezone.utc)
+                    next_nodes = execution.get_next_nodes(node, result)
+
+                elif node.node_type == NodeType.KNOWLEDGE_GRAPH:
+                    result = self._execute_kg_node(node, input_data or {})
+                    execution.record_node_result(node.node_id, result)
+                    node.result = result
+                    node.finished_at = datetime.now(timezone.utc)
+                    next_nodes = execution.get_next_nodes(node, result)
+
                 elif node.node_type == NodeType.END:
                     execution.status = WorkflowStatus.COMPLETED
                     node.status = "completed"
@@ -328,6 +415,21 @@ class WorkflowEngine:
 
                 else:
                     next_nodes = node.next_nodes
+
+                # 记录步骤
+                node_result = execution.node_results.get(node.node_id)
+                execution.steps.append(WorkflowExecutionStep(
+                    step_index=step_index,
+                    node_id=node.node_id,
+                    node_name=node.name,
+                    node_type=node.node_type.value,
+                    status="completed" if (node_result and node_result.success) else "failed",
+                    started_at=node.started_at,
+                    finished_at=node.finished_at,
+                    duration_ms=(time.monotonic() - node_start) * 1000,
+                    error=node_result.error if node_result and not node_result.success else None,
+                    output_summary=(node_result.output[:200] if node_result and node_result.output else ""),
+                ))
 
                 # 移动
                 if next_nodes:
@@ -403,6 +505,149 @@ class WorkflowEngine:
             )
         return result
 
+    def _execute_tool_node(self, node: WorkflowNode, input_data: dict[str, Any]) -> AgentResult:
+        """执行工具节点 — 调用已注册的工具。"""
+        task_id = str(uuid.uuid4())
+        tool_name = node.config.get("tool_name", node.agent_id)
+        tool_args = {**input_data, **node.config.get("tool_args", {})}
+
+        try:
+            # 通过 Registry 的工具提供者执行
+            if self._registry._tools is None:
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="tool",
+                    agent_name=node.name,
+                    success=False,
+                    error="Tool provider 未配置",
+                )
+
+            tool_result = self._registry._tools.execute(tool_name, tool_args)
+            return AgentResult(
+                task_id=task_id,
+                agent_id="tool",
+                agent_name=node.name,
+                success=tool_result.success,
+                output=tool_result.content,
+                error=tool_result.error,
+                data=tool_result.metadata,
+                tool_calls_count=1,
+            )
+        except Exception as e:
+            return AgentResult(
+                task_id=task_id,
+                agent_id="tool",
+                agent_name=node.name,
+                success=False,
+                error=str(e),
+            )
+
+    def _execute_memory_node(self, node: WorkflowNode, input_data: dict[str, Any]) -> AgentResult:
+        """执行记忆节点 — 搜索或写入 Memory。"""
+        task_id = str(uuid.uuid4())
+        action = node.config.get("action", "search")
+        query = node.config.get("query", input_data.get("query", ""))
+        top_k = node.config.get("top_k", 5)
+
+        try:
+            if self._registry._memory is None:
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="memory",
+                    agent_name=node.name,
+                    success=False,
+                    error="Memory provider 未配置",
+                )
+
+            if action == "write":
+                content = node.config.get("content", input_data.get("content", ""))
+                metadata = node.config.get("metadata", {})
+                memory_id = self._registry._memory.remember(content, metadata)
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="memory",
+                    agent_name=node.name,
+                    success=True,
+                    output=f"记忆已写入: {memory_id}",
+                    data={"memory_id": memory_id},
+                    memory_calls_count=1,
+                )
+            else:
+                memories = self._registry._memory.search(query, top_k=top_k)
+                output = "\n".join(
+                    f"- [{m.score:.2f}] {m.content[:200]}" for m in memories
+                ) if memories else f"未找到匹配「{query}」的记忆"
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="memory",
+                    agent_name=node.name,
+                    success=True,
+                    output=output,
+                    data={"results": [{"id": m.memory_id, "content": m.content[:200], "score": m.score} for m in memories]},
+                    memory_calls_count=1,
+                )
+        except Exception as e:
+            return AgentResult(
+                task_id=task_id,
+                agent_id="memory",
+                agent_name=node.name,
+                success=False,
+                error=str(e),
+            )
+
+    def _execute_kg_node(self, node: WorkflowNode, input_data: dict[str, Any]) -> AgentResult:
+        """执行知识图谱节点 — 查询实体或遍历关系。"""
+        task_id = str(uuid.uuid4())
+        action = node.config.get("action", "search")
+        query = node.config.get("query", input_data.get("query", ""))
+        top_k = node.config.get("top_k", 10)
+
+        try:
+            if self._registry._kg is None:
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="kg",
+                    agent_name=node.name,
+                    success=False,
+                    error="Knowledge Graph provider 未配置",
+                )
+
+            if action == "traverse":
+                start_id = node.config.get("start_id", "")
+                depth = node.config.get("depth", 2)
+                result = self._registry._kg.traverse(start_id, depth=depth)
+                entities = result.get("entities", [])
+                relations = result.get("relations", [])
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="kg",
+                    agent_name=node.name,
+                    success=True,
+                    output=f"图谱遍历: {len(entities)} 实体, {len(relations)} 关系",
+                    data=result,
+                    kg_calls_count=1,
+                )
+            else:
+                entities = self._registry._kg.query_entities(query, top_k=top_k)
+                output_lines = [f"- {e.name} [{e.entity_type}]" for e in entities]
+                return AgentResult(
+                    task_id=task_id,
+                    agent_id="kg",
+                    agent_name=node.name,
+                    success=True,
+                    output="\n".join(output_lines) if output_lines else f"未找到匹配「{query}」的实体",
+                    data={"entities": [{"id": e.id, "name": e.name, "type": e.entity_type} for e in entities]},
+                    kg_calls_count=1,
+                )
+        except Exception as e:
+            return AgentResult(
+                task_id=task_id,
+                agent_id="kg",
+                agent_name=node.name,
+                success=False,
+                error=str(e),
+            )
+
 
 # ═══════════════════════════════════════════
 # 预置工作流
@@ -410,10 +655,10 @@ class WorkflowEngine:
 
 
 def create_meeting_to_training_workflow() -> Workflow:
-    """示例工作流：会议记录 → Meeting Agent → Knowledge Agent → KG → Training Agent"""
+    """示例工作流：会议记录 → Meeting Agent → Knowledge Agent → Knowledge Graph → Training Agent"""
     wf = Workflow(
         name="会议知识沉淀工作流",
-        description="会议记录 → Meeting Agent 提取要点 → Knowledge Agent 入库 → Training Agent 生成培训材料",
+        description="会议记录 → Meeting Agent 提取要点 → Knowledge Agent 入库 → Knowledge Graph 关联 → Memory 持久化 → Training Agent 生成培训材料",
         tags=["meeting", "knowledge", "training"],
     )
 
@@ -437,6 +682,22 @@ def create_meeting_to_training_workflow() -> Workflow:
     )
     wf.add_node(knowledge)
 
+    kg = WorkflowNode(
+        name="图谱关联",
+        node_type=NodeType.KNOWLEDGE_GRAPH,
+        description="构建会议知识点之间的图谱关联",
+        config={"action": "search", "query": "会议要点"},
+    )
+    wf.add_node(kg)
+
+    memory_node = WorkflowNode(
+        name="记忆持久化",
+        node_type=NodeType.MEMORY,
+        description="将关键知识点写入长期记忆",
+        config={"action": "write"},
+    )
+    wf.add_node(memory_node)
+
     training = WorkflowNode(
         name="生成培训材料",
         node_type=NodeType.AGENT,
@@ -452,7 +713,9 @@ def create_meeting_to_training_workflow() -> Workflow:
     wf.set_start(start.node_id)
     wf.connect(start.node_id, meeting.node_id)
     wf.connect(meeting.node_id, knowledge.node_id)
-    wf.connect(knowledge.node_id, training.node_id)
+    wf.connect(knowledge.node_id, kg.node_id)
+    wf.connect(kg.node_id, memory_node.node_id)
+    wf.connect(memory_node.node_id, training.node_id)
     wf.connect(training.node_id, end.node_id)
 
     return wf

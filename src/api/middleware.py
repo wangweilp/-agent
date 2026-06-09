@@ -348,7 +348,12 @@ _dev_token_cache: dict = {}  # {token_str: expiry_timestamp}
 
 
 def _is_dev_mode() -> bool:
-    """判断当前是否为开发模式（非生产环境）。"""
+    """判断当前是否为开发模式（非生产环境）。
+
+    DISABLE_DEV_AUTH=true 可强制关闭开发模式自动注入，用于安全测试环境。
+    """
+    if os.getenv("DISABLE_DEV_AUTH", "").lower() == "true":
+        return False
     env = os.getenv("ENVIRONMENT", "development").lower()
     return env not in ("production", "prod")
 

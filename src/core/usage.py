@@ -22,6 +22,8 @@ class UsageResource(StrEnum):
     COACH = "coach"
     STORAGE = "storage"
     MEMORY = "memory"
+    AGENT_RUN = "agent_run"          # Enterprise AI Agent 执行
+    WORKFLOW_RUN = "workflow_run"    # Workflow 执行
 
 
 class UsageUnit(StrEnum):

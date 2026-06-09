@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Bot,
   CheckCircle2,
@@ -387,9 +388,12 @@ export default function WorkflowBuilderPage() {
             <article key={workflow.workflow_id} className="os-card os-card-hover p-5">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h2 className="break-words text-base font-semibold text-os-text-high">
+                  <Link
+                    href={`/agents/workflows/${workflow.workflow_id}`}
+                    className="break-words text-base font-semibold text-os-text-high hover:text-blue-400 transition-colors"
+                  >
                     {workflow.name}
-                  </h2>
+                  </Link>
                   <p className="mt-1 line-clamp-2 text-xs leading-5 text-os-subtle">
                     {workflow.description || "暂无描述"}
                   </p>

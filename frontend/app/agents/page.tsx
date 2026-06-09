@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Activity,
   Bot,
@@ -75,7 +76,8 @@ function LoadingGrid() {
   );
 }
 
-export default function AgentMarketplacePage() {
+export default function InternalAgentCenterPage() {
+  const router = useRouter();
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,9 +175,9 @@ export default function AgentMarketplacePage() {
             <Bot size={14} className="text-os-accent" />
             企业内部 Agent 能力目录
           </div>
-          <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">Agent 市场</h1>
+          <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">Internal Agent Center</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
-            以卡片方式浏览、筛选和试运行可用 Agent，所有数据通过后端 Agent API 获取。
+            企业内部 Agent 管理中心。以卡片方式浏览、筛选和执行 Agent，所有数据通过后端 Agent API 获取。
           </p>
         </div>
 
@@ -281,6 +283,7 @@ export default function AgentMarketplacePage() {
               busy={toggling.has(agent.agent_id)}
               onRun={openRunDialog}
               onToggle={handleToggle}
+              onClick={(id) => router.push(`/agents/${id}`)}
             />
           ))}
         </section>

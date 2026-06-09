@@ -1,14 +1,21 @@
+from __future__ import annotations
+
 """Agent Runtime — 统一 Agent 协议与 PEOR 执行循环。
 
 提供：
-- AgentContext   — 执行上下文（记忆、知识图谱、工具）
+- AgentContext   — 执行上下文（记忆、知识图谱、工具，含租户/用户/权限）
 - AgentTask      — 任务定义
-- AgentResult    — 执行结果
+- AgentResult    — 执行结果（含 trace、memory_refs、knowledge_refs、timeout）
 - Agent          — 统一协议：Plan → Execute → Observe → Reflect
 - Tool Calling / Memory Calling / Knowledge Graph Calling
+
+安全约束：
+- 所有 Agent 执行必须有 tenant_id/user_id（不可为空，开发模式默认放行）
+- 不允许 Agent 绕过权限和租户隔离
+- 不允许让 Agent 直接访问未经授权的数据
 """
 
-from __future__ import annotations
+DEFAULT_AGENT_TIMEOUT_SECONDS = 60  # Agent 执行超时默认值
 
 import logging
 import time
@@ -135,9 +142,27 @@ class KnowledgeGraphProvider(Protocol):
 # ═══════════════════════════════════════════
 
 
+class PermissionChecker(Protocol):
+    """权限检查器协议 — 在 Agent 执行前验证用户是否有权调用。"""
+
+    def check(
+        self,
+        user_id: str,
+        tenant_id: str,
+        resource: str,
+        action: str,
+    ) -> bool:
+        """返回 True 表示授权，False 表示拒绝。"""
+        ...
+
+
 @dataclass
 class AgentContext:
-    """Agent 执行上下文 — 注入所有外部能力。"""
+    """Agent 执行上下文 — 注入所有外部能力。
+
+    包含租户上下文、用户上下文和权限上下文，
+    确保 Agent 执行不绕过多租户隔离和 RBAC 控制。
+    """
     agent_id: str
     agent_name: str
     tools: ToolProvider | None = None
@@ -145,6 +170,13 @@ class AgentContext:
     knowledge_graph: KnowledgeGraphProvider | None = None
     config: dict[str, Any] = field(default_factory=dict)
     parent_execution_id: str | None = None
+
+    # 租户与用户上下文
+    tenant_id: str = ""
+    user_id: str = ""
+    workspace_id: str = ""
+    user_roles: list[str] = field(default_factory=list)
+    permission_checker: PermissionChecker | None = None
 
     # 运行时状态
     status: AgentStatus = AgentStatus.IDLE
@@ -161,6 +193,17 @@ class AgentContext:
             "content": content,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
+
+    def check_permission(self, resource: str, action: str = "execute") -> bool:
+        """验证当前用户是否对指定资源有操作权限。"""
+        if self.permission_checker is None:
+            return True  # 无检查器时默认放行（开发模式）
+        return self.permission_checker.check(
+            user_id=self.user_id,
+            tenant_id=self.tenant_id,
+            resource=resource,
+            action=action,
+        )
 
 
 # ═══════════════════════════════════════════
@@ -181,6 +224,22 @@ class AgentTask:
     created_by: str = ""   # user_id or system
     tags: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# ═══════════════════════════════════════════
+# ExecutionTrace
+# ═══════════════════════════════════════════
+
+
+@dataclass
+class ExecutionTraceStep:
+    """执行链路中的单个步骤。"""
+    phase: str  # plan | execute | observe | reflect | tool_call | memory_call | kg_call
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    detail: str = ""
+    duration_ms: float = 0.0
+    success: bool = True
+    error: str | None = None
 
 
 # ═══════════════════════════════════════════
@@ -209,6 +268,13 @@ class AgentResult:
     duration_ms: float = 0.0
     tokens_used: int = 0
 
+    # 执行链路追踪
+    trace: list[ExecutionTraceStep] = field(default_factory=list)
+    memory_refs: list[str] = field(default_factory=list)  # 引用的 memory_id
+    knowledge_refs: list[str] = field(default_factory=list)  # 引用的 entity_id
+    tool_calls: list[str] = field(default_factory=list)  # 调用的 tool_name
+    timeout_occurred: bool = False
+
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
@@ -229,6 +295,21 @@ class AgentResult:
             "kg_calls_count": self.kg_calls_count,
             "duration_ms": self.duration_ms,
             "tokens_used": self.tokens_used,
+            "trace": [
+                {
+                    "phase": t.phase,
+                    "timestamp": t.timestamp.isoformat(),
+                    "detail": t.detail,
+                    "duration_ms": t.duration_ms,
+                    "success": t.success,
+                    "error": t.error,
+                }
+                for t in self.trace
+            ],
+            "memory_refs": self.memory_refs,
+            "knowledge_refs": self.knowledge_refs,
+            "tool_calls": self.tool_calls,
+            "timeout_occurred": self.timeout_occurred,
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
         }
@@ -270,6 +351,7 @@ class Agent(ABC):
         self._config = config or {}
         self._status = AgentStatus.IDLE
         self._metrics: dict[str, Any] = {}
+        self._timeout_seconds = config.get("timeout_seconds", DEFAULT_AGENT_TIMEOUT_SECONDS) if config else DEFAULT_AGENT_TIMEOUT_SECONDS
 
     # ── PEOR 抽象方法 ──
 
@@ -295,8 +377,27 @@ class Agent(ABC):
 
     # ── 公共方法 ──
 
-    def run(self, task: AgentTask) -> AgentResult:
-        """完整 PEOR 循环。"""
+    @property
+    def timeout_seconds(self) -> int:
+        return self._timeout_seconds
+
+    def run(
+        self,
+        task: AgentTask,
+        *,
+        tenant_id: str = "",
+        user_id: str = "",
+        workspace_id: str = "",
+        user_roles: list[str] | None = None,
+        permission_checker: PermissionChecker | None = None,
+    ) -> AgentResult:
+        """完整 PEOR 循环。含超时控制、执行链路追踪、上下文验证。"""
+        # ── 上下文验证 ──
+        if not tenant_id:
+            logger.warning("agent_run_no_tenant", extra={"agent": self.name, "task": task.title})
+        if not user_id:
+            logger.warning("agent_run_no_user", extra={"agent": self.name, "task": task.title})
+
         started_at = datetime.now(timezone.utc)
         t_start = time.monotonic()
 
@@ -307,6 +408,11 @@ class Agent(ABC):
             memory=self._memory,
             knowledge_graph=self._kg,
             config=self._config,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            workspace_id=workspace_id,
+            user_roles=user_roles or [],
+            permission_checker=permission_checker,
         )
 
         result = AgentResult(
@@ -319,31 +425,69 @@ class Agent(ABC):
 
         try:
             # P: Plan
+            t0 = time.monotonic()
             self._status = AgentStatus.PLANNING
             context.status = AgentStatus.PLANNING
             logger.info("agent_plan_start", extra={"agent": self.name, "task": task.title})
             plan = self.plan(context, task)
             result.plan = plan
+            result.trace.append(ExecutionTraceStep(
+                phase="plan", detail=f"生成 {len(plan)} 步计划",
+                duration_ms=(time.monotonic() - t0) * 1000,
+            ))
             logger.info("agent_plan_done", extra={"agent": self.name, "steps": len(plan)})
 
             # E: Execute
+            t0 = time.monotonic()
+            # 超时检查
+            elapsed = (time.monotonic() - t_start)
+            if elapsed > self._timeout_seconds:
+                result.timeout_occurred = True
+                result.error = f"Agent 执行超时 (>{self._timeout_seconds}s)"
+                self._status = AgentStatus.FAILED
+                return result
+
             self._status = AgentStatus.EXECUTING
             context.status = AgentStatus.EXECUTING
             logger.info("agent_execute_start", extra={"agent": self.name})
             output = self.execute(context, task, plan)
             result.output = output
+            result.trace.append(ExecutionTraceStep(
+                phase="execute", detail=f"输出 {len(output)} 字符",
+                duration_ms=(time.monotonic() - t0) * 1000,
+            ))
 
             # O: Observe
+            t0 = time.monotonic()
             self._status = AgentStatus.OBSERVING
             context.status = AgentStatus.OBSERVING
             observations = self.observe(context, output)
             result.observations = observations
+            result.trace.append(ExecutionTraceStep(
+                phase="observe", detail=f"{len(observations)} 条观察",
+                duration_ms=(time.monotonic() - t0) * 1000,
+            ))
 
             # R: Reflect
+            t0 = time.monotonic()
             self._status = AgentStatus.REFLECTING
             context.status = AgentStatus.REFLECTING
-            done, reflection = self.reflect(context, observations, output)
-            result.reflections.append(reflection)
+            try:
+                done, reflection = self.reflect(context, observations, output)
+                result.reflections.append(reflection)
+                result.trace.append(ExecutionTraceStep(
+                    phase="reflect", detail=reflection[:200],
+                    duration_ms=(time.monotonic() - t0) * 1000,
+                    success=done,
+                ))
+            except Exception as reflect_err:
+                result.trace.append(ExecutionTraceStep(
+                    phase="reflect", detail="反思阶段异常",
+                    duration_ms=(time.monotonic() - t0) * 1000,
+                    success=False, error=str(reflect_err),
+                ))
+                done = False
+                reflection = ""
 
             # 如果未完成，尝试一次修正
             if not done and reflection:
@@ -352,6 +496,9 @@ class Agent(ABC):
                 revised_output = self.execute(context, task, plan)
                 result.output = f"{output}\n\n[修正后]\n{revised_output}"
                 output = revised_output
+                result.trace.append(ExecutionTraceStep(
+                    phase="retry", detail="执行修正",
+                ))
 
             result.success = True
             self._status = AgentStatus.DONE
@@ -359,6 +506,10 @@ class Agent(ABC):
 
         except Exception as e:
             logger.exception("agent_run_failed", extra={"agent": self.name, "error": str(e)})
+            result.trace.append(ExecutionTraceStep(
+                phase="error", detail="执行异常",
+                success=False, error=str(e)[:500],
+            ))
             result.success = False
             result.error = str(e)
             self._status = AgentStatus.FAILED

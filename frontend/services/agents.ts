@@ -15,6 +15,10 @@ import type {
   WorkflowCreateRequest,
   WorkflowExecution,
   WorkflowExecuteRequest,
+  ScenarioDefinition,
+  MeetingToTrainingRequest,
+  DepartmentAssistantRequest,
+  ScenarioRunResponse,
 } from "@/types/agents";
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -175,4 +179,32 @@ export async function listExecutions(workflowId?: string): Promise<WorkflowExecu
 
 export async function getExecution(executionId: string): Promise<WorkflowExecution> {
   return fetchJSON<WorkflowExecution>(`/executions/${encodeURIComponent(executionId)}`);
+}
+
+// Scenarios
+
+export async function listScenarios(): Promise<ScenarioDefinition[]> {
+  return fetchJSON<ScenarioDefinition[]>("/scenarios");
+}
+
+export async function getScenario(scenarioId: string): Promise<ScenarioDefinition> {
+  return fetchJSON<ScenarioDefinition>(`/scenarios/${encodeURIComponent(scenarioId)}`);
+}
+
+export async function runMeetingToTraining(
+  req: MeetingToTrainingRequest,
+): Promise<ScenarioRunResponse> {
+  return fetchJSON<ScenarioRunResponse>("/scenarios/meeting-to-training/run", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
+export async function runDepartmentAssistant(
+  req: DepartmentAssistantRequest,
+): Promise<ScenarioRunResponse> {
+  return fetchJSON<ScenarioRunResponse>("/scenarios/department-assistant/run", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
 }

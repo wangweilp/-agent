@@ -410,6 +410,11 @@ agent_registry.set_providers(
     kg=agent_kg_provider,
 )
 
+# 注入 Agent Metrics Store（对接 UsageStore 持久化）
+from src.agents.metrics import InMemoryAgentMetricsStore
+agent_metrics_store = InMemoryAgentMetricsStore(usage_store=usage_store)
+agent_registry.set_metrics_store(agent_metrics_store)
+
 # 注册内置 Agent
 agent_registry.register(create_knowledge_agent(
     memory=agent_memory_provider,
@@ -457,8 +462,10 @@ try:
 except Exception as e:
     logger.warning("preset_workflow_register_failed", extra={"error": str(e)})
 
-# 注册 Agent API 路由
-app.include_router(create_agent_router(agent_registry, workflow_engine))
+# 注册 Agent API 路由（含 Scenario Engine）
+from src.agents.scenarios import ScenarioEngine
+scenario_engine = ScenarioEngine(agent_registry, workflow_engine)
+app.include_router(create_agent_router(agent_registry, workflow_engine, scenario_engine))
 
 logger.info("enterprise_agent_platform_bootstrap_complete",
             extra={"event": "agent_platform_ready",

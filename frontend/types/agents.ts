@@ -51,7 +51,7 @@ export interface AgentRunResponse {
 export interface WorkflowNode {
   node_id: string;
   name: string;
-  node_type: "agent" | "human" | "condition" | "parallel" | "start" | "end";
+  node_type: "agent" | "human" | "condition" | "parallel" | "tool" | "memory" | "knowledge_graph" | "start" | "end";
   agent_id: string;
   description: string;
   next_nodes: string[];
@@ -113,4 +113,103 @@ export interface WorkflowCreateRequest {
 
 export interface WorkflowExecuteRequest {
   input_data?: Record<string, unknown>;
+}
+
+// ── Scenario Types ──
+
+export interface ScenarioDefinition {
+  scenario_id: string;
+  name: string;
+  description: string;
+  category: "automation" | "assistant";
+  icon: string;
+  input_schema: Record<string, string>;
+  output_schema: Record<string, string>;
+  required_permissions: string[];
+  estimated_duration_ms: number;
+}
+
+export interface MeetingToTrainingRequest {
+  meeting_title: string;
+  meeting_notes: string;
+  participants?: string[];
+  department_id?: string;
+}
+
+export interface DepartmentAssistantRequest {
+  department: string;
+  question: string;
+  context?: string;
+}
+
+export interface ScenarioRunResponse {
+  success: boolean;
+  scenario_id: string;
+  execution_id: string;
+  result: Record<string, unknown>;
+  trace: Array<Record<string, unknown>>;
+  metrics: Record<string, unknown>;
+  error: string | null;
+}
+
+export interface MeetingToTrainingResult {
+  scenario_id: string;
+  workflow_execution_id: string | null;
+  success: boolean;
+  meeting_title: string;
+  summary: string;
+  decisions: string[];
+  action_items: string[];
+  knowledge_entries: Array<{ content: string }>;
+  entity_suggestions: Array<{ name: string; entity_type: string }>;
+  relation_suggestions: Array<{ source: string; target: string; predicate: string }>;
+  training_outline: string[];
+  training_qa: string[];
+  execution_steps: Array<execution_step>;
+  execution_trace: Array<Record<string, unknown>>;
+  memory_refs: string[];
+  knowledge_refs: string[];
+  duration_ms: number;
+  llm_available: boolean;
+  fallback_mode: boolean;
+  error: string | null;
+}
+
+export interface execution_step {
+  step_index: number;
+  node_id: string;
+  node_name: string;
+  node_type: string;
+  status: string;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_ms: number;
+  error: string | null;
+  output_summary: string;
+}
+
+export interface DepartmentAssistantResult {
+  scenario_id: string;
+  success: boolean;
+  department: string;
+  question: string;
+  answer: string;
+  reasoning_summary: string;
+  recommended_actions: string[];
+  related_memories: Array<{ content: string }>;
+  related_entities: Array<{ name: string; entity_type: string }>;
+  confidence: number;
+  confidence_reason: string;
+  limitations: string[];
+  execution_trace: Array<Record<string, unknown>>;
+  execution_steps: execution_step[];
+  memory_refs: string[];
+  knowledge_refs: string[];
+  related_memory_count: number;
+  related_entity_count: number;
+  duration_ms: number;
+  llm_available: boolean;
+  fallback_mode: boolean;
+  workflow_execution_id: string | null;
+  error: string | null;
 }
