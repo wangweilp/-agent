@@ -260,7 +260,7 @@ function RetrievalInspector() {
 
       {results.length === 0 ? (
         <p className="text-sm text-os-muted py-8 text-center">
-          输入查询并点击"查询"来查看检索管线的分步评分
+          输入查询并点击 &ldquo;查询&rdquo; 来查看检索管线的分步评分
         </p>
       ) : (
         <div className="flex flex-col gap-3">

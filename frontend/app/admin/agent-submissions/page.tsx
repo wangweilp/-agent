@@ -1,0 +1,131 @@
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { AlertTriangle, ExternalLink, RefreshCw, Shield } from "lucide-react";
+import { StatusBadge } from "@/components/open-platform/StatusBadge";
+import { ReviewActionDialog } from "@/components/open-platform/ReviewActionDialog";
+import { listAdminSubmissions, approveAdminSubmission, rejectAdminSubmission, requestChangesAdminSubmission, type AdminReviewApiError } from "@/services/admin-submissions";
+import type { AgentSubmission } from "@/types/open-platform";
+
+export default function AdminReviewQueuePage() {
+  const [subs, setSubs] = useState<AgentSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statusF, setStatusF] = useState("");
+  const [devF, setDevF] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [dialog, setDialog] = useState<{ type: "approve"|"reject"|"request_changes"; id: string } | null>(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { const r = await listAdminSubmissions({ status: statusF || undefined, developer_id: devF || undefined }); setSubs(r.submissions); }
+    catch (e: unknown) { const ae = e as AdminReviewApiError; setError(`[${ae.status}] ${ae.message}`); }
+    finally { setLoading(false); }
+  }, [statusF, devF]);
+
+  useEffect(() => { void fetch(); }, [fetch]);
+
+  async function handleAction(id: string, notes: string, checklist: Record<string, unknown>) {
+    setSaving(true); setError(null);
+    try {
+      if (dialog?.type === "approve") await approveAdminSubmission(id, { notes, checklist });
+      else if (dialog?.type === "reject") await rejectAdminSubmission(id, { notes, checklist });
+      else if (dialog?.type) await requestChangesAdminSubmission(id, { notes, checklist });
+      setDialog(null); await fetch();
+    } catch (e: unknown) { const ae = e as AdminReviewApiError; setError(`[${ae.status}] ${ae.message}`); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-8">
+      <header className="mb-6">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
+          <Shield size={14} className="text-os-accent"/> Admin Only
+        </div>
+        <h1 className="text-3xl font-semibold text-os-text-high">Agent Submission Review</h1>
+        <p className="mt-2 max-w-xl text-sm text-os-subtle">审核开发者提交的 Agent Manifest，确保权限、安全声明和企业数据边界符合要求。</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["Admin Only", "Review Required", "No Auto Publish", "No Remote Code Execution"].map(b => (
+            <span key={b} className="inline-flex items-center gap-1.5 rounded-full border border-os-border/60 bg-os-elevated px-2.5 py-1 text-2xs text-os-subtle">{b}</span>
+          ))}
+        </div>
+      </header>
+
+      {error && <div className="mb-4 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">{error}</div>}
+
+      {/* Filters */}
+      <div className="os-card mb-4 flex flex-wrap items-center gap-3 p-3">
+        <div className="flex flex-wrap gap-1.5">
+          {["", "submitted", "in_review", "approved", "rejected", "published", "withdrawn"].map(s => (
+            <button key={s} onClick={() => setStatusF(s)}
+              className={`rounded px-2 py-0.5 text-xs transition-colors ${statusF === s ? "bg-os-accent text-white" : "bg-os-elevated text-os-subtle hover:text-os-text-high"}`}>
+              {s || "All"}
+            </button>
+          ))}
+        </div>
+        <input value={devF} onChange={e => setDevF(e.target.value)} placeholder="developer_id filter..."
+          className="h-8 rounded border border-os-border bg-os-elevated px-2 text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent sm:w-48" />
+        <button onClick={() => void fetch()} disabled={loading} className="inline-flex h-8 items-center gap-1.5 rounded border border-os-border px-2.5 text-xs text-os-subtle hover:text-os-text-high disabled:opacity-60">
+          <RefreshCw size={12}/>刷新
+        </button>
+      </div>
+
+      {/* List */}
+      {loading ? <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="os-card p-4"><div className="shimmer-bg h-4 w-48 rounded bg-os-elevated"/><div className="mt-2 flex gap-2"><div className="shimmer-bg h-3 w-24 rounded bg-os-elevated"/><div className="shimmer-bg h-3 w-16 rounded bg-os-elevated"/></div></div>)}</div>
+        : subs.length === 0 ? <div className="os-card flex min-h-32 items-center justify-center p-4"><p className="text-sm text-os-subtle">暂无待审核提交</p></div>
+        : subs.map(s => {
+          const canReview = s.status === "submitted" || s.status === "in_review";
+          const sp = s.agent_manifest?.security_profile;
+          return (
+            <div key={s.submission_id} className="os-card mb-2 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Link href={`/admin/agent-submissions/${s.submission_id}`} className="text-sm font-semibold text-os-text-high hover:text-os-accent truncate">
+                      {s.agent_manifest?.display_name || s.agent_manifest?.name || "(untitled)"}
+                    </Link>
+                    <StatusBadge status={s.status} />
+                    {sp && sp.sandbox_level !== "no_execution" && <span className="text-2xs text-red-300 flex items-center gap-0.5"><AlertTriangle size={10}/>{sp.sandbox_level}</span>}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1.5 text-2xs text-os-subtle">
+                    <span>v{s.agent_manifest?.version || "-"}</span>
+                    <span>•</span>
+                    <span className="font-mono">{s.developer_id.slice(0,8)}</span>
+                    {s.submitted_at && <span>• {new Date(s.submitted_at).toLocaleDateString("zh-CN")}</span>}
+                    {s.package_url && <span className="text-amber-300">• has package URL</span>}
+                    <span>• {(s.agent_manifest?.required_permissions?.length || 0)} permissions</span>
+                    <span>• {(s.agent_manifest?.capabilities?.length || 0)} capabilities</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Link href={`/admin/agent-submissions/${s.submission_id}`} className="inline-flex h-7 items-center gap-1 rounded border border-os-border px-2 text-xs text-os-subtle hover:text-os-text-high">
+                    <ExternalLink size={11}/>详情
+                  </Link>
+                  {canReview && (
+                    <>
+                      <button onClick={() => setDialog({ type: "approve", id: s.submission_id })}
+                        className="inline-flex h-7 items-center gap-1 rounded bg-emerald-400/10 px-2 text-xs text-emerald-300 hover:bg-emerald-400/15">Approve</button>
+                      <button onClick={() => setDialog({ type: "reject", id: s.submission_id })}
+                        className="inline-flex h-7 items-center gap-1 rounded bg-red-400/10 px-2 text-xs text-red-300 hover:bg-red-400/15">Reject</button>
+                      <button onClick={() => setDialog({ type: "request_changes", id: s.submission_id })}
+                        className="inline-flex h-7 items-center gap-1 rounded bg-amber-400/10 px-2 text-xs text-amber-300 hover:bg-amber-400/15">Changes</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+      {dialog && (
+        <ReviewActionDialog open={true} action={dialog.type} submissionId={dialog.id} saving={saving} error={error}
+          onClose={() => setDialog(null)} onSubmit={(notes, checklist) => handleAction(dialog.id, notes, checklist)} />
+      )}
+
+      {/* Boundary Notice */}
+      <section className="os-card mt-4 p-4">
+        <p className="text-2xs text-os-subtle">Approve only indicates review approval. Publishing to Marketplace requires Step 22-H. No MarketplaceAgent is created here. No remote code execution. No real payment.</p>
+      </section>
+    </main>
+  );
+}

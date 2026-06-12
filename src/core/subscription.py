@@ -56,6 +56,9 @@ class PlanLimit:
     llm_calls_per_day: int = 50
     embedding_calls_per_day: int = 100
 
+    # Marketplace Agent
+    max_marketplace_agents: int = 5   # 最大可安装 Marketplace Agent 数
+
     def as_dict(self) -> dict:
         return {
             "tier": self.tier.value,
@@ -71,6 +74,7 @@ class PlanLimit:
             "priority_support": self.priority_support,
             "llm_calls_per_day": self.llm_calls_per_day,
             "embedding_calls_per_day": self.embedding_calls_per_day,
+            "max_marketplace_agents": self.max_marketplace_agents,
         }
 
 
@@ -91,6 +95,7 @@ PLANS: dict[PlanTier, PlanLimit] = {
         priority_support=False,
         llm_calls_per_day=20,
         embedding_calls_per_day=50,
+        max_marketplace_agents=1,
     ),
     PlanTier.PERSONAL: PlanLimit(
         tier=PlanTier.PERSONAL,
@@ -106,6 +111,7 @@ PLANS: dict[PlanTier, PlanLimit] = {
         priority_support=False,
         llm_calls_per_day=100,
         embedding_calls_per_day=300,
+        max_marketplace_agents=1,
     ),
     PlanTier.PROFESSIONAL: PlanLimit(
         tier=PlanTier.PROFESSIONAL,
@@ -121,6 +127,7 @@ PLANS: dict[PlanTier, PlanLimit] = {
         priority_support=False,
         llm_calls_per_day=500,
         embedding_calls_per_day=1500,
+        max_marketplace_agents=5,
     ),
     PlanTier.TEAM: PlanLimit(
         tier=PlanTier.TEAM,
@@ -136,6 +143,7 @@ PLANS: dict[PlanTier, PlanLimit] = {
         priority_support=True,
         llm_calls_per_day=2000,
         embedding_calls_per_day=5000,
+        max_marketplace_agents=20,
     ),
     PlanTier.ENTERPRISE: PlanLimit(
         tier=PlanTier.ENTERPRISE,
@@ -151,6 +159,7 @@ PLANS: dict[PlanTier, PlanLimit] = {
         priority_support=True,
         llm_calls_per_day=10000,
         embedding_calls_per_day=50000,
+        max_marketplace_agents=999999,  # 无限制
     ),
 }
 

@@ -242,3 +242,12 @@ Marketplace 是一个平台型功能，需要稳定的 Agent 生态作为前提�
 ## 12. Next Step
 
 Step 21：Agent Marketplace
+
+> **补充说明（Step 21 完成后）**：
+> Step 20 展示 Agent 如何**执行**——从会议到知识到培训的全自动闭环。
+> Step 21 展示 Agent 如何被**发现、安装、配置、治理和计量**——企业内部的 Agent 能力分发中心。
+> 详见 [Step 21 Marketplace Demo Script](STEP21_MARKETPLACE_DEMO_SCRIPT.md)。
+
+## Related Demo
+
+- **Step 21 Agent Marketplace Demo**: [STEP21_MARKETPLACE_DEMO_SCRIPT.md](STEP21_MARKETPLACE_DEMO_SCRIPT.md)

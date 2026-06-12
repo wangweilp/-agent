@@ -1,0 +1,53 @@
+{
+  "name": "knowledge-assistant",
+  "display_name": "Knowledge Assistant",
+  "description": "An agent with package metadata declared. Demonstrates checksum, signature, license and dependencies declaration.",
+  "version": "1.0.0",
+  "capabilities": [
+    "knowledge_search",
+    "knowledge_recommend"
+  ],
+  "required_permissions": [
+    "agent:execute",
+    "memory:read",
+    "kg:query"
+  ],
+  "supported_workflows": [],
+  "runtime_type": "manifest_only",
+  "entrypoint": null,
+  "config_schema": {},
+  "usage_limits": {},
+  "security_profile": {
+    "sandbox_level": "simulation_only",
+    "requires_network": false,
+    "allowed_domains": [],
+    "reads_user_data": false,
+    "writes_user_data": false,
+    "requires_secrets": false,
+    "allowed_secret_names": [],
+    "data_access_scope": [],
+    "max_timeout_ms": 5000,
+    "max_memory_mb": 64
+  },
+  "metadata": {
+    "package_url": "https://github.com/example/knowledge-assistant/releases/download/v1.0.0/knowledge-assistant-1.0.0.zip",
+    "repository_url": "https://github.com/example/knowledge-assistant",
+    "package_name": "knowledge-assistant",
+    "package_version": "1.0.0",
+    "package_checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "package_checksum_algorithm": "sha256",
+    "package_signature": "untrusted comment: minisign signature\nRWQq6lB...",
+    "package_signature_algorithm": "minisign",
+    "signing_key_id": "example-key-2026",
+    "license": "MIT",
+    "security_contact": "security@example.com",
+    "dependencies": [
+      "python>=3.10",
+      "requests>=2.28"
+    ],
+    "no_remote_code_execution": true,
+    "simulation_only": true,
+    "documentation_url": "https://docs.example.com/knowledge-assistant",
+    "support_url": "https://github.com/example/knowledge-assistant/issues"
+  }
+}

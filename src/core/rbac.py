@@ -29,8 +29,11 @@ class ResourceType(StrEnum):
     ORGANIZATION = "organization"
     AUDIT = "audit"
     COMPLIANCE = "compliance"
+    AGENT_MARKETPLACE = "agent_marketplace"  # Agent Marketplace 安装/配置
     AGENT = "agent"             # Enterprise AI Agent
     WORKFLOW = "workflow"       # Agent Workflow
+    OPEN_PLATFORM = "open_platform"  # Open Platform 开发者管理
+    DEVELOPER = "developer"     # Developer 身份与 API Key
 
 
 class ActionType(StrEnum):

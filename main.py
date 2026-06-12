@@ -183,6 +183,7 @@ if settings.admin_email and settings.admin_password:
     if admin_user:
         logger.info("super_admin_ready",
                     extra={"user_id": admin_user.id, "email": admin_user.email})
+auth_store.flush()
 collab_store = CollabStore(settings)
 collab_service = CollaborationService(collab_store, auth_store)
 
@@ -470,6 +471,422 @@ app.include_router(create_agent_router(agent_registry, workflow_engine, scenario
 logger.info("enterprise_agent_platform_bootstrap_complete",
             extra={"event": "agent_platform_ready",
                    "builtin_agents": len(agent_registry)})
+
+# ═══════════════════════════════════════════
+# Step 21-C: Agent Marketplace API
+# ═══════════════════════════════════════════
+
+# 初始化 MarketplaceStore
+from src.adapters.marketplace_store import SQLiteMarketplaceStore
+from src.agents.marketplace import seed_builtin_marketplace_agents
+
+marketplace_store = SQLiteMarketplaceStore(settings)
+logger.info("marketplace_store_initialized")
+
+# Seed 内置 Marketplace Agent catalog（幂等）
+try:
+    created = seed_builtin_marketplace_agents(marketplace_store)
+    logger.info("marketplace_seed_complete", extra={"created_count": created})
+except Exception:
+    logger.exception("marketplace_seed_failed")
+
+# 确保 seed 事务提交，释放写锁，避免阻塞后续 store 初始化
+marketplace_store.flush()
+logger.debug("marketplace_store_flushed")
+
+# 注册 Marketplace API 路由
+from src.api.marketplace_router import create_marketplace_router
+app.include_router(create_marketplace_router(marketplace_store, usage_store, subscription_store))
+
+logger.info("marketplace_api_registered",
+            extra={"event": "marketplace_api_ready"})
+
+# ═══════════════════════════════════════════
+# Step 22: Open Platform — Developer API
+# ═══════════════════════════════════════════
+
+# 初始化 Open Platform Stores
+from src.adapters.developer_store import SQLiteDeveloperStore
+from src.adapters.submission_store import SQLiteSubmissionStore
+
+developer_store = SQLiteDeveloperStore(settings)
+logger.info("developer_store_initialized")
+
+submission_store = SQLiteSubmissionStore(settings)
+logger.info("submission_store_initialized")
+
+# ═══════════════════════════════════════════
+# Step 23-C: Runtime Store Bootstrap
+# ═══════════════════════════════════════════
+
+from src.adapters.runtime_store import SQLiteRuntimeStore
+
+runtime_store = SQLiteRuntimeStore(settings)
+logger.info("runtime_store_initialized")
+
+# Seed 内置 Runtime Adapters（幂等）
+try:
+    created = runtime_store.seed_builtin_adapters()
+    logger.info("runtime_adapters_seeded", extra={"created_count": created})
+except Exception:
+    logger.exception("runtime_adapters_seed_failed")
+
+runtime_store.flush()
+logger.debug("runtime_store_flushed")
+
+# ═══════════════════════════════════════════
+# Step 23-D: Simulation Runtime Service
+# ═══════════════════════════════════════════
+
+from src.open_platform.simulation_runtime import SimulationRuntimeService
+
+simulation_service = SimulationRuntimeService(
+    marketplace_store=marketplace_store,
+    runtime_store=runtime_store,
+    usage_store=usage_store,
+)
+logger.info("simulation_runtime_service_initialized")
+
+# 注册 Developer API 路由
+from src.api.developer_router import create_developer_router
+app.include_router(create_developer_router(
+    developer_store, submission_store, usage_store,
+    marketplace_store=marketplace_store,
+    runtime_store=runtime_store,
+    simulation_service=simulation_service,
+))
+
+logger.info("developer_api_registered",
+            extra={"event": "developer_api_ready"})
+
+# ═══════════════════════════════════════════
+# Step 23-E: Sandbox Policy Store + Admin API
+# ═══════════════════════════════════════════
+
+from src.adapters.sandbox_policy_store import SQLiteSandboxPolicyStore
+
+sandbox_policy_store = SQLiteSandboxPolicyStore(settings)
+logger.info("sandbox_policy_store_initialized")
+
+try:
+    created = sandbox_policy_store.seed_builtin_policies()
+    logger.info("sandbox_policies_seeded", extra={"created_count": created})
+except Exception:
+    logger.exception("sandbox_policies_seed_failed")
+
+sandbox_policy_store.flush()
+logger.debug("sandbox_policy_store_flushed")
+
+from src.api.sandbox_policy_router import create_sandbox_policy_router
+app.include_router(create_sandbox_policy_router(
+    sandbox_policy_store,
+    runtime_store=runtime_store,
+    usage_store=usage_store,
+))
+logger.info("sandbox_policy_api_registered")
+
+# ═══════════════════════════════════════════
+# Step 23-G: Runtime Admin API
+# ═══════════════════════════════════════════
+
+from src.api.runtime_admin_router import create_runtime_admin_router
+app.include_router(create_runtime_admin_router(
+    runtime_store=runtime_store,
+    marketplace_store=marketplace_store,
+    sandbox_policy_store=sandbox_policy_store,
+    usage_store=usage_store,
+))
+logger.info("runtime_admin_api_registered")
+
+# ═══════════════════════════════════════════
+# Step 23-F: Package Validation
+# ═══════════════════════════════════════════
+
+from src.adapters.package_validation_store import SQLitePackageValidationStore
+from src.open_platform.package_validation_service import PackageValidationService
+
+pv_store = SQLitePackageValidationStore(settings)
+logger.info("package_validation_store_initialized")
+
+pv_service = PackageValidationService(
+    pv_store=pv_store,
+    submission_store=submission_store,
+    developer_store=developer_store,
+    usage_store=usage_store,
+)
+logger.info("package_validation_service_initialized")
+
+# 注册 Admin Review API 路由
+from src.api.admin_submission_router import create_admin_submission_router
+app.include_router(create_admin_submission_router(
+    developer_store, submission_store, usage_store,
+    marketplace_store=marketplace_store, pv_service=pv_service,
+))
+
+logger.info("admin_review_api_registered",
+            extra={"event": "admin_review_api_ready"})
+
+# ═══════════════════════════════════════════
+# Step 24-H: Runtime Execution API (admin gated)
+# ═══════════════════════════════════════════
+
+from src.open_platform.runtime_execution_planner import RuntimeExecutionPlannerService
+from src.open_platform.policy_enforcement_translator import SandboxPolicyEnforcementTranslator
+from src.open_platform.sandbox_worker_registry import create_default_sandbox_worker_registry
+from src.adapters.runtime_execution_plan_store import SQLiteRuntimeExecutionPlanStore
+
+# Initialize runtime execution plan store
+runtime_plan_store = SQLiteRuntimeExecutionPlanStore(settings)
+logger.info("runtime_plan_store_initialized")
+
+# Runtime execution planner service
+runtime_planner = RuntimeExecutionPlannerService(
+    plan_store=runtime_plan_store,
+    marketplace_store=marketplace_store,
+    runtime_store=runtime_store,
+    sandbox_policy_store=sandbox_policy_store,
+    artifact_store=None,  # artifact store not yet initialized here; plan checks skip unavailable stores
+    verification_store=None,
+    usage_store=usage_store,
+)
+logger.info("runtime_planner_initialized")
+
+# Policy enforcement translator
+policy_translator = SandboxPolicyEnforcementTranslator()
+logger.info("policy_translator_initialized")
+
+# Worker registry (disabled by default)
+worker_registry = create_default_sandbox_worker_registry(enable_local_dev_dry_run=False)
+logger.info("worker_registry_initialized")
+
+# Register runtime execution API router
+from src.api.runtime_execution_router import create_runtime_execution_router
+app.include_router(create_runtime_execution_router(
+    plan_store=runtime_plan_store,
+    planner_service=runtime_planner,
+    marketplace_store=marketplace_store,
+    runtime_store=runtime_store,
+    sandbox_policy_store=sandbox_policy_store,
+    artifact_store=None,
+    verification_store=None,
+    policy_translator=policy_translator,
+    worker_registry=worker_registry,
+    usage_store=usage_store,
+))
+
+logger.info("runtime_execution_api_registered",
+            extra={"event": "runtime_execution_api_ready"})
+
+# ═══════════════════════════════════════════
+# Artifact Sandbox — Agent 不执行，只生成 Artifact
+# ═══════════════════════════════════════════
+
+from src.adapters.artifact_store import SQLiteArtifactStore
+from src.open_platform.artifact_service import ArtifactService
+from src.api.artifact_router import create_artifact_router
+
+artifact_store = SQLiteArtifactStore(settings)
+logger.info("artifact_store_initialized")
+
+artifact_service = ArtifactService(artifact_store)
+logger.info("artifact_service_initialized")
+
+app.include_router(create_artifact_router(
+    artifact_service,
+    usage_store=usage_store,
+))
+logger.info("artifact_api_registered",
+            extra={"event": "artifact_sandbox_ready"})
+
+# ═══════════════════════════════════════════
+# Package Registry — 将 Artifact 组织为 Package
+# ═══════════════════════════════════════════
+
+from src.adapters.package_registry_store import SQLitePackageStore
+from src.open_platform.package_registry_service import PackageService
+from src.api.package_registry_router import create_package_router
+
+package_store = SQLitePackageStore(settings)
+logger.info("package_store_initialized")
+
+package_service = PackageService(package_store)
+logger.info("package_service_initialized")
+
+app.include_router(create_package_router(
+    package_service,
+    usage_store=usage_store,
+))
+logger.info("package_api_registered",
+            extra={"event": "package_registry_ready"})
+
+# ═══════════════════════════════════════════
+# Workflow Registry — 将 Package 组合为 Workflow
+# ═══════════════════════════════════════════
+
+from src.adapters.workflow_registry_store import SQLiteWorkflowStore
+from src.open_platform.workflow_registry_service import WorkflowService
+from src.api.workflow_registry_router import create_workflow_router
+
+workflow_store = SQLiteWorkflowStore(settings)
+logger.info("workflow_store_initialized")
+
+workflow_service = WorkflowService(workflow_store)
+logger.info("workflow_service_initialized")
+
+app.include_router(create_workflow_router(
+    workflow_service,
+    usage_store=usage_store,
+))
+logger.info("workflow_api_registered",
+            extra={"event": "workflow_registry_ready"})
+
+# ═══════════════════════════════════════════
+# Agent Publishing + Marketplace — 发布 Agent 模块到市场
+# ═══════════════════════════════════════════
+
+from src.adapters.agent_module_store import SQLiteAgentModuleStore
+from src.open_platform.agent_module_service import AgentModuleService, MarketplaceService
+from src.api.agent_module_router import create_agent_publishing_router, create_marketplace_router
+
+agent_module_store = SQLiteAgentModuleStore(settings)
+logger.info("agent_module_store_initialized")
+
+agent_module_service = AgentModuleService(agent_module_store)
+logger.info("agent_module_service_initialized")
+
+marketplace_service = MarketplaceService(agent_module_store)
+logger.info("marketplace_service_initialized")
+
+app.include_router(create_agent_publishing_router(
+    agent_module_service,
+    marketplace_service=marketplace_service,
+    usage_store=usage_store,
+))
+logger.info("agent_publishing_api_registered",
+            extra={"event": "agent_publishing_ready"})
+
+app.include_router(create_marketplace_router(
+    marketplace_service,
+    usage_store=usage_store,
+))
+logger.info("marketplace_api_registered",
+            extra={"event": "marketplace_ready"})
+
+# ═══════════════════════════════════════════
+# SaaS Integration — 多租户配额 + 隔离 + Dashboard + 用量
+# ═══════════════════════════════════════════
+
+from src.open_platform.saas_integration_service import SaaSIntegrationService
+from src.api.saas_integration_router import create_saas_integration_router
+
+saas_integration_service = SaaSIntegrationService(
+    artifact_store=artifact_store,
+    package_store=package_store,
+    workflow_store=workflow_store,
+    agent_module_store=agent_module_store,
+    subscription_store=subscription_store,
+    usage_store=usage_store,
+)
+logger.info("saas_integration_service_initialized")
+
+app.include_router(create_saas_integration_router(
+    saas_integration_service,
+    artifact_service=artifact_service,
+    package_service=package_service,
+    workflow_service=workflow_service,
+    agent_module_service=agent_module_service,
+    marketplace_service=marketplace_service,
+))
+logger.info("saas_integration_api_registered",
+            extra={"event": "saas_integration_ready"})
+
+# ═══════════════════════════════════════════
+# Marketplace Governance & Trust — Review / Report / TrustScore / Risk
+# ═══════════════════════════════════════════
+
+from src.adapters.marketplace_governance_store import SQLiteMarketplaceGovernanceStore
+from src.open_platform.marketplace_governance_service import MarketplaceGovernanceService
+from src.api.marketplace_governance_router import create_marketplace_governance_router
+
+governance_store = SQLiteMarketplaceGovernanceStore(settings)
+logger.info("governance_store_initialized")
+
+governance_service = MarketplaceGovernanceService(
+    governance_store,
+    agent_module_store=agent_module_store,
+)
+logger.info("governance_service_initialized")
+
+app.include_router(create_marketplace_governance_router(governance_service))
+logger.info("governance_api_registered",
+            extra={"event": "marketplace_governance_ready"})
+
+# ═══════════════════════════════════════════
+# Marketplace Analytics — Recommendations / Rankings / Platform Metrics
+# ═══════════════════════════════════════════
+
+from src.adapters.marketplace_analytics_store import SQLiteMarketplaceAnalyticsStore
+from src.open_platform.marketplace_analytics_service import MarketplaceAnalyticsService
+from src.api.marketplace_analytics_router import create_marketplace_analytics_router
+
+analytics_store = SQLiteMarketplaceAnalyticsStore(settings)
+logger.info("analytics_store_initialized")
+
+analytics_service = MarketplaceAnalyticsService(
+    analytics_store,
+    governance_store=governance_store,
+    agent_module_store=agent_module_store,
+)
+logger.info("analytics_service_initialized")
+
+app.include_router(create_marketplace_analytics_router(analytics_service))
+logger.info("analytics_api_registered",
+            extra={"event": "marketplace_analytics_ready"})
+
+# ═══════════════════════════════════════════
+# SaaS Billing + RBAC + Cross-Tenant Analytics
+# ═══════════════════════════════════════════
+
+from src.open_platform.saas_billing_service import SaaSBillingService
+from src.open_platform.rbac_service import RBACService
+from src.adapters.cross_tenant_analytics_store import CrossTenantAnalyticsStore
+from src.open_platform.cross_tenant_analytics_service import CrossTenantAnalyticsService
+from src.api.billing_analytics_router import create_billing_analytics_router
+
+billing_service = SaaSBillingService(
+    billing_store=billing_store,
+    subscription_store=subscription_store,
+    usage_store=usage_store,
+    payment_gateway=payment_gateway,
+)
+logger.info("billing_service_initialized")
+
+rbac_service = RBACService(rbac_store=rbac_store)
+logger.info("rbac_service_initialized")
+
+ct_analytics_store = CrossTenantAnalyticsStore(settings)
+logger.info("ct_analytics_store_initialized")
+
+ct_analytics_service = CrossTenantAnalyticsService(
+    ct_analytics_store=ct_analytics_store,
+    artifact_store=artifact_store,
+    package_store=package_store,
+    workflow_store=workflow_store,
+    agent_module_store=agent_module_store,
+    governance_store=governance_store,
+    subscription_store=subscription_store,
+    usage_store=usage_store,
+    tenant_store=tenant_store,
+)
+logger.info("ct_analytics_service_initialized")
+
+app.include_router(create_billing_analytics_router(
+    billing_service=billing_service,
+    rbac_service=rbac_service,
+    ct_analytics_service=ct_analytics_service,
+))
+logger.info("billing_rbac_analytics_api_registered",
+            extra={"event": "billing_rbac_analytics_ready"})
 
 
 def main() -> None:

@@ -1,0 +1,6 @@
+2026-06-10T20:01:57.687 INFO [__main__] 服务启动完成
+2026-06-10T20:01:59.574 INFO [src.tools.registry] tool:registered
+2026-06-10T20:01:59.575 INFO [src.tools.registry] tool:registered
+2026-06-10T20:01:59.575 INFO [src.tools.registry] tool:registered
+2026-06-10T20:01:59.576 INFO [__main__] memory_writer 线程已启动
+2026-06-10T20:01:59.591 INFO [src.core.memory_queue] memory_worker_started

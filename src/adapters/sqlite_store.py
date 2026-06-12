@@ -87,7 +87,7 @@ class SQLiteStoreAdapter:
         if path == ":memory:":
             self._db = Database(memory=True)
         else:
-            conn = sqlite3.connect(path, check_same_thread=False)
+            conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=30)
             self._db = Database(conn)
 
         self._init_schema()
@@ -99,6 +99,11 @@ class SQLiteStoreAdapter:
             if stmt:
                 self._db.execute(stmt)
         self._run_migrations()
+        # autocommit 模式下 commit 是 no-op；非 autocommit 模式下确保 DDL 提交
+        try:
+            self._db.conn.commit()
+        except Exception:
+            pass
 
     def _run_migrations(self) -> None:
         """幂等 migration：为存量数据库增加 lifecycle + 多租户字段。"""
@@ -172,6 +177,16 @@ class SQLiteStoreAdapter:
             self._db.execute("CREATE INDEX IF NOT EXISTS idx_memberships_workspace ON memberships(workspace_id)")
             self._db.execute("CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id)")
             logger.info("migration: created memberships table")
+
+    # ── 连接管理 ──────────────────────────────────────────────────────
+
+    def flush(self) -> None:
+        """显式提交底层连接事务，释放写锁。autocommit 模式下为安全 no-op。"""
+        try:
+            if hasattr(self._db, "conn") and self._db.conn:
+                self._db.conn.commit()
+        except Exception:
+            pass
 
     # ── MemoryStore 协议 ──────────────────────────────────────────────
 

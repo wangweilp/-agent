@@ -1,0 +1,32 @@
+{
+  "name": "invalid-network-agent",
+  "display_name": "Invalid Network Agent",
+  "description": "This manifest declares network access which is NOT allowed in Step 23 MVP. Use for testing SDK validation.",
+  "version": "0.1.0",
+  "capabilities": [
+    "external_api_call"
+  ],
+  "required_permissions": [
+    "agent:execute",
+    "memory:read"
+  ],
+  "supported_workflows": [],
+  "runtime_type": "manifest_only",
+  "entrypoint": null,
+  "config_schema": {},
+  "usage_limits": {},
+  "security_profile": {
+    "sandbox_level": "no_execution",
+    "requires_network": true,
+    "allowed_domains": [
+      "api.example.com"
+    ],
+    "reads_user_data": true,
+    "writes_user_data": false
+  },
+  "metadata": {
+    "no_remote_code_execution": true,
+    "simulation_only": true,
+    "license": "MIT"
+  }
+}

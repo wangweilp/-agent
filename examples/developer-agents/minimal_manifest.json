@@ -1,0 +1,28 @@
+{
+  "name": "hello-world-agent",
+  "display_name": "Hello World Agent",
+  "description": "A minimal developer agent manifest example. Demonstrates the simplest valid submission.",
+  "version": "0.1.0",
+  "capabilities": [
+    "knowledge_search"
+  ],
+  "required_permissions": [
+    "agent:execute",
+    "memory:read"
+  ],
+  "supported_workflows": [],
+  "runtime_type": "manifest_only",
+  "entrypoint": null,
+  "config_schema": {},
+  "usage_limits": {},
+  "security_profile": {
+    "sandbox_level": "no_execution",
+    "requires_network": false,
+    "reads_user_data": false,
+    "writes_user_data": false
+  },
+  "metadata": {
+    "no_remote_code_execution": true,
+    "simulation_only": true
+  }
+}

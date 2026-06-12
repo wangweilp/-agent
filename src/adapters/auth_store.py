@@ -70,7 +70,7 @@ class SQLiteAuthStore:
     def __init__(self, config: Settings, db_path: str | None = None) -> None:
         from sqlite_utils import Database as SqliteDB
         path = db_path or config.sqlite_db_path
-        conn = sqlite3.connect(path, check_same_thread=False)
+        conn = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=30)
         self._db = SqliteDB(conn)
         self._db.conn.row_factory = sqlite3.Row
         self._write_lock = threading.Lock()
@@ -91,6 +91,21 @@ class SQLiteAuthStore:
             )
         except Exception:
             pass  # 列已存在
+        # autocommit 模式下 commit 是 no-op；非 autocommit 模式下确保 DDL 提交
+        try:
+            self._db.conn.commit()
+        except Exception:
+            pass
+
+    # ── 连接管理 ──
+
+    def flush(self) -> None:
+        """显式提交底层连接事务，释放写锁。autocommit 模式下为安全 no-op。"""
+        try:
+            if hasattr(self._db, "conn") and self._db.conn:
+                self._db.conn.commit()
+        except Exception:
+            pass
 
     # ── User CRUD ──
 
