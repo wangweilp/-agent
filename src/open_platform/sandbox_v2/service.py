@@ -1672,6 +1672,132 @@ class SandboxV2Service:
             "summary": self._slo_service.generate_slo_summary(all_evals),
         }
 
+    # ═══════════════════════════════════════════
+    # Step 20 — Real OIDC / SAML
+    # ═══════════════════════════════════════════
+
+    def create_oidc_authorization_request(self, provider_config_id: str = "",
+                                          organization_id: str = "", workspace_id: str = "",
+                                          principal_hint: str = "") -> dict[str, Any]:
+        if not self._iam_service: return {"status": "disabled", "reason": "IAM service not configured"}
+        from src.open_platform.sandbox_v2.oidc_flow import SandboxV2OIDCFlowService
+        oidc = SandboxV2OIDCFlowService(store=self._store, iam_service=self._iam_service,
+                                         audit_service=getattr(self, '_audit', None), settings=getattr(self._iam_service, '_settings', None))
+        pc = self._iam_service.get_provider_config(provider_config_id) if provider_config_id else None
+        return oidc.create_authorization_request(pc, organization_id, workspace_id, principal_hint)
+
+    def handle_oidc_callback(self, code: str = "", state: str = "", error: str = "",
+                             provider_config_id: str = "", organization_id: str = "",
+                             workspace_id: str = "") -> dict[str, Any]:
+        if not self._iam_service: return {"status": "disabled", "reason": "IAM service not configured"}
+        from src.open_platform.sandbox_v2.oidc_flow import SandboxV2OIDCFlowService
+        oidc = SandboxV2OIDCFlowService(store=self._store, iam_service=self._iam_service,
+                                         audit_service=getattr(self, '_audit', None), settings=getattr(self._iam_service, '_settings', None))
+        return oidc.handle_callback(code, state, error, provider_config_id, organization_id, workspace_id)
+
+    def create_saml_auth_request(self, provider_config_id: str = "",
+                                 organization_id: str = "", workspace_id: str = "",
+                                 principal_hint: str = "") -> dict[str, Any]:
+        if not self._iam_service: return {"status": "disabled", "reason": "IAM service not configured"}
+        from src.open_platform.sandbox_v2.saml_flow import SandboxV2SAMLFlowService
+        saml = SandboxV2SAMLFlowService(store=self._store, iam_service=self._iam_service,
+                                         audit_service=getattr(self, '_audit', None), settings=getattr(self._iam_service, '_settings', None))
+        pc = self._iam_service.get_provider_config(provider_config_id) if provider_config_id else None
+        return saml.create_authn_request(pc, organization_id, workspace_id, principal_hint)
+
+    def handle_saml_acs(self, saml_response: str = "", relay_state: str = "",
+                        provider_config_id: str = "", organization_id: str = "",
+                        workspace_id: str = "") -> dict[str, Any]:
+        if not self._iam_service: return {"status": "disabled", "reason": "IAM service not configured"}
+        from src.open_platform.sandbox_v2.saml_flow import SandboxV2SAMLFlowService
+        saml = SandboxV2SAMLFlowService(store=self._store, iam_service=self._iam_service,
+                                         audit_service=getattr(self, '_audit', None), settings=getattr(self._iam_service, '_settings', None))
+        return saml.handle_acs(saml_response, relay_state, provider_config_id, organization_id, workspace_id)
+
+    def list_oidc_callback_results(self, **kwargs) -> list[Any]:
+        if not self._store: return []
+        try: return self._store.list_oidc_callback_results(**kwargs)
+        except Exception: return []
+
+    def list_saml_acs_results(self, **kwargs) -> list[Any]:
+        if not self._store: return []
+        try: return self._store.list_saml_acs_results(**kwargs)
+        except Exception: return []
+
+    def list_sso_sessions(self, **kwargs) -> list[Any]:
+        if self._iam_service: return self._iam_service.list_sso_sessions(**kwargs)
+        if not self._store: return []
+        try: return self._store.list_sso_sessions(**kwargs)
+        except Exception: return []
+
+    def revoke_sso_session(self, session_id: str, reason: str = "") -> dict[str, Any]:
+        if self._iam_service: return self._iam_service.revoke_sso_session(session_id, reason)
+        return {"revoked": False, "reason": "IAM service not configured"}
+
+    def get_real_sso_readiness(self) -> dict[str, Any]:
+        if self._iam_service: return self._iam_service.get_real_sso_readiness()
+        return {"real_oidc_login_enabled": False, "real_saml_login_enabled": False, "sso_safe_mode": True}
+
+    def get_oidc_validation_readiness(self) -> dict[str, Any]:
+        if self._iam_service: return self._iam_service.get_oidc_validation_readiness()
+        # Fallback: build directly from settings so Runtime Admin still works without IAM
+        from src.open_platform.sandbox_v2.oidc_step21_service import SandboxV2OIDCStep21Service
+        return SandboxV2OIDCStep21Service(settings=getattr(self, '_settings', None)).get_oidc_validation_readiness()
+
+    # ═══════════════════════════════════════════
+    # Step 22 — Production-Grade SAML Signature Validation
+    # ═══════════════════════════════════════════
+
+    def get_saml_validation_readiness(self) -> dict[str, Any]:
+        if self._iam_service and hasattr(self._iam_service, 'get_saml_validation_readiness'):
+            return self._iam_service.get_saml_validation_readiness()
+        from src.open_platform.sandbox_v2.saml_step22_service import SandboxV2SAMLStep22Service
+        svc = SandboxV2SAMLStep22Service(
+            settings=getattr(self, '_settings', None),
+            store=self._store, iam_service=self._iam_service,
+        )
+        return svc.get_saml_validation_readiness()
+
+    def validate_saml_assertion(
+        self, assertion_xml: str = "", saml_response_xml: str = "",
+        expected_issuer: str = "", expected_audience: str = "",
+        expected_recipient: str = "", expected_destination: str = "",
+        in_response_to_id: str = "", expected_cert_fingerprint: str = "",
+        organization_id: str = "", workspace_id: str = "",
+    ) -> dict[str, Any]:
+        """Step 22 SAML assertion full validation pipeline. Default fail closed."""
+        from src.open_platform.sandbox_v2.saml_step22_service import SandboxV2SAMLStep22Service
+        svc = SandboxV2SAMLStep22Service(
+            settings=getattr(self, '_settings', None),
+            store=self._store, iam_service=self._iam_service,
+            audit_service=getattr(self, '_audit', None),
+        )
+        return svc.validate_saml_assertion(
+            assertion_xml=assertion_xml, saml_response_xml=saml_response_xml,
+            expected_issuer=expected_issuer, expected_audience=expected_audience,
+            expected_recipient=expected_recipient, expected_destination=expected_destination,
+            in_response_to_id=in_response_to_id,
+            expected_cert_fingerprint=expected_cert_fingerprint,
+            organization_id=organization_id, workspace_id=workspace_id,
+        )
+
+    def validate_oidc_id_token(
+        self, id_token: str = "", expected_issuer: str = "",
+        expected_audience: str = "", expected_nonce: str = "",
+    ) -> Any:
+        """Step 21 id_token 验证。不存 token；默认 fail closed。"""
+        import hashlib
+        nonce_hash = ""
+        if expected_nonce:
+            nonce_hash = hashlib.sha256(expected_nonce.encode()).hexdigest()
+        from src.open_platform.sandbox_v2.oidc_step21_service import SandboxV2OIDCStep21Service
+        svc = SandboxV2OIDCStep21Service(settings=getattr(self._iam_service, '_settings', None) or getattr(self, '_settings', None))
+        return svc.validate_id_token(
+            id_token, expected_issuer=expected_issuer,
+            expected_audience=expected_audience,
+            expected_nonce_hash=nonce_hash, expected_nonce=expected_nonce,
+        )
+
     def get_performance_readiness(self) -> dict[str, Any]:
         from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
 

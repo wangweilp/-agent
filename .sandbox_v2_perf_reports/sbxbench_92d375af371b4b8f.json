@@ -1,0 +1,176 @@
+{
+  "benchmark": {
+    "benchmark_id": "sbxbench_92d375af371b4b8f",
+    "profile": "smoke",
+    "targets": [
+      "jobs",
+      "queue",
+      "metrics",
+      "alerts"
+    ],
+    "max_jobs": 3,
+    "max_queue_items": 3,
+    "max_artifacts": 2,
+    "max_concurrency": 1,
+    "timeout_seconds": 10,
+    "cleanup_after_run": true,
+    "organization_id": "",
+    "workspace_id": "",
+    "created_at": "2026-06-14T13:16:17.456905+00:00",
+    "metadata": {
+      "script": "run_sandbox_v2_performance_smoke",
+      "synthetic_fixture_only": true,
+      "no_user_code": true,
+      "no_external_network": true,
+      "no_container": true,
+      "no_microvm": true,
+      "test_run_id": "sbxperf_08fd41d6a219"
+    }
+  },
+  "results": [
+    {
+      "benchmark_result_id": "sbxbres_c8e952e6f84548d9",
+      "benchmark_id": "sbxbench_92d375af371b4b8f",
+      "target": "alerts",
+      "status": "completed",
+      "started_at": "2026-06-14T13:16:17.471877+00:00",
+      "finished_at": "2026-06-14T13:16:17.474736+00:00",
+      "duration_ms": 2,
+      "total_operations": 3,
+      "success_count": 3,
+      "failure_count": 0,
+      "p50_ms": 0.875,
+      "p95_ms": 1.194,
+      "p99_ms": 1.194,
+      "ops_per_second": 1500.0,
+      "warnings": [
+        "alert target uses bounded synthetic metrics and does not send external notifications"
+      ],
+      "blockers": [],
+      "metadata": {
+        "benchmark_id": "sbxbench_92d375af371b4b8f",
+        "test_run_id": "sbxperf_08fd41d6a219",
+        "synthetic_fixture_only": true,
+        "no_user_code": true,
+        "no_external_network": true,
+        "no_container": true,
+        "no_microvm": true
+      }
+    },
+    {
+      "benchmark_result_id": "sbxbres_f121246756fd41c3",
+      "benchmark_id": "sbxbench_92d375af371b4b8f",
+      "target": "metrics",
+      "status": "completed",
+      "started_at": "2026-06-14T13:16:17.459494+00:00",
+      "finished_at": "2026-06-14T13:16:17.471777+00:00",
+      "duration_ms": 12,
+      "total_operations": 3,
+      "success_count": 3,
+      "failure_count": 0,
+      "p50_ms": 4.093,
+      "p95_ms": 4.191,
+      "p99_ms": 4.191,
+      "ops_per_second": 250.0,
+      "warnings": [],
+      "blockers": [],
+      "metadata": {
+        "benchmark_id": "sbxbench_92d375af371b4b8f",
+        "test_run_id": "sbxperf_08fd41d6a219",
+        "synthetic_fixture_only": true,
+        "no_user_code": true,
+        "no_external_network": true,
+        "no_container": true,
+        "no_microvm": true
+      }
+    },
+    {
+      "benchmark_result_id": "sbxbres_6936a77374fb4aed",
+      "benchmark_id": "sbxbench_92d375af371b4b8f",
+      "target": "queue",
+      "status": "completed",
+      "started_at": "2026-06-14T13:16:17.458486+00:00",
+      "finished_at": "2026-06-14T13:16:17.459417+00:00",
+      "duration_ms": 0,
+      "total_operations": 3,
+      "success_count": 3,
+      "failure_count": 0,
+      "p50_ms": 0.337,
+      "p95_ms": 0.357,
+      "p99_ms": 0.357,
+      "ops_per_second": 3000.0,
+      "warnings": [],
+      "blockers": [],
+      "metadata": {
+        "benchmark_id": "sbxbench_92d375af371b4b8f",
+        "test_run_id": "sbxperf_08fd41d6a219",
+        "synthetic_fixture_only": true,
+        "no_user_code": true,
+        "no_external_network": true,
+        "no_container": true,
+        "no_microvm": true
+      }
+    },
+    {
+      "benchmark_result_id": "sbxbres_d7aa25a828d44ddb",
+      "benchmark_id": "sbxbench_92d375af371b4b8f",
+      "target": "jobs",
+      "status": "completed",
+      "started_at": "2026-06-14T13:16:17.458090+00:00",
+      "finished_at": "2026-06-14T13:16:17.458375+00:00",
+      "duration_ms": 0,
+      "total_operations": 3,
+      "success_count": 3,
+      "failure_count": 0,
+      "p50_ms": 0.092,
+      "p95_ms": 0.129,
+      "p99_ms": 0.129,
+      "ops_per_second": 3000.0,
+      "warnings": [],
+      "blockers": [],
+      "metadata": {
+        "benchmark_id": "sbxbench_92d375af371b4b8f",
+        "test_run_id": "sbxperf_08fd41d6a219",
+        "synthetic_fixture_only": true,
+        "no_user_code": true,
+        "no_external_network": true,
+        "no_container": true,
+        "no_microvm": true
+      }
+    }
+  ],
+  "capacity_estimate": {
+    "capacity_id": "sbxcap_2e384ddf324f45ce",
+    "generated_at": "2026-06-14T13:16:17.474825+00:00",
+    "profile": "smoke",
+    "estimated_jobs_per_minute": 180000.0,
+    "estimated_queue_items_per_minute": 180000.0,
+    "estimated_artifact_metadata_per_minute": 0.0,
+    "estimated_network_preflight_per_minute": 0.0,
+    "sqlite_recommended_limit": "local/single-node smoke or small benchmark only",
+    "postgres_recommended_threshold": "Use PostgreSQL before sustained multi-worker benchmarks",
+    "redis_recommended_threshold": "Use Redis before distributed queue workers",
+    "minio_recommended_threshold": "Use MinIO/S3 before large artifact metadata volumes",
+    "bottlenecks": [
+      "sample size is intentionally small; do not infer production SLOs"
+    ],
+    "recommendations": [
+      "Keep ordinary pytest on smoke/small limits; never run large benchmarks by default.",
+      "Move sustained job/metadata benchmarks to PostgreSQL before production capacity claims.",
+      "Move distributed queue lease benchmarks to Redis before multi-worker rollout.",
+      "Use MinIO/S3 for artifact-heavy capacity validation."
+    ],
+    "metadata": {
+      "synthetic_fixture_only": true,
+      "external_load_testing": false,
+      "user_code_benchmarking": false
+    }
+  },
+  "safety": {
+    "synthetic_fixture_only": true,
+    "external_load_testing": false,
+    "user_code_benchmarking": false,
+    "container_benchmarking": false,
+    "microvm_benchmarking": false
+  }
+}

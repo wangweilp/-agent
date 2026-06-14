@@ -295,6 +295,20 @@ class ReadinessResponse(BaseModel):
     capacity_planning: bool = True
     external_load_testing: bool = False
     load_testing_safe_mode: bool = True
+    # ── Step 20 — Real OIDC / SAML ──
+    real_oidc_login_enabled: bool = False
+    real_saml_login_enabled: bool = False
+    oidc_authorization_code_flow: bool = True
+    oidc_state_nonce_pkce: bool = True
+    oidc_token_exchange_enabled: bool = False
+    oidc_signature_validation: bool = False
+    oidc_claim_validation: bool = True
+    saml_sp_initiated_flow: bool = True
+    saml_acs_endpoint: bool = True
+    saml_signature_validation: bool = False
+    saml_xxe_protection: bool = True
+    sso_session_binding: bool = False
+    sso_safe_mode: bool = True
 
 
 # ═══════════════════════════════════════════
@@ -357,6 +371,29 @@ class SimulateOTelExportRequest(BaseModel):
     items: list[dict[str, Any]] = Field(default_factory=list)
     organization_id: str = Field(default="")
     workspace_id: str = Field(default="")
+
+
+class OIDCAuthorizeRequest(BaseModel):
+    provider_config_id: str = Field(default="")
+    organization_id: str = Field(default="")
+    workspace_id: str = Field(default="")
+    principal_hint: str = Field(default="")
+
+
+class SAMLAuthRequest(BaseModel):
+    provider_config_id: str = Field(default="")
+    organization_id: str = Field(default="")
+    workspace_id: str = Field(default="")
+    principal_hint: str = Field(default="")
+
+
+class SAMLACSRequest(BaseModel):
+    saml_response: str = Field(default="", alias="SAMLResponse")
+    relay_state: str = Field(default="", alias="RelayState")
+    provider_config_id: str = Field(default="")
+    organization_id: str = Field(default="")
+    workspace_id: str = Field(default="")
+    model_config = {"populate_by_name": True}
 
 
 class CreateLoadTestConfigRequest(BaseModel):
@@ -775,6 +812,20 @@ def create_sandbox_v2_router(
             production_load_testing_allowed=_env_bool("SANDBOX_V2_LOAD_TEST_ALLOW_PRODUCTION", False),
             slo_definitions=True, slo_evaluation=True, capacity_planning=True,
             load_testing_safe_mode=not _env_bool("SANDBOX_V2_RUN_STAGING_LOAD_TEST", False),
+            # Step 20 Real SSO fields
+            real_oidc_login_enabled=_env_bool("SANDBOX_V2_REAL_OIDC_LOGIN_ENABLED", False),
+            real_saml_login_enabled=_env_bool("SANDBOX_V2_REAL_SAML_LOGIN_ENABLED", False),
+            oidc_authorization_code_flow=not _env_bool("SANDBOX_V2_REAL_OIDC_LOGIN_ENABLED", False) or True,
+            oidc_state_nonce_pkce=True,
+            oidc_token_exchange_enabled=_env_bool("SANDBOX_V2_OIDC_TOKEN_EXCHANGE_ENABLED", False),
+            oidc_signature_validation=_env_bool("SANDBOX_V2_OIDC_SIGNATURE_VALIDATION_ENABLED", False),
+            oidc_claim_validation=True,
+            saml_sp_initiated_flow=True,
+            saml_acs_endpoint=True,
+            saml_signature_validation=False,
+            saml_xxe_protection=True,
+            sso_session_binding=_env_bool("SANDBOX_V2_SSO_SESSION_ENABLED", False),
+            sso_safe_mode=True,
         )
 
     # ═══════════════════════════════════════════
@@ -2093,5 +2144,207 @@ def create_sandbox_v2_router(
             return {"load_test_id": load_test_id, "format": "markdown", "report": report}
         report = service._load_tester.export_load_test_report_json(load_test_id)
         return {"load_test_id": load_test_id, "format": "json", "report": report}
+
+    # ═══════════════════════════════════════════
+    # Step 20 — Real OIDC / SAML Login endpoints
+    # ═══════════════════════════════════════════
+
+    @router.get("/iam/sso/readiness")
+    async def real_sso_readiness() -> dict[str, Any]:
+        return service.get_real_sso_readiness()
+
+    # ═══════════════════════════════════════════
+    # Step 21 — Production-Grade OIDC Identity Validation endpoints
+    # ═══════════════════════════════════════════
+
+    @router.get("/iam/oidc/validation/readiness")
+    async def oidc_validation_readiness() -> dict[str, Any]:
+        """Step 21 OIDC Validation Readiness — Runtime Admin 直接消费。
+
+        所有能力默认 disabled；``signature_validation`` 仅在
+        ``OIDC_SIGNATURE_VALIDATION_ENABLED=true`` 后显示 enabled。
+        """
+        return service.get_oidc_validation_readiness()
+
+    @router.post("/iam/oidc/validate-id-token")
+    async def oidc_validate_id_token(
+        id_token: str = Query(default="", description="JWT id_token (仅审计/测试用；不持久化)"),
+        issuer: str = Query(default=""),
+        audience: str = Query(default=""),
+        nonce: str = Query(default=""),
+    ) -> dict[str, Any]:
+        """手动验证 id_token（默认 fail closed；不存 token）。
+
+        注意：此端点不持久化 id_token，仅返回验证结果摘要。
+        """
+        result = service.validate_oidc_id_token(
+            id_token=id_token, expected_issuer=issuer,
+            expected_audience=audience, expected_nonce=nonce,
+        )
+        return result.to_dict()
+
+    @router.post("/iam/oidc/authorize")
+    async def oidc_authorize(payload: OIDCAuthorizeRequest) -> dict[str, Any]:
+        try:
+            return service.create_oidc_authorization_request(
+                provider_config_id=payload.provider_config_id,
+                organization_id=payload.organization_id,
+                workspace_id=payload.workspace_id,
+                principal_hint=payload.principal_hint,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @router.get("/iam/oidc/callback")
+    async def oidc_callback_get(
+        code: str = Query(default=""), state: str = Query(default=""),
+        error: str = Query(default=""), provider_config_id: str = Query(default=""),
+        organization_id: str = Query(default=""), workspace_id: str = Query(default=""),
+    ) -> dict[str, Any]:
+        """OIDC callback GET — IdP redirects here with code/state/error."""
+        try:
+            return service.handle_oidc_callback(
+                code=code, state=state, error=error,
+                provider_config_id=provider_config_id,
+                organization_id=organization_id, workspace_id=workspace_id,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @router.post("/iam/oidc/callback")
+    async def oidc_callback_post(
+        code: str = Query(default=""), state: str = Query(default=""),
+        error: str = Query(default=""), provider_config_id: str = Query(default=""),
+        organization_id: str = Query(default=""), workspace_id: str = Query(default=""),
+    ) -> dict[str, Any]:
+        try:
+            return service.handle_oidc_callback(
+                code=code, state=state, error=error,
+                provider_config_id=provider_config_id,
+                organization_id=organization_id, workspace_id=workspace_id,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @router.post("/iam/saml/authn-request")
+    async def saml_auth_request(payload: SAMLAuthRequest) -> dict[str, Any]:
+        try:
+            return service.create_saml_auth_request(
+                provider_config_id=payload.provider_config_id,
+                organization_id=payload.organization_id,
+                workspace_id=payload.workspace_id,
+                principal_hint=payload.principal_hint,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    @router.post("/iam/saml/acs")
+    async def saml_acs(payload: SAMLACSRequest) -> dict[str, Any]:
+        try:
+            return service.handle_saml_acs(
+                saml_response=payload.saml_response,
+                relay_state=payload.relay_state,
+                provider_config_id=payload.provider_config_id,
+                organization_id=payload.organization_id,
+                workspace_id=payload.workspace_id,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # ═══════════════════════════════════════════
+    # Step 22 — Production-Grade SAML Signature Validation endpoints
+    # ═══════════════════════════════════════════
+
+    @router.get("/iam/saml/validation/readiness")
+    async def saml_validation_readiness() -> dict[str, Any]:
+        """Step 22 SAML Validation Readiness — Runtime Admin 直接消费。
+
+        所有子能力默认 disabled：
+        - metadata_import
+        - signature_validation
+        - certificate_validation
+        - certificate_pinning
+        - replay_protection
+        - identity_mapping
+
+        每项包含 enabled / ready / status / reason。
+        """
+        return service.get_saml_validation_readiness()
+
+    @router.post("/iam/saml/validate-assertion")
+    async def saml_validate_assertion(
+        assertion_xml: str = Query(default="", description="SAML Assertion XML"),
+        saml_response_xml: str = Query(default="", description="Full SAML Response XML"),
+        expected_issuer: str = Query(default=""),
+        expected_audience: str = Query(default=""),
+        expected_recipient: str = Query(default=""),
+        expected_destination: str = Query(default=""),
+        in_response_to_id: str = Query(default=""),
+        expected_cert_fingerprint: str = Query(default=""),
+        organization_id: str = Query(default=""),
+        workspace_id: str = Query(default=""),
+    ) -> dict[str, Any]:
+        """SAML assertion 全管道验证。
+
+        严格执行：
+        1. 签名验证
+        2. 证书验证 + pinning
+        3. Assertion 字段校验
+        4. Replay 防护
+        5. Identity 映射
+
+        任何失败 → fail closed → 拒绝。
+        此端点不持久化 SAMLResponse。
+        """
+        return service.validate_saml_assertion(
+            assertion_xml=assertion_xml,
+            saml_response_xml=saml_response_xml,
+            expected_issuer=expected_issuer,
+            expected_audience=expected_audience,
+            expected_recipient=expected_recipient,
+            expected_destination=expected_destination,
+            in_response_to_id=in_response_to_id,
+            expected_cert_fingerprint=expected_cert_fingerprint,
+            organization_id=organization_id,
+            workspace_id=workspace_id,
+        )
+
+    @router.get("/iam/sso/sessions")
+    async def list_sso_sessions(
+        organization_id: str = Query(default=""),
+        workspace_id: str = Query(default=""),
+        status: str = Query(default=""),
+        limit: int = Query(default=50, ge=1, le=100),
+    ) -> dict[str, Any]:
+        items = service.list_sso_sessions(
+            organization_id=organization_id or None,
+            workspace_id=workspace_id or None,
+            status=status or None, limit=limit,
+        )
+        return {"sso_sessions": [s.to_dict() for s in items], "total": len(items)}
+
+    @router.post("/iam/sso/sessions/{session_id}/revoke")
+    async def revoke_sso_session(session_id: str, reason: str = Query(default="")) -> dict[str, Any]:
+        return service.revoke_sso_session(session_id, reason)
+
+    @router.get("/iam/oidc/callback-results")
+    async def list_oidc_callback_results(
+        provider_config_id: str = Query(default=""),
+        limit: int = Query(default=50, ge=1, le=100),
+    ) -> dict[str, Any]:
+        items = service.list_oidc_callback_results(
+            provider_config_id=provider_config_id or None, limit=limit,
+        )
+        return {"oidc_callback_results": items, "total": len(items)}
+
+    @router.get("/iam/saml/acs-results")
+    async def list_saml_acs_results(
+        provider_config_id: str = Query(default=""),
+        limit: int = Query(default=50, ge=1, le=100),
+    ) -> dict[str, Any]:
+        items = service.list_saml_acs_results(
+            provider_config_id=provider_config_id or None, limit=limit,
+        )
+        return {"saml_acs_results": items, "total": len(items)}
 
     return router

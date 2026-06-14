@@ -3558,6 +3558,495 @@ class SandboxV2CapacityPlan:
         )
 
 
+
+
+# ═══════════════════════════════════════════
+# Step 20 — Real OIDC / SAML Login Models
+# ═══════════════════════════════════════════
+
+class SandboxV2SSOFlowType(StrEnum):
+    OIDC_AUTHORIZATION_CODE = "oidc_authorization_code"
+    SAML_SP_INITIATED = "saml_sp_initiated"
+    MOCK = "mock"; DISABLED = "disabled"
+
+class SandboxV2SSOFlowStatus(StrEnum):
+    CREATED = "created"; AUTHORIZATION_URL_GENERATED = "authorization_url_generated"
+    CALLBACK_RECEIVED = "callback_received"; TOKEN_EXCHANGED = "token_exchanged"
+    CLAIMS_VALIDATED = "claims_validated"; MAPPED = "mapped"
+    SESSION_CREATED = "session_created"
+    REJECTED = "rejected"; FAILED = "failed"; EXPIRED = "expired"; DISABLED = "disabled"
+
+class SandboxV2SSOSessionStatus(StrEnum):
+    ACTIVE = "active"; EXPIRED = "expired"; REVOKED = "revoked"; REJECTED = "rejected"
+
+class SandboxV2OIDCValidationStatus(StrEnum):
+    VALID = "valid"; INVALID = "invalid"; EXPIRED = "expired"
+    REJECTED = "rejected"; SKIPPED = "skipped"; UNAVAILABLE = "unavailable"
+
+class SandboxV2SAMLValidationStatus(StrEnum):
+    VALID = "valid"; INVALID = "invalid"; REJECTED = "rejected"
+    EXPIRED = "expired"; SKIPPED = "skipped"; UNAVAILABLE = "unavailable"
+
+
+@dataclass
+class SandboxV2SSOState:
+    sso_state_id: str = field(default_factory=lambda: f"sbxstate_{uuid4().hex[:16]}")
+    flow_type: str = SandboxV2SSOFlowType.DISABLED
+    state_hash: str = ""       # SHA256(state)
+    nonce_hash: str = ""       # SHA256(nonce)
+    code_verifier_hash: str = ""  # SHA256(code_verifier)
+    code_challenge: str = ""   # S256 challenge
+    redirect_uri: str = ""
+    provider_config_id: str = ""
+    organization_id: str = ""
+    workspace_id: str = ""
+    principal_hint: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    consumed_at: datetime | None = None
+    status: str = "created"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "sso_state_id": self.sso_state_id, "flow_type": self.flow_type,
+            "provider_config_id": self.provider_config_id,
+            "organization_id": self.organization_id, "workspace_id": self.workspace_id,
+            "status": self.status, "created_at": self.created_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SandboxV2SSOState":
+        return cls(
+            sso_state_id=d.get("sso_state_id", ""), flow_type=d.get("flow_type", "disabled"),
+            state_hash=d.get("state_hash", ""), nonce_hash=d.get("nonce_hash", ""),
+            code_verifier_hash=d.get("code_verifier_hash", ""),
+            code_challenge=d.get("code_challenge", ""),
+            redirect_uri=d.get("redirect_uri", ""),
+            provider_config_id=d.get("provider_config_id", ""),
+            organization_id=d.get("organization_id", ""),
+            workspace_id=d.get("workspace_id", ""),
+            principal_hint=d.get("principal_hint", ""),
+            created_at=_parse_model_dt(d.get("created_at")),
+            expires_at=_parse_model_dt(d.get("expires_at")),
+            consumed_at=_parse_model_dt(d.get("consumed_at")) if d.get("consumed_at") else None,
+            status=d.get("status", "created"),
+            metadata=dict(d.get("metadata", {}) or {}),
+        )
+
+
+@dataclass
+class SandboxV2OIDCAuthRequest:
+    auth_request_id: str = field(default_factory=lambda: f"sbxoiar_{uuid4().hex[:16]}")
+    provider_config_id: str = ""
+    authorization_url: str = ""
+    state_id: str = ""
+    code_challenge: str = ""
+    scopes: str = "openid"
+    redirect_uri: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "auth_request_id": self.auth_request_id,
+            "provider_config_id": self.provider_config_id,
+            "authorization_url": self.authorization_url,
+            "state_id": self.state_id, "scopes": self.scopes,
+            "redirect_uri": self.redirect_uri, "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SandboxV2OIDCAuthRequest":
+        return cls(
+            auth_request_id=d.get("auth_request_id", ""),
+            provider_config_id=d.get("provider_config_id", ""),
+            authorization_url=d.get("authorization_url", ""),
+            state_id=d.get("state_id", ""),
+            code_challenge=d.get("code_challenge", ""),
+            scopes=d.get("scopes", "openid"), redirect_uri=d.get("redirect_uri", ""),
+            created_at=_parse_model_dt(d.get("created_at")),
+            metadata=dict(d.get("metadata", {}) or {}),
+        )
+
+
+@dataclass
+class SandboxV2OIDCCallbackResult:
+    callback_id: str = field(default_factory=lambda: f"sbxocbr_{uuid4().hex[:16]}")
+    provider_config_id: str = ""
+    state_id: str = ""
+    status: str = SandboxV2SSOFlowStatus.REJECTED
+    validation_status: str = SandboxV2OIDCValidationStatus.UNAVAILABLE
+    mapping_decision: dict[str, Any] = field(default_factory=dict)
+    security_context: dict[str, Any] = field(default_factory=dict)
+    session_id: str = ""
+    audit_event_id: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "callback_id": self.callback_id, "provider_config_id": self.provider_config_id,
+            "state_id": self.state_id, "status": self.status,
+            "validation_status": self.validation_status,
+            "session_id": self.session_id, "audit_event_id": self.audit_event_id,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SandboxV2OIDCCallbackResult":
+        return cls(
+            callback_id=d.get("callback_id", ""),
+            provider_config_id=d.get("provider_config_id", ""),
+            state_id=d.get("state_id", ""),
+            status=d.get("status", "rejected"),
+            validation_status=d.get("validation_status", "unavailable"),
+            mapping_decision=dict(d.get("mapping_decision", {}) or {}),
+            security_context=dict(d.get("security_context", {}) or {}),
+            session_id=d.get("session_id", ""), audit_event_id=d.get("audit_event_id", ""),
+            created_at=_parse_model_dt(d.get("created_at")),
+            metadata=dict(d.get("metadata", {}) or {}),
+        )
+
+
+@dataclass
+class SandboxV2OIDCTokenValidationResult:
+    validation_id: str = field(default_factory=lambda: f"sbxoiv_{uuid4().hex[:16]}")
+    issuer_valid: bool = False
+    audience_valid: bool = False
+    nonce_valid: bool = False
+    exp_valid: bool = False
+    iat_valid: bool = False
+    signature_valid: bool = False
+    alg_allowed: bool = True
+    email_verified: bool = False
+    validation_status: str = SandboxV2OIDCValidationStatus.UNAVAILABLE
+    reason: str = "Token validation not available"
+    claims_redacted: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "validation_id": self.validation_id, "issuer_valid": self.issuer_valid,
+            "audience_valid": self.audience_valid, "nonce_valid": self.nonce_valid,
+            "exp_valid": self.exp_valid, "iat_valid": self.iat_valid,
+            "signature_valid": self.signature_valid, "alg_allowed": self.alg_allowed,
+            "email_verified": self.email_verified,
+            "validation_status": self.validation_status, "reason": self.reason,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+@dataclass
+class SandboxV2SAMLAuthRequest:
+    saml_request_id: str = field(default_factory=lambda: f"sbxsar_{uuid4().hex[:16]}")
+    provider_config_id: str = ""
+    sso_url: str = ""
+    relay_state_id: str = ""
+    saml_request_redacted: str = ""
+    acs_url: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "saml_request_id": self.saml_request_id,
+            "provider_config_id": self.provider_config_id,
+            "sso_url": self.sso_url, "relay_state_id": self.relay_state_id,
+            "acs_url": self.acs_url, "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SandboxV2SAMLAuthRequest":
+        return cls(
+            saml_request_id=d.get("saml_request_id", ""),
+            provider_config_id=d.get("provider_config_id", ""),
+            sso_url=d.get("sso_url", ""), relay_state_id=d.get("relay_state_id", ""),
+            saml_request_redacted=d.get("saml_request_redacted", ""),
+            acs_url=d.get("acs_url", ""),
+            created_at=_parse_model_dt(d.get("created_at")),
+            metadata=dict(d.get("metadata", {}) or {}),
+        )
+
+
+@dataclass
+class SandboxV2SAMLACSResult:
+    acs_result_id: str = field(default_factory=lambda: f"sbxsacs_{uuid4().hex[:16]}")
+    provider_config_id: str = ""
+    relay_state_id: str = ""
+    validation_status: str = SandboxV2SAMLValidationStatus.UNAVAILABLE
+    mapping_decision: dict[str, Any] = field(default_factory=dict)
+    security_context: dict[str, Any] = field(default_factory=dict)
+    session_id: str = ""
+    audit_event_id: str = ""
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "acs_result_id": self.acs_result_id, "provider_config_id": self.provider_config_id,
+            "relay_state_id": self.relay_state_id, "validation_status": self.validation_status,
+            "session_id": self.session_id, "audit_event_id": self.audit_event_id,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SandboxV2SAMLACSResult":
+        return cls(
+            acs_result_id=d.get("acs_result_id", ""),
+            provider_config_id=d.get("provider_config_id", ""),
+            relay_state_id=d.get("relay_state_id", ""),
+            validation_status=d.get("validation_status", "unavailable"),
+            mapping_decision=dict(d.get("mapping_decision", {}) or {}),
+            security_context=dict(d.get("security_context", {}) or {}),
+            session_id=d.get("session_id", ""), audit_event_id=d.get("audit_event_id", ""),
+            created_at=_parse_model_dt(d.get("created_at")),
+            metadata=dict(d.get("metadata", {}) or {}),
+        )
+
+
+@dataclass
+class SandboxV2SSOSession:
+    session_id: str = field(default_factory=lambda: f"sbxssos_{uuid4().hex[:16]}")
+    principal_id: str = ""
+    principal_type: str = SandboxV2PrincipalType.USER
+    provider_config_id: str = ""
+    external_identity_id: str = ""
+    organization_id: str = ""
+    workspace_id: str = ""
+    roles: list[str] = field(default_factory=list)
+    scopes: list[str] = field(default_factory=list)
+    status: str = SandboxV2SSOSessionStatus.ACTIVE
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    revoked_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "session_id": self.session_id, "principal_id": self.principal_id,
+            "principal_type": self.principal_type,
+            "provider_config_id": self.provider_config_id,
+            "organization_id": self.organization_id, "workspace_id": self.workspace_id,
+            "roles": self.roles, "scopes": self.scopes, "status": self.status,
+            "created_at": self.created_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "SandboxV2SSOSession":
+        return cls(
+            session_id=d.get("session_id", ""), principal_id=d.get("principal_id", ""),
+            principal_type=d.get("principal_type", "user"),
+            provider_config_id=d.get("provider_config_id", ""),
+            external_identity_id=d.get("external_identity_id", ""),
+            organization_id=d.get("organization_id", ""),
+            workspace_id=d.get("workspace_id", ""),
+            roles=list(d.get("roles", []) or []),
+            scopes=list(d.get("scopes", []) or []),
+            status=d.get("status", "active"),
+            created_at=_parse_model_dt(d.get("created_at")),
+            expires_at=_parse_model_dt(d.get("expires_at")),
+            revoked_at=_parse_model_dt(d.get("revoked_at")) if d.get("revoked_at") else None,
+            metadata=dict(d.get("metadata", {}) or {}),
+        )
+
+
+# ═══════════════════════════════════════════
+# Step 22 — Production-Grade SAML Signature Validation Models
+# ═══════════════════════════════════════════
+
+
+class SandboxV2SAMLValidationMode(StrEnum):
+    """SAML Validation 模式。默认 disabled。"""
+    DISABLED = "disabled"
+    ENABLED = "enabled"
+    FAIL_CLOSED = "fail_closed"
+
+
+class SandboxV2SAMLSignatureEngine(StrEnum):
+    XMLSEC = "xmlsec"
+    PYTHON3SAML = "python3-saml"
+    STUB = "stub"
+    UNAVAILABLE = "unavailable"
+
+
+@dataclass
+class SandboxV2SAMLMetadata:
+    """SAML IdP Metadata 解析结果。"""
+    metadata_id: str = field(default_factory=lambda: f"sbxsamlm_{uuid4().hex[:16]}")
+    entity_id: str = ""
+    organization_name: str = ""
+    organization_display_name: str = ""
+    sso_url: str = ""          # SingleSignOnService Binding="HTTP-Redirect"
+    sso_url_post: str = ""     # SingleSignOnService Binding="HTTP-POST"
+    slo_url: str = ""          # SingleLogoutService
+    name_id_formats: list[str] = field(default_factory=list)
+    x509_certificates: list[str] = field(default_factory=list)  # raw PEM
+    certificate_fingerprints: list[str] = field(default_factory=list)  # SHA-256 fingerprints
+    signing_certificates: list[str] = field(default_factory=list)
+    encryption_certificates: list[str] = field(default_factory=list)
+    want_authn_requests_signed: bool = False
+    parsed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    source: str = "static"  # static | import | discovery
+    raw_xml_redacted: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def is_expired(self, now: datetime | None = None) -> bool:
+        now = now or datetime.now(timezone.utc)
+        return now > self.expires_at
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "metadata_id": self.metadata_id, "entity_id": self.entity_id,
+            "organization_name": self.organization_name,
+            "sso_url": self.sso_url, "sso_url_post": self.sso_url_post,
+            "slo_url": self.slo_url, "name_id_formats": self.name_id_formats,
+            "certificate_fingerprints": self.certificate_fingerprints,
+            "want_authn_requests_signed": self.want_authn_requests_signed,
+            "parsed_at": self.parsed_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(), "source": self.source,
+        }
+
+
+@dataclass
+class SandboxV2SAMLCertificateResult:
+    """SAML Certificate 校验结果。"""
+    cert_id: str = field(default_factory=lambda: f"sbxsamcrt_{uuid4().hex[:16]}")
+    fingerprint: str = ""                 # SHA-256 fingerprint
+    subject: str = ""
+    issuer: str = ""
+    not_before: datetime | None = None
+    not_after: datetime | None = None
+    is_expired: bool = False
+    is_pinned: bool = False
+    is_trusted: bool = False
+    match_method: str = "none"            # fingerprint | pinning | issuer | none
+    reason: str = "Certificate not validated"
+    raw_certificate_redacted: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "cert_id": self.cert_id, "fingerprint": self.fingerprint,
+            "subject": self.subject, "issuer": self.issuer,
+            "not_before": self.not_before.isoformat() if self.not_before else None,
+            "not_after": self.not_after.isoformat() if self.not_after else None,
+            "is_expired": self.is_expired, "is_pinned": self.is_pinned,
+            "is_trusted": self.is_trusted, "match_method": self.match_method,
+            "reason": self.reason,
+        }
+
+
+@dataclass
+class SandboxV2SAMLAssertionValidationResult:
+    """SAML Assertion 逐字段校验结果。"""
+    assertion_validation_id: str = field(default_factory=lambda: f"sbxsamav_{uuid4().hex[:16]}")
+    assertion_id: str = ""
+    issuers: list[str] = field(default_factory=list)
+    issuer_valid: bool = False
+    audience_valid: bool = False
+    recipient_valid: bool = False
+    destination_valid: bool = False
+    not_before_valid: bool = True
+    not_on_or_after_valid: bool = True
+    in_response_to_valid: bool = False
+    session_index: str = ""
+    session_not_on_or_after_valid: bool = True
+    name_id: str = ""
+    name_id_format: str = ""
+    authn_instant_valid: bool = True
+    signature_valid: bool = False
+    replay_protection_pass: bool = True
+    certificate_valid: bool = False
+    overall_valid: bool = False
+    validation_status: str = SandboxV2SAMLValidationStatus.UNAVAILABLE
+    reason: str = "Validation not available"
+    claims_redacted: dict[str, Any] = field(default_factory=dict)
+    validated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "assertion_validation_id": self.assertion_validation_id,
+            "assertion_id": self.assertion_id,
+            "issuer_valid": self.issuer_valid,
+            "audience_valid": self.audience_valid,
+            "recipient_valid": self.recipient_valid,
+            "destination_valid": self.destination_valid,
+            "not_before_valid": self.not_before_valid,
+            "not_on_or_after_valid": self.not_on_or_after_valid,
+            "in_response_to_valid": self.in_response_to_valid,
+            "signature_valid": self.signature_valid,
+            "replay_protection_pass": self.replay_protection_pass,
+            "certificate_valid": self.certificate_valid,
+            "overall_valid": self.overall_valid,
+            "validation_status": self.validation_status,
+            "reason": self.reason,
+            "validated_at": self.validated_at.isoformat(),
+        }
+
+
+@dataclass
+class SandboxV2SAMLReplayEntry:
+    """SAML Assertion Replay 记录。"""
+    replay_id: str = field(default_factory=lambda: f"sbxsamrp_{uuid4().hex[:16]}")
+    assertion_id: str = ""
+    issuer: str = ""
+    consumed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    tenant_id: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "replay_id": self.replay_id, "assertion_id": self.assertion_id,
+            "issuer": self.issuer, "consumed_at": self.consumed_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(), "tenant_id": self.tenant_id,
+        }
+
+
+@dataclass
+class SandboxV2SAMLIdentityMapping:
+    """SAML Assertion → Identity Mapping 结果。"""
+    mapping_id: str = field(default_factory=lambda: f"sbxsamim_{uuid4().hex[:16]}")
+    assertion_validation_id: str = ""
+    external_subject: str = ""
+    external_email: str = ""
+    email_verified: bool = False
+    external_groups: list[str] = field(default_factory=list)
+    display_name: str = ""
+    mapped_principal_id: str = ""
+    mapped_principal_type: str = SandboxV2PrincipalType.USER
+    mapped_roles: list[str] = field(default_factory=list)
+    mapped_scopes: list[str] = field(default_factory=list)
+    organization_id: str = ""
+    workspace_id: str = ""
+    allowed: bool = False
+    reason: str = "Default deny"
+    fail_closed: bool = True
+    mapped_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "mapping_id": self.mapping_id,
+            "assertion_validation_id": self.assertion_validation_id,
+            "external_subject": self.external_subject,
+            "external_email": self.external_email,
+            "external_groups": self.external_groups,
+            "mapped_principal_id": self.mapped_principal_id,
+            "mapped_roles": self.mapped_roles, "mapped_scopes": self.mapped_scopes,
+            "organization_id": self.organization_id,
+            "workspace_id": self.workspace_id,
+            "allowed": self.allowed, "reason": self.reason,
+            "mapped_at": self.mapped_at.isoformat(),
+        }
+
+
 def _mask_url(url: str) -> str:
     if not url:
         return ""
@@ -3579,3 +4068,229 @@ def _parse_model_dt(value: Any) -> datetime:
         except (ValueError, TypeError):
             pass
     return datetime.now(timezone.utc)
+
+
+# ═══════════════════════════════════════════
+# Step 21 — Production-Grade OIDC Identity Validation Models
+# ═══════════════════════════════════════════
+
+
+class SandboxV2OIDCValidationMode(StrEnum):
+    """OIDC Validation 模式。默认 disabled (Step 21 安全约束)。"""
+    DISABLED = "disabled"          # signature validation 关闭
+    ENABLED = "enabled"            # 完整 RS256 + claim 校验已启用
+    FAIL_CLOSED = "fail_closed"    # JWKS/Discovery 失败，强制拒绝
+
+
+@dataclass
+class SandboxV2OIDCDiscoveryCacheEntry:
+    """OIDC Discovery 缓存条目 (/.well-known/openid-configuration)。
+
+    安全约束：
+    - 失败必须 fail closed (不在本对象体现，由调用方处理)
+    - issuer 必须与请求的 issuer 一致 (anti-issuer-spoof)
+    """
+    issuer: str = ""
+    authorization_endpoint: str = ""
+    token_endpoint: str = ""
+    userinfo_endpoint: str = ""
+    jwks_uri: str = ""
+    raw_metadata_redacted: dict[str, Any] = field(default_factory=dict)
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    source: str = "discovery"  # discovery | static | fixture
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def is_expired(self, now: datetime | None = None) -> bool:
+        now = now or datetime.now(timezone.utc)
+        return now > self.expires_at
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "issuer": self.issuer,
+            "authorization_endpoint": self.authorization_endpoint,
+            "token_endpoint": self.token_endpoint,
+            "userinfo_endpoint": self.userinfo_endpoint,
+            "jwks_uri": self.jwks_uri,
+            "raw_metadata_redacted": self.raw_metadata_redacted,
+            "fetched_at": self.fetched_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(),
+            "source": self.source,
+        }
+
+
+@dataclass
+class SandboxV2JWKSCacheEntry:
+    """单个 JWKS 缓存条目。支持 kid rotation。"""
+    issuer: str = ""
+    jwks_uri: str = ""
+    keys_by_kid: dict[str, dict[str, Any]] = field(default_factory=dict)  # kid → JWK (PEM/material never in logs)
+    fetched_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    refresh_failures: int = 0
+    last_refresh_status: str = "init"  # init | success | failed
+    last_refresh_at: datetime | None = None
+    source: str = "jwks_uri"
+
+    def is_expired(self, now: datetime | None = None) -> bool:
+        now = now or datetime.now(timezone.utc)
+        return now > self.expires_at
+
+    def get_kids(self) -> list[str]:
+        return list(self.keys_by_kid.keys())
+
+    def to_dict(self) -> dict[str, Any]:
+        # 永不暴露 key material — 只暴露 kid 列表
+        return {
+            "issuer": self.issuer,
+            "jwks_uri": self.jwks_uri,
+            "kids": self.get_kids(),
+            "key_count": len(self.keys_by_kid),
+            "fetched_at": self.fetched_at.isoformat(),
+            "expires_at": self.expires_at.isoformat(),
+            "refresh_failures": self.refresh_failures,
+            "last_refresh_status": self.last_refresh_status,
+            "last_refresh_at": self.last_refresh_at.isoformat() if self.last_refresh_at else None,
+            "source": self.source,
+        }
+
+
+@dataclass
+class SandboxV2OIDCIdentityValidationResult:
+    """生产级 OIDC 身份验证结果。
+
+    安全约束：
+    - valid=false 时 claims_redacted 仍可返回 (便于审计)
+    - 不存 access_token / refresh_token
+    - signature_valid 只有在真实 RS256 验签成功后才为 True
+    """
+    validation_id: str = field(default_factory=lambda: f"sbxoiv21_{uuid4().hex[:14]}")
+    valid: bool = False
+    issuer: str = ""
+    subject: str = ""
+    audience: str = ""
+    sub_valid: bool = False
+    iss_valid: bool = False
+    aud_valid: bool = False
+    exp_valid: bool = False
+    iat_valid: bool = False
+    nbf_valid: bool = False
+    nonce_valid: bool = False
+    signature_valid: bool = False
+    alg_allowed: bool = True
+    kid_resolved: bool = False
+    kid: str = ""
+    validation_mode: str = SandboxV2OIDCValidationMode.DISABLED
+    reason: str = "OIDC signature validation disabled"
+    fail_closed: bool = True
+    claims_redacted: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        # 规范化输出结构（满足 Step 21 要求的返回结构）
+        return {
+            "valid": self.valid,
+            "claims": self.claims_redacted,
+            "issuer": self.issuer,
+            "subject": self.subject,
+            "audience": self.audience,
+            "details": {
+                "validation_id": self.validation_id,
+                "sub_valid": self.sub_valid,
+                "iss_valid": self.iss_valid,
+                "aud_valid": self.aud_valid,
+                "exp_valid": self.exp_valid,
+                "iat_valid": self.iat_valid,
+                "nbf_valid": self.nbf_valid,
+                "nonce_valid": self.nonce_valid,
+                "signature_valid": self.signature_valid,
+                "alg_allowed": self.alg_allowed,
+                "kid_resolved": self.kid_resolved,
+                "kid": self.kid,
+                "validation_mode": self.validation_mode,
+                "reason": self.reason,
+                "fail_closed": self.fail_closed,
+                "created_at": self.created_at.isoformat(),
+            },
+        }
+
+
+@dataclass
+class SandboxV2OIDCTokenExchangeResult:
+    """OIDC Token Exchange 结果。
+
+    安全约束：
+    - access_token / refresh_token 一律不存 (即使 transient 也不写入 store)
+    - id_token 仅保留 audit 摘要 (claims_redacted)，不保留原文
+    """
+    exchange_id: str = field(default_factory=lambda: f"sbxotx21_{uuid4().hex[:14]}")
+    allowed: bool = False
+    reason: str = "Token exchange disabled"
+    id_token_received: bool = False
+    id_token_validation: dict[str, Any] = field(default_factory=dict)  # 引用 IdentityValidationResult.to_dict()
+    claims_redacted: dict[str, Any] = field(default_factory=dict)
+    fail_closed: bool = True
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "exchange_id": self.exchange_id,
+            "allowed": self.allowed,
+            "reason": self.reason,
+            "id_token_received": self.id_token_received,
+            "id_token_validation": self.id_token_validation,
+            "claims_redacted": self.claims_redacted,
+            "fail_closed": self.fail_closed,
+            "created_at": self.created_at.isoformat(),
+            # NOTE: access_token / refresh_token intentionally absent
+        }
+
+
+@dataclass
+class SandboxV2OIDCIdentityMapping:
+    """OIDC Claims → Local User → Roles → Scopes → SSO Session 映射。
+
+    安全约束：
+    - token_storage=false 永远
+    - 不暴露原始 token
+    - 高权限角色不允许通过 default_role 自动赋予
+    """
+    mapping_id: str = field(default_factory=lambda: f"sbxoim21_{uuid4().hex[:14]}")
+    allowed: bool = False
+    reason: str = "Default deny"
+    issuer: str = ""
+    subject: str = ""
+    principal_id: str = ""
+    external_email: str = ""
+    email_verified: bool = False
+    mapped_roles: list[str] = field(default_factory=list)
+    mapped_scopes: list[str] = field(default_factory=list)
+    matched_rules: list[str] = field(default_factory=list)
+    sso_session_id: str = ""
+    sso_session_created: bool = False
+    fail_closed: bool = True
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "mapping_id": self.mapping_id,
+            "allowed": self.allowed,
+            "reason": self.reason,
+            "issuer": self.issuer,
+            "subject": self.subject,
+            "principal_id": self.principal_id,
+            "external_email": self.external_email,
+            "email_verified": self.email_verified,
+            "mapped_roles": self.mapped_roles,
+            "mapped_scopes": self.mapped_scopes,
+            "matched_rules": self.matched_rules,
+            "sso_session_id": self.sso_session_id,
+            "sso_session_created": self.sso_session_created,
+            "fail_closed": self.fail_closed,
+            "created_at": self.created_at.isoformat(),
+            "token_storage": False,  # invariant
+        }
+

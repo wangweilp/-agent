@@ -488,3 +488,118 @@ class SandboxV2IAMService:
             "token_storage": False,
             "safe_mode": True,
         }
+
+    # ── Step 20 — Real SSO Flow ──
+
+    def create_sso_session(self, **kwargs) -> Any | None:
+        from src.open_platform.sandbox_v2.models import SandboxV2SSOSession
+        session = SandboxV2SSOSession(**kwargs)
+        if self._store:
+            try: self._store.create_sso_session(session); return session
+            except Exception as e: logger.warning(f"Failed to create SSO session: {e}")
+        return session
+
+    def get_sso_session(self, session_id: str) -> Any | None:
+        if not self._store: return None
+        try: return self._store.get_sso_session(session_id)
+        except Exception: return None
+
+    def list_sso_sessions(self, organization_id: str = "", workspace_id: str = "",
+                          status: str = "", limit: int = 50) -> list[Any]:
+        if not self._store: return []
+        try:
+            return self._store.list_sso_sessions(
+                organization_id=organization_id or None, workspace_id=workspace_id or None,
+                status=status or None, limit=min(max(int(limit or 50), 1), 100),
+            )
+        except Exception: return []
+
+    def revoke_sso_session(self, session_id: str, reason: str = "") -> dict[str, Any]:
+        if not self._store: return {"revoked": False, "reason": "No store"}
+        try:
+            session = self._store.revoke_sso_session(session_id, reason)
+            if session:
+                self._audit_iam_event(
+                    event_type=SandboxV2AuditEventType.RESOURCE_UPDATED,
+                    decision="allow", reason=f"SSO session revoked: {reason or 'manual'}",
+                    organization_id=getattr(session, 'organization_id', ''),
+                    workspace_id=getattr(session, 'workspace_id', ''),
+                    resource_type="iam_sso_session", resource_id=session_id,
+                )
+            return {"revoked": session is not None, "session_id": session_id}
+        except Exception as e:
+            return {"revoked": False, "reason": str(e)}
+
+    def get_real_sso_readiness(self) -> dict[str, Any]:
+        s = self._settings
+        # Step 21 — signature_validation now driven by oidc_signature_validation_enabled
+        sig_enabled = bool(getattr(s, 'oidc_signature_validation_enabled', False))
+        return {
+            "real_oidc_login_enabled": bool(getattr(s, 'real_oidc_login_enabled', False)),
+            "real_saml_login_enabled": bool(getattr(s, 'real_saml_login_enabled', False)),
+            "oidc_authorization_code_flow": True,
+            "oidc_state_nonce_pkce": True,
+            "oidc_token_exchange_enabled": bool(getattr(s, 'oidc_token_exchange_enabled', False)),
+            "oidc_signature_validation": sig_enabled,
+            "oidc_claim_validation": True,
+            "saml_sp_initiated_flow": True,
+            "saml_acs_endpoint": True,
+            "saml_signature_validation": False,
+            "saml_xxe_protection": bool(getattr(s, 'saml_disable_xxe', True)),
+            "sso_session_binding": bool(getattr(s, 'sso_session_enabled', False)),
+            "token_storage": False,
+            "sso_safe_mode": True,
+        }
+
+    # ═══════════════════════════════════════════
+    # Step 21 — Production-Grade OIDC Identity Validation
+    # ═══════════════════════════════════════════
+
+    def get_oidc_validation_readiness(self) -> dict[str, Any]:
+        """Step 21 OIDC Validation Readiness — Runtime Admin 直接消费。
+
+        所有子能力默认 disabled。signature_validation 仅在
+        ``oidc_signature_validation_enabled=true`` 后才显示 enabled。
+        """
+        # Lazy import to avoid hard dep at module load time
+        try:
+            from src.open_platform.sandbox_v2.oidc_step21_service import (
+                SandboxV2OIDCStep21Service,
+            )
+        except ImportError as e:
+            logger.warning("step21_service_unavailable", extra={"error": str(e)})
+            return {
+                "step": "step21_oidc_production_validation",
+                "available": False,
+                "reason": f"step21 service unavailable: {e}",
+                "fail_closed": True,
+            }
+        svc = SandboxV2OIDCStep21Service(settings=self._settings)
+        return svc.get_oidc_validation_readiness()
+
+    # ═══════════════════════════════════════════
+    # Step 22 — Production-Grade SAML Validation Readiness
+    # ═══════════════════════════════════════════
+
+    def get_saml_validation_readiness(self) -> dict[str, Any]:
+        """Step 22 SAML Validation Readiness — Runtime Admin 直接消费。
+
+        所有子能力默认 disabled。每项包含 enabled / ready / status / reason。
+        """
+        try:
+            from src.open_platform.sandbox_v2.saml_step22_service import (
+                SandboxV2SAMLStep22Service,
+            )
+        except ImportError as e:
+            logger.warning("step22_service_unavailable", extra={"error": str(e)})
+            return {
+                "step": "step22_saml_production_validation",
+                "available": False,
+                "reason": f"step22 service unavailable: {e}",
+                "fail_closed": True,
+            }
+        svc = SandboxV2SAMLStep22Service(
+            settings=self._settings, store=self._store,
+            iam_service=self, audit_service=self._audit,
+        )
+        return svc.get_saml_validation_readiness()

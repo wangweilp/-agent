@@ -51,6 +51,17 @@ def _env_str(name: str, default: str) -> str:
     return val if val else default
 
 
+def _env_float(name: str, default: float) -> float:
+    """读取浮点型环境变量。"""
+    val = os.getenv(name, "").strip()
+    if not val:
+        return default
+    try:
+        return float(val)
+    except ValueError:
+        return default
+
+
 @dataclass
 class SandboxV2Settings:
     """Sandbox v2 生产化配置。
@@ -179,6 +190,60 @@ class SandboxV2Settings:
     iam_allowed_domains: list[str] = field(default_factory=list)
     iam_require_verified_email: bool = True
     iam_external_group_mapping_enabled: bool = False
+    # ── Real OIDC / SAML Login (Step 20) ──
+    real_oidc_login_enabled: bool = False
+    real_saml_login_enabled: bool = False
+    oidc_authorization_endpoint: str = ""
+    oidc_token_endpoint: str = ""
+    oidc_userinfo_endpoint: str = ""
+    oidc_redirect_uri: str = "http://localhost:8000/api/runtime/sandbox-v2/iam/oidc/callback"
+    oidc_scopes: str = "openid,email,profile"
+    oidc_pkce_enabled: bool = True
+    oidc_require_nonce: bool = True
+    oidc_require_state: bool = True
+    oidc_require_https: bool = True
+    oidc_allow_localhost_http: bool = True
+    oidc_clock_skew_seconds: int = 60
+    oidc_token_exchange_enabled: bool = False
+    oidc_jwks_fetch_enabled: bool = False
+    oidc_discovery_fetch_enabled: bool = False
+    # ── Step 21 — Production-Grade OIDC Identity Validation ──
+    # Signature validation 默认关闭 — 开启后 readiness 才显示 signature_validation=true。
+    oidc_signature_validation_enabled: bool = False
+    # 允许的签名算法白名单 (alg whitelist) — 默认只接受 RS256。
+    oidc_allowed_algs: list[str] = field(default_factory=lambda: ["RS256"])
+    # JWKS 缓存 TTL (秒) — 0 表示不过期 (不推荐)。
+    oidc_jwks_cache_ttl_seconds: int = 3600
+    # JWKS 缓存刷新重试次数 — 失败必须 fail closed。
+    oidc_jwks_refresh_retries: int = 2
+    # JWKS 刷新失败后的冷却时间 (秒) — 冷却期内 fail closed。
+    oidc_jwks_refresh_cooldown_seconds: int = 30
+    # Discovery 缓存 TTL (秒)。
+    oidc_discovery_cache_ttl_seconds: int = 3600
+    # 是否要求 ID Token 必须有 kid header (默认 true, 防 alg 混淆)。
+    oidc_require_kid: bool = True
+    saml_acs_url: str = "http://localhost:8000/api/runtime/sandbox-v2/iam/saml/acs"
+    saml_slo_url: str = ""
+    saml_require_signed_assertion: bool = True
+    saml_require_signed_response: bool = True
+    saml_allow_unsigned_dev_assertion: bool = False
+    saml_disable_xxe: bool = True
+    saml_max_response_bytes: int = 131072
+    # ── Step 22 — Production-Grade SAML Signature Validation ──
+    saml_metadata_import_enabled: bool = False
+    saml_signature_validation_enabled: bool = False
+    saml_certificate_validation_enabled: bool = False
+    saml_certificate_pinning_enabled: bool = False
+    saml_assertion_replay_protection_enabled: bool = False
+    saml_identity_mapping_enabled: bool = False
+    saml_metadata_cache_ttl_seconds: int = 3600
+    saml_replay_store_ttl_seconds: int = 3600
+    saml_clock_skew_seconds: int = 60
+    sso_session_enabled: bool = False
+    sso_session_ttl_seconds: int = 3600
+    sso_state_ttl_seconds: int = 300
+    run_real_oidc_integration: bool = False
+    run_real_saml_integration: bool = False
     run_iam_integration: bool = False
 
     # ── Load Testing / SLO (Step 19) ──
@@ -321,6 +386,37 @@ class SandboxV2Settings:
             blockers.append(f"load_test_max_rps={self.load_test_max_rps} exceeds safe limit (10)")
         if self.load_test_duration_seconds > 120:
             blockers.append(f"load_test_duration_seconds={self.load_test_duration_seconds} exceeds safe limit (120)")
+        if self.real_oidc_login_enabled and not self.oidc_token_exchange_enabled:
+            blockers.append("real_oidc_login_enabled=true but oidc_token_exchange_enabled=false")
+        if self.oidc_discovery_fetch_enabled:
+            blockers.append("oidc_discovery_fetch_enabled=true — must be false unless explicit IdP integration audit approved")
+        if self.oidc_jwks_fetch_enabled:
+            blockers.append("oidc_jwks_fetch_enabled=true — must be false unless explicit IdP integration audit approved")
+        if self.oidc_signature_validation_enabled and not self.oidc_jwks_fetch_enabled and not self.oidc_jwks_uri and not self.oidc_discovery_fetch_enabled:
+            blockers.append("oidc_signature_validation_enabled=true but no jwks source configured (oidc_jwks_uri / oidc_jwks_fetch_enabled / oidc_discovery_fetch_enabled all unset)")
+        if self.oidc_signature_validation_enabled and "none" in [a.lower() for a in self.oidc_allowed_algs]:
+            blockers.append("oidc_allowed_algs contains 'none' — alg=none must NEVER be allowed")
+        if self.oidc_signature_validation_enabled and not self.oidc_require_kid:
+            blockers.append("oidc_require_kid=false but signature validation enabled — kid required to prevent key confusion")
+        if self.run_real_oidc_integration and not self.real_oidc_login_enabled:
+            blockers.append("run_real_oidc_integration=true but real_oidc_login_enabled=false")
+        if self.run_real_saml_integration and not self.real_saml_login_enabled:
+            blockers.append("run_real_saml_integration=true but real_saml_login_enabled=false")
+        # Step 22 — SAML Validation blockers
+        if self.saml_signature_validation_enabled and not self.saml_metadata_import_enabled:
+            blockers.append("saml_signature_validation_enabled=true but saml_metadata_import_enabled=false — signature validation requires metadata")
+        if self.saml_certificate_pinning_enabled and not self.saml_certificate_validation_enabled:
+            blockers.append("saml_certificate_pinning_enabled=true but saml_certificate_validation_enabled=false — pinning requires certificate validation")
+        if self.saml_certificate_validation_enabled and not self.saml_metadata_import_enabled:
+            blockers.append("saml_certificate_validation_enabled=true but saml_metadata_import_enabled=false — certificate validation requires metadata")
+        if self.saml_identity_mapping_enabled and not self.iam_enabled:
+            blockers.append("saml_identity_mapping_enabled=true but iam_enabled=false — identity mapping requires IAM")
+        if self.real_saml_login_enabled and not self.saml_signature_validation_enabled:
+            blockers.append("real_saml_login_enabled=true but saml_signature_validation_enabled=false — production SAML requires signature validation")
+        if not self.saml_disable_xxe:
+            blockers.append("saml_disable_xxe=false — MUST be true for security")
+        if not self.saml_require_signed_assertion:
+            blockers.append("saml_require_signed_assertion=false — unsigned assertions are insecure")
         return blockers
 
     def backend_blockers(self) -> list[str]:
@@ -415,6 +511,16 @@ class SandboxV2Settings:
             warns.append("run_staging_load_test=true — staging load test will make HTTP requests to configured staging URL")
         if self.load_test_duration_seconds > 30:
             warns.append("load_test_duration_seconds > 30 — consider shorter smoke tests first")
+        if self.real_oidc_login_enabled and not self.oidc_require_https:
+            warns.append("oidc_require_https=false but real_oidc_login_enabled=true — insecure without HTTPS")
+        if self.real_saml_login_enabled and not self.saml_require_signed_assertion:
+            warns.append("saml_require_signed_assertion=false — unsigned assertions are insecure")
+        if self.real_saml_login_enabled and not self.saml_metadata_import_enabled:
+            warns.append("real_saml_login_enabled=true but saml_metadata_import_enabled=false — production SAML requires metadata")
+        if self.real_saml_login_enabled and not self.saml_signature_validation_enabled:
+            warns.append("real_saml_login_enabled=true but saml_signature_validation_enabled=false — production SAML requires signature validation")
+        if self.saml_certificate_pinning_enabled and not self.saml_certificate_validation_enabled:
+            warns.append("saml_certificate_pinning_enabled=true but saml_certificate_validation_enabled=false — pinning requires certificate validation")
         return warns
 
     def recommended_next_steps(self) -> list[str]:
@@ -553,6 +659,53 @@ def load_sandbox_v2_settings() -> SandboxV2Settings:
         iam_allowed_domains=_env_list("SANDBOX_V2_IAM_ALLOWED_DOMAINS", []),
         iam_require_verified_email=_env_bool("SANDBOX_V2_IAM_REQUIRE_VERIFIED_EMAIL", True),
         iam_external_group_mapping_enabled=_env_bool("SANDBOX_V2_IAM_EXTERNAL_GROUP_MAPPING_ENABLED", False),
+        # Real OIDC / SAML Login (Step 20)
+        run_real_oidc_integration=_env_bool("SANDBOX_V2_RUN_REAL_OIDC_INTEGRATION", False),
+        run_real_saml_integration=_env_bool("SANDBOX_V2_RUN_REAL_SAML_INTEGRATION", False),
+        real_oidc_login_enabled=_env_bool("SANDBOX_V2_REAL_OIDC_LOGIN_ENABLED", False),
+        real_saml_login_enabled=_env_bool("SANDBOX_V2_REAL_SAML_LOGIN_ENABLED", False),
+        oidc_authorization_endpoint=_env_str("SANDBOX_V2_OIDC_AUTHORIZATION_ENDPOINT", ""),
+        oidc_token_endpoint=_env_str("SANDBOX_V2_OIDC_TOKEN_ENDPOINT", ""),
+        oidc_userinfo_endpoint=_env_str("SANDBOX_V2_OIDC_USERINFO_ENDPOINT", ""),
+        oidc_redirect_uri=_env_str("SANDBOX_V2_OIDC_REDIRECT_URI", "http://localhost:8000/api/runtime/sandbox-v2/iam/oidc/callback"),
+        oidc_scopes=_env_str("SANDBOX_V2_OIDC_SCOPES", "openid,email,profile"),
+        oidc_pkce_enabled=_env_bool("SANDBOX_V2_OIDC_PKCE_ENABLED", True),
+        oidc_require_nonce=_env_bool("SANDBOX_V2_OIDC_REQUIRE_NONCE", True),
+        oidc_require_state=_env_bool("SANDBOX_V2_OIDC_REQUIRE_STATE", True),
+        oidc_require_https=_env_bool("SANDBOX_V2_OIDC_REQUIRE_HTTPS", True),
+        oidc_allow_localhost_http=_env_bool("SANDBOX_V2_OIDC_ALLOW_LOCALHOST_HTTP", True),
+        oidc_clock_skew_seconds=_env_int("SANDBOX_V2_OIDC_CLOCK_SKEW_SECONDS", 60),
+        oidc_token_exchange_enabled=_env_bool("SANDBOX_V2_OIDC_TOKEN_EXCHANGE_ENABLED", False),
+        oidc_jwks_fetch_enabled=_env_bool("SANDBOX_V2_OIDC_JWKS_FETCH_ENABLED", False),
+        oidc_discovery_fetch_enabled=_env_bool("SANDBOX_V2_OIDC_DISCOVERY_FETCH_ENABLED", False),
+        # Step 21 — Production-Grade OIDC Identity Validation
+        oidc_signature_validation_enabled=_env_bool("SANDBOX_V2_OIDC_SIGNATURE_VALIDATION_ENABLED", False),
+        oidc_allowed_algs=_env_list("SANDBOX_V2_OIDC_ALLOWED_ALGS", ["RS256"]),
+        oidc_jwks_cache_ttl_seconds=_env_int("SANDBOX_V2_OIDC_JWKS_CACHE_TTL_SECONDS", 3600),
+        oidc_jwks_refresh_retries=_env_int("SANDBOX_V2_OIDC_JWKS_REFRESH_RETRIES", 2),
+        oidc_jwks_refresh_cooldown_seconds=_env_int("SANDBOX_V2_OIDC_JWKS_REFRESH_COOLDOWN_SECONDS", 30),
+        oidc_discovery_cache_ttl_seconds=_env_int("SANDBOX_V2_OIDC_DISCOVERY_CACHE_TTL_SECONDS", 3600),
+        oidc_require_kid=_env_bool("SANDBOX_V2_OIDC_REQUIRE_KID", True),
+        saml_acs_url=_env_str("SANDBOX_V2_SAML_ACS_URL", "http://localhost:8000/api/runtime/sandbox-v2/iam/saml/acs"),
+        saml_slo_url=_env_str("SANDBOX_V2_SAML_SLO_URL", ""),
+        saml_require_signed_assertion=_env_bool("SANDBOX_V2_SAML_REQUIRE_SIGNED_ASSERTION", True),
+        saml_require_signed_response=_env_bool("SANDBOX_V2_SAML_REQUIRE_SIGNED_RESPONSE", True),
+        saml_allow_unsigned_dev_assertion=_env_bool("SANDBOX_V2_SAML_ALLOW_UNSIGNED_DEV_ASSERTION", False),
+        saml_disable_xxe=_env_bool("SANDBOX_V2_SAML_DISABLE_XXE", True),
+        saml_max_response_bytes=_env_int("SANDBOX_V2_SAML_MAX_RESPONSE_BYTES", 131072),
+        # Step 22 — Production-Grade SAML Signature Validation
+        saml_metadata_import_enabled=_env_bool("SAML_METADATA_IMPORT_ENABLED", False),
+        saml_signature_validation_enabled=_env_bool("SAML_SIGNATURE_VALIDATION_ENABLED", False),
+        saml_certificate_validation_enabled=_env_bool("SAML_CERTIFICATE_VALIDATION_ENABLED", False),
+        saml_certificate_pinning_enabled=_env_bool("SAML_CERTIFICATE_PINNING_ENABLED", False),
+        saml_assertion_replay_protection_enabled=_env_bool("SAML_ASSERTION_REPLAY_PROTECTION_ENABLED", False),
+        saml_identity_mapping_enabled=_env_bool("SAML_IDENTITY_MAPPING_ENABLED", False),
+        saml_metadata_cache_ttl_seconds=_env_int("SAML_METADATA_CACHE_TTL_SECONDS", 3600),
+        saml_replay_store_ttl_seconds=_env_int("SAML_REPLAY_STORE_TTL_SECONDS", 3600),
+        saml_clock_skew_seconds=_env_int("SAML_CLOCK_SKEW_SECONDS", 60),
+        sso_session_enabled=_env_bool("SANDBOX_V2_SSO_SESSION_ENABLED", False),
+        sso_session_ttl_seconds=_env_int("SANDBOX_V2_SSO_SESSION_TTL_SECONDS", 3600),
+        sso_state_ttl_seconds=_env_int("SANDBOX_V2_SSO_STATE_TTL_SECONDS", 300),
         run_iam_integration=_env_bool("SANDBOX_V2_RUN_IAM_INTEGRATION", False),
 
         # Observability (Step 18)

@@ -298,4 +298,55 @@ def create_runtime_admin_router(
             production_sandbox_gate_store=production_sandbox_gate_store,
         )
 
+    # ═══════════════════════════════════════════
+    # Step 21 — OIDC Validation Readiness (Runtime Admin)
+    # ═══════════════════════════════════════════
+
+    @router.get("/oidc-validation/readiness")
+    async def oidc_validation_readiness(
+        payload: TokenPayload = Depends(_require_admin),
+    ) -> dict[str, Any]:
+        """Runtime Admin 可视化 — Step 21 OIDC Validation Readiness。
+
+        展示子能力状态：enabled / disabled / ready / not_ready。
+        所有能力默认 disabled；signature_validation 仅在
+        ``OIDC_SIGNATURE_VALIDATION_ENABLED=true`` 后显示 enabled。
+        """
+        from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
+        from src.open_platform.sandbox_v2.oidc_step21_service import (
+            SandboxV2OIDCStep21Service,
+        )
+        settings = load_sandbox_v2_settings()
+        svc = SandboxV2OIDCStep21Service(settings=settings)
+        return svc.get_oidc_validation_readiness()
+
+    # ═══════════════════════════════════════════
+    # Step 22 — SAML Validation Readiness (Runtime Admin)
+    # ═══════════════════════════════════════════
+
+    @router.get("/saml-validation/readiness")
+    async def saml_validation_readiness(
+        payload: TokenPayload = Depends(_require_admin),
+    ) -> dict[str, Any]:
+        """Runtime Admin 可视化 — Step 22 SAML Validation Readiness。
+
+        展示子能力状态：enabled / disabled / ready / not_ready。
+        所有能力默认 disabled。
+
+        面板展示：
+        - Metadata Import
+        - Signature Validation
+        - Certificate Validation
+        - Certificate Pinning
+        - Replay Protection
+        - Identity Mapping
+        """
+        from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
+        from src.open_platform.sandbox_v2.saml_step22_service import (
+            SandboxV2SAMLStep22Service,
+        )
+        settings = load_sandbox_v2_settings()
+        svc = SandboxV2SAMLStep22Service(settings=settings)
+        return svc.get_saml_validation_readiness()
+
     return router

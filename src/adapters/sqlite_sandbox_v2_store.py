@@ -920,6 +920,121 @@ CREATE TABLE IF NOT EXISTS sandbox_v2_capacity_plans (
     metadata_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_sbxv2_cp_gen ON sandbox_v2_capacity_plans(generated_at);
+
+-- ═══════════════════════════════════════════
+-- Step 20 — Real OIDC / SAML Login Tables
+-- ═══════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_sso_states (
+    sso_state_id TEXT PRIMARY KEY,
+    flow_type TEXT NOT NULL DEFAULT 'disabled',
+    state_hash TEXT NOT NULL DEFAULT '',
+    nonce_hash TEXT NOT NULL DEFAULT '',
+    code_verifier_hash TEXT NOT NULL DEFAULT '',
+    code_challenge TEXT NOT NULL DEFAULT '',
+    redirect_uri TEXT NOT NULL DEFAULT '',
+    provider_config_id TEXT NOT NULL DEFAULT '',
+    organization_id TEXT NOT NULL DEFAULT '',
+    workspace_id TEXT NOT NULL DEFAULT '',
+    principal_hint TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL DEFAULT (datetime('now')),
+    consumed_at TEXT,
+    status TEXT NOT NULL DEFAULT 'created',
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_sss_hash ON sandbox_v2_sso_states(state_hash);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_sss_provider ON sandbox_v2_sso_states(provider_config_id);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_sss_created ON sandbox_v2_sso_states(created_at);
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_oidc_auth_requests (
+    auth_request_id TEXT PRIMARY KEY,
+    provider_config_id TEXT NOT NULL DEFAULT '',
+    authorization_url TEXT NOT NULL DEFAULT '',
+    state_id TEXT NOT NULL DEFAULT '',
+    code_challenge TEXT NOT NULL DEFAULT '',
+    scopes TEXT NOT NULL DEFAULT 'openid',
+    redirect_uri TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_oar_provider ON sandbox_v2_oidc_auth_requests(provider_config_id);
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_oidc_callback_results (
+    callback_id TEXT PRIMARY KEY,
+    provider_config_id TEXT NOT NULL DEFAULT '',
+    state_id TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'rejected',
+    validation_status TEXT NOT NULL DEFAULT 'unavailable',
+    mapping_decision_json TEXT NOT NULL DEFAULT '{}',
+    security_context_json TEXT NOT NULL DEFAULT '{}',
+    session_id TEXT NOT NULL DEFAULT '',
+    audit_event_id TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_ocr_provider ON sandbox_v2_oidc_callback_results(provider_config_id);
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_oidc_token_validation_results (
+    validation_id TEXT PRIMARY KEY,
+    issuer_valid INTEGER NOT NULL DEFAULT 0,
+    audience_valid INTEGER NOT NULL DEFAULT 0,
+    nonce_valid INTEGER NOT NULL DEFAULT 0,
+    exp_valid INTEGER NOT NULL DEFAULT 0,
+    iat_valid INTEGER NOT NULL DEFAULT 0,
+    signature_valid INTEGER NOT NULL DEFAULT 0,
+    alg_allowed INTEGER NOT NULL DEFAULT 1,
+    email_verified INTEGER NOT NULL DEFAULT 0,
+    validation_status TEXT NOT NULL DEFAULT 'unavailable',
+    reason TEXT NOT NULL DEFAULT 'Token validation not available',
+    claims_redacted_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_saml_auth_requests (
+    saml_request_id TEXT PRIMARY KEY,
+    provider_config_id TEXT NOT NULL DEFAULT '',
+    sso_url TEXT NOT NULL DEFAULT '',
+    relay_state_id TEXT NOT NULL DEFAULT '',
+    saml_request_redacted TEXT NOT NULL DEFAULT '',
+    acs_url TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_saml_acs_results (
+    acs_result_id TEXT PRIMARY KEY,
+    provider_config_id TEXT NOT NULL DEFAULT '',
+    relay_state_id TEXT NOT NULL DEFAULT '',
+    validation_status TEXT NOT NULL DEFAULT 'unavailable',
+    mapping_decision_json TEXT NOT NULL DEFAULT '{}',
+    security_context_json TEXT NOT NULL DEFAULT '{}',
+    session_id TEXT NOT NULL DEFAULT '',
+    audit_event_id TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS sandbox_v2_sso_sessions (
+    session_id TEXT PRIMARY KEY,
+    principal_id TEXT NOT NULL DEFAULT '',
+    principal_type TEXT NOT NULL DEFAULT 'user',
+    provider_config_id TEXT NOT NULL DEFAULT '',
+    external_identity_id TEXT NOT NULL DEFAULT '',
+    organization_id TEXT NOT NULL DEFAULT '',
+    workspace_id TEXT NOT NULL DEFAULT '',
+    roles_json TEXT NOT NULL DEFAULT '[]',
+    scopes_json TEXT NOT NULL DEFAULT '[]',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL DEFAULT (datetime('now')),
+    revoked_at TEXT,
+    metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_ss_org ON sandbox_v2_sso_sessions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_ss_ws ON sandbox_v2_sso_sessions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_sbxv2_ss_status ON sandbox_v2_sso_sessions(status);
 """
 
 
@@ -3395,5 +3510,220 @@ class SQLiteSandboxV2Store:
             "bottlenecks": json.loads(row.get("bottlenecks_json", "[]") or "[]"),
             "scaling_recommendations": json.loads(row.get("scaling_recommendations_json", "[]") or "[]"),
             "risk_notes": json.loads(row.get("risk_notes_json", "[]") or "[]"),
+            "metadata": json.loads(row.get("metadata_json", "{}") or "{}"),
+        })
+
+    # ═══════════════════════════════════════════
+    # Step 20 — Real OIDC / SAML Store Methods
+    # ═══════════════════════════════════════════
+
+    def create_sso_state(self, state: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2SSOState
+        s = state if isinstance(state, SandboxV2SSOState) else SandboxV2SSOState(**state) if isinstance(state, dict) else state
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_sso_states (
+            sso_state_id, flow_type, state_hash, nonce_hash, code_verifier_hash,
+            code_challenge, redirect_uri, provider_config_id, organization_id, workspace_id,
+            principal_hint, created_at, expires_at, consumed_at, status, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", [
+            s.sso_state_id, s.flow_type, s.state_hash, s.nonce_hash, s.code_verifier_hash,
+            s.code_challenge, s.redirect_uri, s.provider_config_id,
+            s.organization_id, s.workspace_id, s.principal_hint,
+            s.created_at.isoformat() if hasattr(s.created_at, 'isoformat') else str(s.created_at),
+            s.expires_at.isoformat() if hasattr(s.expires_at, 'isoformat') else str(s.expires_at),
+            s.consumed_at.isoformat() if s.consumed_at and hasattr(s.consumed_at, 'isoformat') else None,
+            s.status, json.dumps(getattr(s, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return s
+
+    def get_sso_state(self, sso_state_id: str) -> Any | None:
+        row = next(self._exec("SELECT * FROM sandbox_v2_sso_states WHERE sso_state_id=?", [sso_state_id]), None)
+        return self._row_to_sso_state(dict(row)) if row else None
+
+    def get_sso_state_by_hash(self, state_hash: str) -> Any | None:
+        row = next(self._exec("SELECT * FROM sandbox_v2_sso_states WHERE state_hash=? ORDER BY created_at DESC LIMIT 1", [state_hash]), None)
+        return self._row_to_sso_state(dict(row)) if row else None
+
+    def consume_sso_state(self, sso_state_id: str) -> Any | None:
+        now = datetime.now(timezone.utc).isoformat()
+        self._exec("UPDATE sandbox_v2_sso_states SET consumed_at=?, status='consumed' WHERE sso_state_id=? AND consumed_at IS NULL", [now, sso_state_id])
+        self._db.conn.commit()
+        return self.get_sso_state(sso_state_id)
+
+    def create_oidc_auth_request(self, request: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2OIDCAuthRequest
+        r = request if isinstance(request, SandboxV2OIDCAuthRequest) else SandboxV2OIDCAuthRequest(**request) if isinstance(request, dict) else request
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_oidc_auth_requests (
+            auth_request_id, provider_config_id, authorization_url, state_id,
+            code_challenge, scopes, redirect_uri, created_at, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?,?)""", [
+            r.auth_request_id, r.provider_config_id, r.authorization_url, r.state_id,
+            r.code_challenge, r.scopes, r.redirect_uri,
+            r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at),
+            json.dumps(getattr(r, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return r
+
+    def create_oidc_callback_result(self, result: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2OIDCCallbackResult
+        r = result if isinstance(result, SandboxV2OIDCCallbackResult) else SandboxV2OIDCCallbackResult(**result) if isinstance(result, dict) else result
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_oidc_callback_results (
+            callback_id, provider_config_id, state_id, status, validation_status,
+            mapping_decision_json, security_context_json, session_id, audit_event_id,
+            created_at, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?)""", [
+            r.callback_id, r.provider_config_id, r.state_id, r.status, r.validation_status,
+            json.dumps(r.mapping_decision or {}, ensure_ascii=False),
+            json.dumps(r.security_context or {}, ensure_ascii=False),
+            r.session_id, r.audit_event_id,
+            r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at),
+            json.dumps(getattr(r, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return r
+
+    def create_oidc_token_validation_result(self, result: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2OIDCTokenValidationResult
+        r = result if isinstance(result, SandboxV2OIDCTokenValidationResult) else SandboxV2OIDCTokenValidationResult(**result) if isinstance(result, dict) else result
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_oidc_token_validation_results (
+            validation_id, issuer_valid, audience_valid, nonce_valid, exp_valid,
+            iat_valid, signature_valid, alg_allowed, email_verified,
+            validation_status, reason, claims_redacted_json, created_at, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", [
+            r.validation_id, 1 if r.issuer_valid else 0, 1 if r.audience_valid else 0,
+            1 if r.nonce_valid else 0, 1 if r.exp_valid else 0, 1 if r.iat_valid else 0,
+            1 if r.signature_valid else 0, 1 if r.alg_allowed else 0,
+            1 if r.email_verified else 0, r.validation_status, r.reason,
+            json.dumps(r.claims_redacted or {}, ensure_ascii=False),
+            r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at),
+            json.dumps(getattr(r, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return r
+
+    def create_saml_auth_request(self, request: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2SAMLAuthRequest
+        r = request if isinstance(request, SandboxV2SAMLAuthRequest) else SandboxV2SAMLAuthRequest(**request) if isinstance(request, dict) else request
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_saml_auth_requests (
+            saml_request_id, provider_config_id, sso_url, relay_state_id,
+            saml_request_redacted, acs_url, created_at, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?)""", [
+            r.saml_request_id, r.provider_config_id, r.sso_url, r.relay_state_id,
+            r.saml_request_redacted, r.acs_url,
+            r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at),
+            json.dumps(getattr(r, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return r
+
+    def create_saml_acs_result(self, result: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2SAMLACSResult
+        r = result if isinstance(result, SandboxV2SAMLACSResult) else SandboxV2SAMLACSResult(**result) if isinstance(result, dict) else result
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_saml_acs_results (
+            acs_result_id, provider_config_id, relay_state_id, validation_status,
+            mapping_decision_json, security_context_json, session_id, audit_event_id,
+            created_at, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?)""", [
+            r.acs_result_id, r.provider_config_id, r.relay_state_id, r.validation_status,
+            json.dumps(r.mapping_decision or {}, ensure_ascii=False),
+            json.dumps(r.security_context or {}, ensure_ascii=False),
+            r.session_id, r.audit_event_id,
+            r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at),
+            json.dumps(getattr(r, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return r
+
+    def create_sso_session(self, session: Any) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2SSOSession
+        s = session if isinstance(session, SandboxV2SSOSession) else SandboxV2SSOSession(**session) if isinstance(session, dict) else session
+        self._exec("""INSERT OR REPLACE INTO sandbox_v2_sso_sessions (
+            session_id, principal_id, principal_type, provider_config_id,
+            external_identity_id, organization_id, workspace_id, roles_json, scopes_json,
+            status, created_at, expires_at, revoked_at, metadata_json
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", [
+            s.session_id, s.principal_id, s.principal_type, s.provider_config_id,
+            s.external_identity_id, s.organization_id, s.workspace_id,
+            json.dumps(s.roles or [], ensure_ascii=False),
+            json.dumps(s.scopes or [], ensure_ascii=False),
+            s.status,
+            s.created_at.isoformat() if hasattr(s.created_at, 'isoformat') else str(s.created_at),
+            s.expires_at.isoformat() if hasattr(s.expires_at, 'isoformat') else str(s.expires_at),
+            s.revoked_at.isoformat() if s.revoked_at and hasattr(s.revoked_at, 'isoformat') else None,
+            json.dumps(getattr(s, 'metadata', {}) or {}, ensure_ascii=False),
+        ]); self._db.conn.commit(); return s
+
+    def get_sso_session(self, session_id: str) -> Any | None:
+        row = next(self._exec("SELECT * FROM sandbox_v2_sso_sessions WHERE session_id=?", [session_id]), None)
+        return self._row_to_sso_session(dict(row)) if row else None
+
+    def list_sso_sessions(self, organization_id: str | None = None, workspace_id: str | None = None,
+                          status: str | None = None, limit: int = 50) -> list[Any]:
+        limit = min(max(int(limit or 50), 1), 100)
+        q = "SELECT * FROM sandbox_v2_sso_sessions WHERE 1=1"; params: list[Any] = []
+        if organization_id: q += " AND organization_id = ?"; params.append(organization_id)
+        if workspace_id: q += " AND workspace_id = ?"; params.append(workspace_id)
+        if status: q += " AND status = ?"; params.append(status)
+        q += " ORDER BY created_at DESC LIMIT ?"; params.append(limit)
+        return [self._row_to_sso_session(dict(r)) for r in self._exec(q, params)]
+
+    def revoke_sso_session(self, session_id: str, reason: str | None = None) -> Any | None:
+        now = datetime.now(timezone.utc).isoformat()
+        self._exec("UPDATE sandbox_v2_sso_sessions SET status='revoked', revoked_at=? WHERE session_id=?", [now, session_id])
+        self._db.conn.commit()
+        return self.get_sso_session(session_id)
+
+    # ── Step 20 row converters ──
+
+    def list_oidc_auth_requests(self, provider_config_id: str | None = None, limit: int = 50) -> list[Any]:
+        limit = min(max(int(limit or 50), 1), 100)
+        q = "SELECT * FROM sandbox_v2_oidc_auth_requests WHERE 1=1"; params: list[Any] = []
+        if provider_config_id: q += " AND provider_config_id = ?"; params.append(provider_config_id)
+        q += " ORDER BY created_at DESC LIMIT ?"; params.append(limit)
+        return [dict(r) for r in self._exec(q, params)]
+
+    def list_oidc_callback_results(self, provider_config_id: str | None = None, limit: int = 50) -> list[Any]:
+        limit = min(max(int(limit or 50), 1), 100)
+        q = "SELECT * FROM sandbox_v2_oidc_callback_results WHERE 1=1"; params: list[Any] = []
+        if provider_config_id: q += " AND provider_config_id = ?"; params.append(provider_config_id)
+        q += " ORDER BY created_at DESC LIMIT ?"; params.append(limit)
+        return [dict(r) for r in self._exec(q, params)]
+
+    def list_saml_auth_requests(self, provider_config_id: str | None = None, limit: int = 50) -> list[Any]:
+        limit = min(max(int(limit or 50), 1), 100)
+        q = "SELECT * FROM sandbox_v2_saml_auth_requests WHERE 1=1"; params: list[Any] = []
+        if provider_config_id: q += " AND provider_config_id = ?"; params.append(provider_config_id)
+        q += " ORDER BY created_at DESC LIMIT ?"; params.append(limit)
+        return [dict(r) for r in self._exec(q, params)]
+
+    def list_saml_acs_results(self, provider_config_id: str | None = None, limit: int = 50) -> list[Any]:
+        limit = min(max(int(limit or 50), 1), 100)
+        q = "SELECT * FROM sandbox_v2_saml_acs_results WHERE 1=1"; params: list[Any] = []
+        if provider_config_id: q += " AND provider_config_id = ?"; params.append(provider_config_id)
+        q += " ORDER BY created_at DESC LIMIT ?"; params.append(limit)
+        return [dict(r) for r in self._exec(q, params)]
+
+    @staticmethod
+    def _row_to_sso_state(row: dict[str, Any]) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2SSOState
+        return SandboxV2SSOState.from_dict({
+            "sso_state_id": row.get("sso_state_id", ""), "flow_type": row.get("flow_type", "disabled"),
+            "state_hash": row.get("state_hash", ""), "nonce_hash": row.get("nonce_hash", ""),
+            "code_verifier_hash": row.get("code_verifier_hash", ""),
+            "code_challenge": row.get("code_challenge", ""),
+            "redirect_uri": row.get("redirect_uri", ""),
+            "provider_config_id": row.get("provider_config_id", ""),
+            "organization_id": row.get("organization_id", ""),
+            "workspace_id": row.get("workspace_id", ""),
+            "principal_hint": row.get("principal_hint", ""),
+            "created_at": row.get("created_at"), "expires_at": row.get("expires_at"),
+            "consumed_at": row.get("consumed_at"), "status": row.get("status", "created"),
+            "metadata": json.loads(row.get("metadata_json", "{}") or "{}"),
+        })
+
+    @staticmethod
+    def _row_to_sso_session(row: dict[str, Any]) -> Any:
+        from src.open_platform.sandbox_v2.models import SandboxV2SSOSession
+        return SandboxV2SSOSession.from_dict({
+            "session_id": row.get("session_id", ""), "principal_id": row.get("principal_id", ""),
+            "principal_type": row.get("principal_type", "user"),
+            "provider_config_id": row.get("provider_config_id", ""),
+            "external_identity_id": row.get("external_identity_id", ""),
+            "organization_id": row.get("organization_id", ""),
+            "workspace_id": row.get("workspace_id", ""),
+            "roles": json.loads(row.get("roles_json", "[]") or "[]"),
+            "scopes": json.loads(row.get("scopes_json", "[]") or "[]"),
+            "status": row.get("status", "active"),
+            "created_at": row.get("created_at"), "expires_at": row.get("expires_at"),
+            "revoked_at": row.get("revoked_at"),
             "metadata": json.loads(row.get("metadata_json", "{}") or "{}"),
         })
