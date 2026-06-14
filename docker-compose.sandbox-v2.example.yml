@@ -1,0 +1,85 @@
+# =============================================================================
+# Sandbox v2 生产化依赖样例
+# =============================================================================
+#
+# ⚠️ IMPORTANT:
+# 1. 本文件仅作为未来生产迁移参考，不改变当前默认 SQLite/local 模式。
+# 2. 当前代码默认使用 SQLite + local storage，无需本文件即可运行。
+# 3. 本 compose 是后续 Step 12（PostgreSQL / Redis / MinIO 迁移）的参考。
+# 4. 所有密钥和密码均为占位符，生产部署前必须替换。
+# 5. 不要在生产环境中使用此文件中的占位符密码。
+#
+# 使用方法（仅供参考，不强制）:
+#   docker compose -f docker-compose.sandbox-v2.example.yml up -d
+# =============================================================================
+
+services:
+  # ── PostgreSQL 16 ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: sandbox-v2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sandbox_v2
+      POSTGRES_USER: sandbox_v2
+      POSTGRES_PASSWORD: CHANGE_ME_POSTGRES_PASSWORD
+    ports:
+      - "5432:5432"
+    volumes:
+      - sandbox_v2_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sandbox_v2 -d sandbox_v2"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sandbox-v2-net
+
+  # ── Redis 7 ──────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sandbox-v2-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "CHANGE_ME_REDIS_PASSWORD"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - sandbox_v2_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "CHANGE_ME_REDIS_PASSWORD", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sandbox-v2-net
+
+  # ── MinIO (S3-compatible Object Storage) ────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: sandbox-v2-minio
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: CHANGE_ME_MINIO_ACCESS_KEY
+      MINIO_ROOT_PASSWORD: CHANGE_ME_MINIO_SECRET_KEY
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - sandbox_v2_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sandbox-v2-net
+
+volumes:
+  sandbox_v2_postgres_data:
+  sandbox_v2_redis_data:
+  sandbox_v2_minio_data:
+
+networks:
+  sandbox-v2-net:
+    driver: bridge

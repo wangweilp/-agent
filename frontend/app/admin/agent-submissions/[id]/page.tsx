@@ -77,7 +77,7 @@ export default function AdminReviewDetailPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
-      <Link href="/admin/agent-submissions" className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"><ArrowLeft size={14}/>Review Queue</Link>
+      <Link href="/admin/agent-submissions" className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"><ArrowLeft size={14}/>审核队列</Link>
 
       {error && <div className="mb-4 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">{error}</div>}
 
@@ -98,16 +98,16 @@ export default function AdminReviewDetailPage() {
           <Info label="Source" value={sub.source_type}/>
           <Info label="Package URL" value={sub.package_url || "-"}/>
           <Info label="Mkp Agent ID" value={sub.marketplace_agent_id || "-"} mono/>
-          <Info label="Submitted" value={sub.submitted_at ? new Date(sub.submitted_at).toLocaleString("zh-CN") : "-"}/>
-          <Info label="Reviewed" value={sub.reviewed_at ? new Date(sub.reviewed_at).toLocaleString("zh-CN") : "-"}/>
-          <Info label="Reviewed By" value={sub.reviewed_by || "-"}/>
+          <Info label="提交时间" value={sub.submitted_at ? new Date(sub.submitted_at).toLocaleString("zh-CN") : "-"}/>
+          <Info label="审核时间" value={sub.reviewed_at ? new Date(sub.reviewed_at).toLocaleString("zh-CN") : "-"}/>
+          <Info label="审核人" value={sub.reviewed_by || "-"}/>
         </div>
       </section>
 
       {/* Developer Profile */}
       {dev && (
         <section className="os-card mb-4 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2"><ExternalLink size={14}/> Developer Profile</h3>
+          <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2"><ExternalLink size={14}/> 开发者信息</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
             <Info label="Display Name" value={dev.display_name}/>
             <Info label="Organization" value={dev.organization_name || "-"}/>
@@ -125,80 +125,80 @@ export default function AdminReviewDetailPage() {
       {validation && (
         <section className="os-card mb-4 p-4">
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-os-text-high">
-            {ValidationIcon(validation)} Manifest Validation
+            {ValidationIcon(validation)} Manifest 校验
           </h3>
           {hasErrors && <div className="rounded border border-red-400/20 bg-red-400/5 p-2 mb-2">
-            <p className="text-xs text-red-300 font-medium">Errors — cannot approve:</p>
+            <p className="text-xs text-red-300 font-medium">错误 — 无法通过审核：</p>
             {validation.errors.map((e,i)=><p key={i} className="text-2xs text-red-200">• {e}</p>)}
           </div>}
           {hasWarnings && <div className="rounded border border-amber-400/20 bg-amber-400/5 p-2">
-            <p className="text-xs text-amber-300 font-medium">Warnings — must be resolved before approval:</p>
+            <p className="text-xs text-amber-300 font-medium">警告 — 需在审核通过前解决：</p>
             {validation.warnings.map((w,i)=><p key={i} className="text-2xs text-amber-200">• {w}</p>)}
           </div>}
-          {!hasErrors && !hasWarnings && <p className="text-xs text-emerald-300">All checks passed</p>}
+          {!hasErrors && !hasWarnings && <p className="text-xs text-emerald-300">所有检查通过</p>}
         </section>
       )}
 
       {/* Review Actions */}
       <section className="os-card mb-4 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2"><Shield size={14} className="text-os-accent"/> Review Actions</h3>
+        <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2"><Shield size={14} className="text-os-accent"/> 审核操作</h3>
         <div className="flex flex-wrap gap-2">
           {sub.status === "submitted" && (
             <button onClick={handleStartReview} disabled={saving}
               className="inline-flex h-8 items-center gap-1.5 rounded border border-os-border px-3 text-xs text-os-subtle hover:text-os-text-high disabled:opacity-50">
-              {saving ? <Loader2 size={12} className="animate-spin"/> : "Start Review"}
+              {saving ? <Loader2 size={12} className="animate-spin"/> : "开始审核"}
             </button>
           )}
           {canReview && (
             <>
               {canApprove ? (
                 <button onClick={() => setDialog({ type: "approve" })}
-                  className="inline-flex h-8 items-center gap-1.5 rounded bg-emerald-400/10 px-3 text-xs text-emerald-300 hover:bg-emerald-400/15">Approve</button>
+                  className="inline-flex h-8 items-center gap-1.5 rounded bg-emerald-400/10 px-3 text-xs text-emerald-300 hover:bg-emerald-400/15">通过</button>
               ) : (
-                <button disabled className="inline-flex h-8 items-center gap-1.5 rounded bg-zinc-500/10 px-3 text-xs text-os-muted cursor-not-allowed" title={hasErrors ? "Manifest invalid" : "Security warnings unresolved"}>
-                  Approve (unavailable)
+                <button disabled className="inline-flex h-8 items-center gap-1.5 rounded bg-zinc-500/10 px-3 text-xs text-os-muted cursor-not-allowed" title={hasErrors ? "Manifest 无效" : "安全警告未解决"}>
+                  通过（不可用）
                 </button>
               )}
               <button onClick={() => setDialog({ type: "reject" })}
-                className="inline-flex h-8 items-center gap-1.5 rounded bg-red-400/10 px-3 text-xs text-red-300 hover:bg-red-400/15">Reject</button>
+                className="inline-flex h-8 items-center gap-1.5 rounded bg-red-400/10 px-3 text-xs text-red-300 hover:bg-red-400/15">拒绝</button>
               <button onClick={() => setDialog({ type: "request_changes" })}
-                className="inline-flex h-8 items-center gap-1.5 rounded bg-amber-400/10 px-3 text-xs text-amber-300 hover:bg-amber-400/15">Request Changes</button>
+                className="inline-flex h-8 items-center gap-1.5 rounded bg-amber-400/10 px-3 text-xs text-amber-300 hover:bg-amber-400/15">请求修改</button>
             </>
           )}
           {sub.status === "approved" && !sub.marketplace_agent_id && (
             <div>
-              <p className="text-xs text-emerald-300 flex items-center gap-1 mb-2"><CheckCircle2 size={12}/> Approved — ready to publish</p>
+              <p className="text-xs text-emerald-300 flex items-center gap-1 mb-2"><CheckCircle2 size={12}/> 已通过 — 可以发布</p>
               {showPublishConfirm ? (
                 <div className="inline-flex flex-wrap items-center gap-2 rounded border border-amber-400/20 bg-amber-400/5 px-3 py-2">
-                  <span className="text-xs text-amber-300">This will create a MarketplaceAgent entry. It will NOT execute package_url, install for any tenant, or enable payment.</span>
+                  <span className="text-xs text-amber-300">此操作将创建市场智能体条目。不会执行 package_url、不为任何租户安装、也不启用支付。</span>
                   <button onClick={handlePublish} disabled={publishing} className="rounded bg-os-accent px-2 py-0.5 text-xs text-white hover:bg-os-accent/90 disabled:opacity-50">
-                    {publishing ? <Loader2 size={12} className="animate-spin"/> : "Confirm Publish"}
+                    {publishing ? <Loader2 size={12} className="animate-spin"/> : "确认发布"}
                   </button>
-                  <button onClick={() => setShowPublishConfirm(false)} className="rounded px-2 py-0.5 text-xs text-os-subtle hover:text-os-text-high">Cancel</button>
+                  <button onClick={() => setShowPublishConfirm(false)} className="rounded px-2 py-0.5 text-xs text-os-subtle hover:text-os-text-high">取消</button>
                 </div>
               ) : (
                 <button onClick={() => setShowPublishConfirm(true)}
                   className="inline-flex h-8 items-center gap-1.5 rounded bg-violet-400/10 px-3 text-xs text-violet-300 hover:bg-violet-400/15">
-                  Publish to Marketplace
+                  发布到智能体市场
                 </button>
               )}
             </div>
           )}
           {sub.status === "published" && sub.marketplace_agent_id && (
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs text-violet-300 flex items-center gap-1"><CheckCircle2 size={12}/> Published</p>
+              <p className="text-xs text-violet-300 flex items-center gap-1"><CheckCircle2 size={12}/> 已发布</p>
               <Link href={`/agent-marketplace/${sub.marketplace_agent_id}`} className="text-xs text-os-accent hover:underline font-mono">{sub.marketplace_agent_id}</Link>
             </div>
           )}
           {sub.status === "rejected" && sub.review_notes && (
-            <p className="text-xs text-red-300 flex items-center gap-1"><XCircle size={12}/> Rejected: {sub.review_notes.slice(0, 200)}</p>
+            <p className="text-xs text-red-300 flex items-center gap-1"><XCircle size={12}/> 已拒绝：{sub.review_notes.slice(0, 200)}</p>
           )}
         </div>
       </section>
 
       {/* Manifest */}
       <section className="os-card mb-4 p-4">
-        <h3 className="mb-2 text-sm font-semibold text-os-text-high">Agent Manifest</h3>
+        <h3 className="mb-2 text-sm font-semibold text-os-text-high">智能体清单</h3>
         {sub.agent_manifest && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs mb-3">
             <Info label="Name" value={sub.agent_manifest.name}/>
@@ -225,7 +225,7 @@ export default function AdminReviewDetailPage() {
 
       {/* Review Records */}
       <section className="os-card mb-4 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2"><Clock size={14} className="text-os-accent"/> Review Records ({reviews.length})</h3>
+        <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2"><Clock size={14} className="text-os-accent"/> 审核记录 ({reviews.length})</h3>
         {reviews.length === 0 ? <p className="text-xs text-os-subtle">暂无审核记录</p> : reviews.map(r => (
           <div key={r.review_id} className="mb-2 rounded border border-os-border bg-os-elevated/30 p-3">
             <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export default function AdminReviewDetailPage() {
 
       {/* Publish Boundary */}
       <section className="os-card p-4">
-        <p className="text-2xs text-os-subtle">Approve does not publish. Marketplace publishing will be implemented in Step 22-H. This review UI cannot create MarketplaceAgent. No remote code execution. No real payment. No Revenue Share.</p>
+        <p className="text-2xs text-os-subtle">审核通过不代表发布。市场发布将在后续发布流程中实现。本审核页面不能创建市场智能体。不执行远程代码，不产生真实支付，无收入分成。</p>
       </section>
 
       {dialog && (

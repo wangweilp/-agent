@@ -8,13 +8,35 @@ import {
   ZoomIn, ZoomOut,
 } from "lucide-react";
 import { DataSet } from "vis-data";
-import { Network } from "vis-network";
+import { Network, type Data, type Edge, type Node } from "vis-network";
 import { api } from "@/services/api";
 import { PageTransition } from "@/components/animations/page-transition";
 import { Skeleton } from "@/components/animations/skeleton";
 import { KnowledgeGraphBackground } from "@/components/graph/KnowledgeGraphBackground";
 import { cn, formatDate, importanceColor } from "@/lib/utils";
 import type { GraphData, EntityDetail } from "@/types";
+
+type GraphNodeUpdate = Partial<Node> & { id: string; label?: string; title?: string; group?: string };
+type GraphEdgeUpdate = Partial<Edge> & { id: string };
+type NetworkDataBridge = {
+  body: {
+    data: {
+      nodes: {
+        update(items: GraphNodeUpdate[]): void;
+        get(): GraphNodeUpdate[];
+      };
+      edges: {
+        update(items: GraphEdgeUpdate[]): void;
+      };
+    };
+  };
+};
+type VisHoverParams = { node?: string };
+type VisClickParams = { nodes: string[]; edges: string[] };
+
+function networkData(network: Network) {
+  return (network as unknown as NetworkDataBridge).body.data;
+}
 
 // ═══════════════════════════════════════════
 // Design Tokens — 克制 · 深空 · 智能体网络
@@ -226,7 +248,7 @@ export default function GraphPage() {
     const ugs = [...new Set(gd.nodes.map(n => n.group).filter(Boolean))];
     for (const g of ugs) { groupColorMap[g] = GROUP_COLORS[gi % GROUP_COLORS.length]; gi++; }
 
-    (net as any).body.data.nodes.update(gd.nodes.map(n => ({
+    networkData(net).nodes.update(gd.nodes.map(n => ({
       id: n.id,
       color: {
         background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
@@ -239,7 +261,7 @@ export default function GraphPage() {
       shadow: false,
     })));
 
-    (net as any).body.data.edges.update(gd.edges.map(e => ({
+    networkData(net).edges.update(gd.edges.map(e => ({
       id: `${e.source}__${e.target}__${e.relation}`,
       color: {
         color: e.relation === "co_occurrence" ? EDGE_COOCCUR : EDGE_SECONDARY,
@@ -293,7 +315,7 @@ export default function GraphPage() {
       shape: n.type === "concept" ? "diamond" : n.type === "memory" ? "box" : "dot",
       size: (9 + Math.min(n.memory_count * 2, 32)) * NODE_SIZE_SCALE,
       shadow: { enabled: true, color: NODE_GLOW[n.type] || "rgba(127,140,255,0.2)", size: 8 },
-    })) as any);
+    })));
 
     // ── Curved Bézier edges with edge-bundling ──
     const edges = new DataSet(graphData.edges.map((e, idx) => {
@@ -322,9 +344,9 @@ export default function GraphPage() {
         font: { color: "rgba(200,200,220,0.35)", size: 7, strokeWidth: 0 },
         arrows: { to: { enabled: false } },
       };
-    })) as any;
+    }));
 
-    const network = new Network(container, { nodes, edges } as any, {
+    const network = new Network(container, { nodes, edges } as unknown as Data, {
       physics: {
         solver: "forceAtlas2Based",
         forceAtlas2Based: {
@@ -353,10 +375,10 @@ export default function GraphPage() {
     });
 
     // ── Hover → 1-degree highlight ──
-    network.on("hoverNode", (params) => {
+    network.on("hoverNode", (params?: VisHoverParams) => {
       // first reset all from any previous hover
       clearHighlight();
-      const nodeId = params.node as string;
+      const nodeId = params?.node;
       if (!nodeId) return;
       const gd = graphDataRef.current!;
       const adjMap = adjRef.current;
@@ -369,7 +391,7 @@ export default function GraphPage() {
         }
       }
 
-      (network as any).body.data.nodes.update(gd.nodes.map(n => {
+      networkData(network).nodes.update(gd.nodes.map(n => {
         if (n.id === nodeId) return {
           id: n.id,
           color: {
@@ -408,7 +430,7 @@ export default function GraphPage() {
         };
       }));
 
-      (network as any).body.data.edges.update(graphData.edges.map(e => {
+      networkData(network).edges.update(graphData.edges.map(e => {
         const eid = `${e.source}__${e.target}__${e.relation}`;
         return hlEdgeIds.has(eid)
           ? { id: eid, color: { color: HL_EDGE, highlight: "#8DAEFF", hover: "#A5C5FF" }, width: Math.max(e.weight * 0.9, 0.9) }
@@ -419,8 +441,9 @@ export default function GraphPage() {
     network.on("blurNode", () => { clearHighlight(); });
 
     // ── Click → focus with BFS-2 ──
-    network.on("click", (params) => {
+    network.on("click", (params?: VisClickParams) => {
       clearHighlight();
+      if (!params) return;
       if (params.nodes.length === 0) return;
 
       const clickedId = params.nodes[0] as string;
@@ -440,7 +463,7 @@ export default function GraphPage() {
         }
       }
 
-      (network as any).body.data.nodes.update(gd.nodes.map(n => {
+      networkData(network).nodes.update(gd.nodes.map(n => {
         if (n.id === clickedId) return {
           id: n.id,
           color: {
@@ -479,7 +502,7 @@ export default function GraphPage() {
         };
       }));
 
-      (network as any).body.data.edges.update(graphData.edges.map(e => {
+      networkData(network).edges.update(graphData.edges.map(e => {
         const eid = `${e.source}__${e.target}__${e.relation}`;
         return hlEdgeIds.has(eid)
           ? { id: eid, color: { color: HL_EDGE, highlight: "#8DAEFF", hover: "#A5C5FF" }, width: Math.max(e.weight * 1, 0.9) }
@@ -488,8 +511,8 @@ export default function GraphPage() {
     });
 
     // Click empty → clear
-    network.on("click", (p) => {
-      if (p.nodes.length === 0 && p.edges.length === 0) clearHighlight();
+    network.on("click", (p?: VisClickParams) => {
+      if (p && p.nodes.length === 0 && p.edges.length === 0) clearHighlight();
     });
 
     networkRef.current = network;
@@ -511,14 +534,14 @@ export default function GraphPage() {
   // ── Search ──
   const handleSearch = useCallback(() => {
     if (!networkRef.current || !searchTerm.trim()) return;
-    const allNodes = (networkRef.current as any).body.data.nodes.get();
+    const allNodes = networkData(networkRef.current).nodes.get();
     const matchIds = allNodes
-      .filter((n: any) => (n.label || "").toLowerCase().includes(searchTerm.toLowerCase()) || (n.title || "").toLowerCase().includes(searchTerm.toLowerCase()))
-      .map((n: any) => n.id);
+      .filter((n) => (n.label || "").toLowerCase().includes(searchTerm.toLowerCase()) || (n.title || "").toLowerCase().includes(searchTerm.toLowerCase()))
+      .map((n) => n.id);
     if (matchIds.length > 0) {
       networkRef.current.selectNodes(matchIds, false);
       networkRef.current.focus(matchIds[0], { scale: 1.5, animation: true });
-      setSelectedEntity(allNodes.find((n: any) => n.id === matchIds[0])?.label || null);
+      setSelectedEntity(allNodes.find((n) => n.id === matchIds[0])?.label || null);
     }
   }, [searchTerm]);
 
@@ -591,10 +614,10 @@ export default function GraphPage() {
             <span className="flex items-center gap-1"><Brain size={11} className="text-[#7F8CFF]" />实体 {stats.entity_nodes || 0}</span>
             <span className="flex items-center gap-1"><GitGraph size={11} className="text-[#4ADE80]" />概念 {stats.concept_nodes || 0}</span>
             <span className="flex items-center gap-1"><Activity size={11} className="text-[#FACC15]" />关系 {stats.edge_count || 0}</span>
-            {stats.top_entities?.length! > 0 && (
+            {stats.top_entities && stats.top_entities.length > 0 && (
               <>
                 <span className="w-px h-3 bg-white/5" />
-                {stats.top_entities!.slice(0, 5).map(name => (
+                {stats.top_entities.slice(0, 5).map(name => (
                   <button key={name} onClick={() => setSelectedEntity(name)}
                     className="px-1.5 py-0.5 rounded bg-white/5 text-[#7F8CFF]/70 hover:text-[#7F8CFF] transition-colors">
                     {name}

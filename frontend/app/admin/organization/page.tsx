@@ -304,7 +304,7 @@ export default function OrganizationPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
-            Organization Center
+            组织中心
           </h1>
           <p className="text-xs text-os-subtle mt-0.5">
             {orgs.length} organization{orgs.length !== 1 ? "s" : ""}

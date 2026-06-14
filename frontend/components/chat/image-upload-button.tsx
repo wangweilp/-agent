@@ -90,6 +90,7 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
           }
           return updated;
         });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (e: any) {
         setItems((prev) => {
           const updated = [...prev];

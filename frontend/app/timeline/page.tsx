@@ -47,7 +47,7 @@ function CalendarHeatmap({ days }: { days: TimelineDay[] }) {
   const maxCount = Math.max(...Object.values(dateCount), 1);
 
   const weeks: { date: Date; count: number }[][] = [];
-  let current = new Date(startDate);
+  const current = new Date(startDate);
 
   // Align to start of week (Sunday)
   current.setDate(current.getDate() - current.getDay());
@@ -437,4 +437,3 @@ export default function TimelinePage() {
     </PageTransition>
   );
 }
-

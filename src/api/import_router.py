@@ -66,11 +66,12 @@ def create_import_router(
     import_worker: ImportWorker,
     agent: CognitiveAgent | None = None,
 ) -> APIRouter:
-    router = APIRouter(prefix="/imports", tags=["imports"])
+    router = APIRouter(tags=["imports"])
 
     # ── POST /imports — 提交导入作业 ──
 
-    @router.post("")
+    @router.post("/imports")
+    @router.post("/import", include_in_schema=False)
     async def submit_import(files: list[UploadFile]):
         """批量上传文件，构建 ImportJob 并异步入队。
 
@@ -165,7 +166,8 @@ def create_import_router(
 
     # ── GET /imports — 列出导入作业 ──
 
-    @router.get("")
+    @router.get("/imports")
+    @router.get("/import", include_in_schema=False)
     async def list_imports(
         status: str = "",
         limit: int = 50,
@@ -195,7 +197,8 @@ def create_import_router(
 
     # ── GET /imports/{id} — 作业详情 ──
 
-    @router.get("/{job_id}")
+    @router.get("/imports/{job_id}")
+    @router.get("/import/{job_id}", include_in_schema=False)
     async def get_import(job_id: str):
         """获取作业详情 + 进度。"""
         job_data = import_worker._history.get_job(job_id)
@@ -213,7 +216,8 @@ def create_import_router(
 
     # ── POST /imports/{id}/retry — 重试失败作业 ──
 
-    @router.post("/{job_id}/retry")
+    @router.post("/imports/{job_id}/retry")
+    @router.post("/import/{job_id}/retry", include_in_schema=False)
     async def retry_import(job_id: str):
         """重试失败的作业。已成功写入的 chunk 会被跳过（断点续传）。"""
         job_data = import_worker._history.get_job(job_id)
@@ -245,7 +249,8 @@ def create_import_router(
 
     # ── DELETE /imports/{id} — 删除作业 ──
 
-    @router.delete("/{job_id}")
+    @router.delete("/imports/{job_id}")
+    @router.delete("/import/{job_id}", include_in_schema=False)
     async def delete_import(job_id: str, delete_memories: bool = False):
         """删除导入作业记录。可选删除关联记忆。
 

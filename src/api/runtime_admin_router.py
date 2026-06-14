@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from src.api.middleware import require_auth, TokenPayload
 from src.core.usage import UsageEvent, UsageResource, UsageUnit
+from src.open_platform.runtime_governance_summary import build_runtime_governance_summary
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,11 @@ def create_runtime_admin_router(
     marketplace_store=None,
     sandbox_policy_store=None,
     usage_store=None,
+    runtime_safety_store=None,
+    package_download_worker_store=None,
+    artifact_materialization_store=None,
+    sandbox_execution_store=None,
+    production_sandbox_gate_store=None,
 ) -> APIRouter:
     router = APIRouter(prefix="/admin/runtime", tags=["admin-runtime"])
 
@@ -277,5 +283,19 @@ def create_runtime_admin_router(
         tn = tenant_id if tenant_id and payload.is_super_admin else payload.workspace_id
         result = runtime_store.get_runtime_eligibility(marketplace_agent_id, tn)
         return result.to_dict()
+
+    @router.get("/governance/summary")
+    async def get_governance_summary(
+        payload: TokenPayload = Depends(_require_admin),
+    ) -> dict[str, Any]:
+        return build_runtime_governance_summary(
+            runtime_store=runtime_store,
+            sandbox_policy_store=sandbox_policy_store,
+            runtime_safety_store=runtime_safety_store,
+            package_download_worker_store=package_download_worker_store,
+            artifact_materialization_store=artifact_materialization_store,
+            sandbox_execution_store=sandbox_execution_store,
+            production_sandbox_gate_store=production_sandbox_gate_store,
+        )
 
     return router

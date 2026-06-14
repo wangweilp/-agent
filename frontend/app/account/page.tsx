@@ -38,6 +38,12 @@ const tierConfig: Record<string, { label: string; className: string }> = {
   ENTERPRISE:   { label: "企业版", className: "border-amber-500/20 bg-amber-500/10 text-amber-400" },
 };
 
+tierConfig.free = tierConfig.FREE;
+tierConfig.personal = tierConfig.PERSONAL;
+tierConfig.professional = tierConfig.PROFESSIONAL;
+tierConfig.team = tierConfig.TEAM;
+tierConfig.enterprise = tierConfig.ENTERPRISE;
+
 const statusConfig: Record<string, { label: string; className: string }> = {
   active:   { label: "活跃",   className: "bg-emerald-500/15 text-emerald-400" },
   trial:    { label: "试用中", className: "bg-amber-500/15 text-amber-400" },

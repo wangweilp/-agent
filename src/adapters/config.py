@@ -1,5 +1,6 @@
 import logging
 import secrets
+from typing import Literal
 
 from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,6 +44,42 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     upload_dir: str = "./data/uploads"
     upload_max_size_mb: int = 20
+    database_backend: Literal["sqlite", "postgres"] = Field(
+        default="sqlite",
+        validation_alias=AliasChoices("DATABASE_BACKEND", "database_backend"),
+    )
+    cache_backend: Literal["memory", "redis"] = Field(
+        default="memory",
+        validation_alias=AliasChoices("CACHE_BACKEND", "cache_backend"),
+    )
+    object_storage_backend: Literal["local", "s3", "minio"] = Field(
+        default="local",
+        validation_alias=AliasChoices("OBJECT_STORAGE_BACKEND", "object_storage_backend"),
+    )
+    queue_backend: Literal["inline", "redis", "celery", "rq"] = Field(
+        default="inline",
+        validation_alias=AliasChoices("QUEUE_BACKEND", "queue_backend"),
+    )
+    postgres_dsn: str = Field(
+        default="",
+        validation_alias=AliasChoices("POSTGRES_DSN", "DATABASE_URL", "postgres_dsn"),
+    )
+    redis_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("REDIS_URL", "redis_url"),
+    )
+    object_storage_endpoint: str = Field(
+        default="",
+        validation_alias=AliasChoices("OBJECT_STORAGE_ENDPOINT", "S3_ENDPOINT_URL", "MINIO_ENDPOINT", "object_storage_endpoint"),
+    )
+    object_storage_bucket: str = Field(
+        default="cognitive-os",
+        validation_alias=AliasChoices("OBJECT_STORAGE_BUCKET", "S3_BUCKET", "MINIO_BUCKET", "object_storage_bucket"),
+    )
+    queue_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("QUEUE_URL", "CELERY_BROKER_URL", "RQ_REDIS_URL", "queue_url"),
+    )
     cors_allowed_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",

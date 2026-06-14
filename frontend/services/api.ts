@@ -13,7 +13,8 @@ import type {
 } from "@/types/sync";
 import { getAccessToken } from "@/stores/auth-store";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const IMPORTS_PATH = "/imports";
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -462,7 +463,7 @@ export const api = {
       const headers: Record<string, string> = {};
       const token = getToken();
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      return fetch(`${BASE}/import`, {
+      return fetch(`${BASE}${IMPORTS_PATH}`, {
         method: "POST",
         headers,
         body: form,
@@ -472,16 +473,16 @@ export const api = {
       });
     },
     list(): Promise<ImportJobListResponse> {
-      return request("/import");
+      return request(IMPORTS_PATH);
     },
     get(jobId: string): Promise<ImportJobResponse> {
-      return request(`/import/${jobId}`);
+      return request(`${IMPORTS_PATH}/${jobId}`);
     },
     retry(jobId: string): Promise<ImportJobResponse> {
-      return request(`/import/${jobId}/retry`, { method: "POST" });
+      return request(`${IMPORTS_PATH}/${jobId}/retry`, { method: "POST" });
     },
     delete(jobId: string): Promise<void> {
-      return request(`/import/${jobId}`, { method: "DELETE" });
+      return request(`${IMPORTS_PATH}/${jobId}`, { method: "DELETE" });
     },
   },
 

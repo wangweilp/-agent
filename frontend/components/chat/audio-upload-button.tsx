@@ -42,6 +42,7 @@ export function AudioUploadButton({ onUploadComplete }: AudioUploadButtonProps) 
           summary: first.analysis.summary || "",
         });
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setResults([{ filename: "上传失败", summary: err.message || "未知错误", ok: false }]);
     } finally {

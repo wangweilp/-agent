@@ -5,9 +5,9 @@ import { AlertTriangle, Loader2, X } from "lucide-react";
 type ActionType = "approve" | "reject" | "request_changes";
 
 const ACTION_LABELS: Record<ActionType, { title: string; color: string; requiresNotes: boolean; notesLabel: string }> = {
-  approve: { title: "Approve Submission", color: "text-emerald-300", requiresNotes: false, notesLabel: "Notes (optional)" },
-  reject: { title: "Reject Submission", color: "text-red-300", requiresNotes: true, notesLabel: "Reason (required)" },
-  request_changes: { title: "Request Changes", color: "text-amber-300", requiresNotes: true, notesLabel: "Changes needed (required)" },
+  approve: { title: "通过提交", color: "text-emerald-300", requiresNotes: false, notesLabel: "备注（可选）" },
+  reject: { title: "拒绝提交", color: "text-red-300", requiresNotes: true, notesLabel: "拒绝原因（必填）" },
+  request_changes: { title: "请求修改", color: "text-amber-300", requiresNotes: true, notesLabel: "修改建议（必填）" },
 };
 
 interface Props {
@@ -62,10 +62,10 @@ export function ReviewActionDialog({ open, action, submissionId, saving, error, 
           {error && <div className="flex items-center gap-2 rounded border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-200"><AlertTriangle size={13}/>{error}</div>}
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-os-border px-5 py-3">
-          <button onClick={onClose} disabled={saving} className="inline-flex h-8 items-center rounded border border-os-border px-3 text-xs text-os-subtle hover:text-os-text-high disabled:opacity-50">Cancel</button>
+          <button onClick={onClose} disabled={saving} className="inline-flex h-8 items-center rounded border border-os-border px-3 text-xs text-os-subtle hover:text-os-text-high disabled:opacity-50">取消</button>
           <button onClick={handleSubmit} disabled={saving}
             className="inline-flex h-8 items-center gap-2 rounded bg-os-accent px-4 text-xs font-medium text-white hover:bg-os-accent/90 disabled:opacity-50 disabled:cursor-not-allowed">
-            {saving ? <Loader2 size={12} className="animate-spin"/> : "Confirm"}
+            {saving ? <Loader2 size={12} className="animate-spin"/> : "确认"}
           </button>
         </div>
       </div>

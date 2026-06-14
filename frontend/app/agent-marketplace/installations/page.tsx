@@ -215,7 +215,7 @@ export default function InstallationsPage() {
           <p className="text-sm text-os-subtle">
             前往{" "}
             <Link href="/agent-marketplace" className="text-os-accent hover:underline">
-              Agent Marketplace
+              智能体市场
             </Link>
             {" "}浏览并安装 Agent。
           </p>

@@ -43,7 +43,7 @@ export default function RegisterPage() {
     <main className="mx-auto max-w-lg px-4 py-8">
       <div className="os-card flex flex-col items-center gap-3 p-6 text-center">
         <p className="text-sm text-os-text-high">你已经注册了开发者账号。</p>
-        <Link href="/developer" className="inline-flex h-9 items-center gap-2 rounded-md bg-os-accent px-4 text-xs font-medium text-white hover:bg-os-accent/90">前往 Developer Console</Link>
+        <Link href="/developer" className="inline-flex h-9 items-center gap-2 rounded-md bg-os-accent px-4 text-xs font-medium text-white hover:bg-os-accent/90">前往开发者控制台</Link>
       </div>
     </main>
   );

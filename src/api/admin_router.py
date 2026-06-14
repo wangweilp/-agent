@@ -6,6 +6,8 @@ import logging
 
 from fastapi import APIRouter, Depends, Query
 
+from src.adapters.production_backends import assess_production_backend_readiness
+
 from .middleware import require_manage
 
 logger = logging.getLogger(__name__)
@@ -119,6 +121,10 @@ def create_admin_router(settings, org_store, auth_store, collab_store, memory_st
         return {
             "db_type": "SQLite",
             "vector_store": "ChromaDB",
+            "database_backend": settings.database_backend,
+            "cache_backend": settings.cache_backend,
+            "object_storage_backend": settings.object_storage_backend,
+            "queue_backend": settings.queue_backend,
             "llm_provider": "DeepSeek",
             "embedding_model": settings.embedding_model,
             "auth_enabled": True,
@@ -126,5 +132,9 @@ def create_admin_router(settings, org_store, auth_store, collab_store, memory_st
             "log_level": settings.log_level,
             "environment": settings.environment,
         }
+
+    @router.get("/production-backends")
+    async def production_backends(payload=Depends(require_manage)):
+        return assess_production_backend_readiness(settings)
 
     return router

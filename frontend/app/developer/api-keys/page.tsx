@@ -49,7 +49,7 @@ export default function ApiKeysPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <Link href="/developer" className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"><ArrowLeft size={14}/>Developer Console</Link>
+      <Link href="/developer" className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"><ArrowLeft size={14}/>开发者控制台</Link>
       <div className="mb-6 flex items-end justify-between">
         <div><h1 className="text-2xl font-semibold text-os-text-high">API Keys</h1><p className="text-sm text-os-subtle">管理开发者 API Key</p></div>
         <button onClick={() => void fetch()} disabled={loading} className="inline-flex h-9 items-center gap-2 rounded-md border border-os-border px-3 text-xs text-os-subtle hover:text-os-text-high disabled:opacity-60"><RefreshCw size={14}/>刷新</button>

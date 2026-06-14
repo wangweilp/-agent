@@ -65,6 +65,7 @@ from src.core.consolidation import DefaultMemoryConsolidator
 from src.core.memory_lifecycle import MemoryLifecycleManager
 from src.core.memory_queue import MemoryWriteWorker
 from src.core.retrieval import MemoryRetrievalService
+from src.core.account_entitlements import ensure_workspace_account_entitlements
 from src.tools.registry import ToolRegistry
 
 # ── Step 20: Enterprise AI Agent Platform ──
@@ -288,6 +289,16 @@ usage_store = UsageStoreAdapter(settings)
 tenant_store = TenantStoreAdapter(settings)
 growth_store = GrowthStoreAdapter(settings)
 payment_gateway = PaymentGatewayRegistry()
+entitlement_result = ensure_workspace_account_entitlements(
+    auth_store=auth_store,
+    tenant_store=tenant_store,
+    subscription_store=subscription_store,
+    billing_store=billing_store,
+)
+logger.info(
+    "workspace_account_entitlements_ready",
+    extra={"event": "workspace_account_entitlements_ready", **entitlement_result.__dict__},
+)
 
 app.include_router(create_billing_router(billing_store, payment_gateway))
 app.include_router(create_subscription_router(subscription_store, usage_store, billing_store))
@@ -589,12 +600,54 @@ logger.info("sandbox_policy_api_registered")
 # Step 23-G: Runtime Admin API
 # ═══════════════════════════════════════════
 
+from src.adapters.runtime_safety_store import SQLiteRuntimeSafetyStore
+from src.adapters.package_download_worker_store import SQLitePackageDownloadWorkerStore
+from src.adapters.artifact_materialization_store import SQLiteArtifactMaterializationStore
+from src.adapters.sandbox_execution_store import SQLiteSandboxExecutionStore
+from src.adapters.production_sandbox_gate_store import SQLiteProductionSandboxGateStore
+from src.open_platform.runtime_safety_service import RuntimeSafetyService
+from src.open_platform.package_download_worker_service import PackageDownloadWorkerService
+from src.open_platform.artifact_materialization_service import ArtifactMaterializationService
+
+runtime_safety_store = SQLiteRuntimeSafetyStore(settings)
+runtime_safety_service = RuntimeSafetyService(store=runtime_safety_store, usage_store=usage_store)
+package_download_worker_store = SQLitePackageDownloadWorkerStore(settings)
+package_download_worker_service = PackageDownloadWorkerService(
+    store=package_download_worker_store,
+    runtime_safety_store=runtime_safety_store,
+    usage_store=usage_store,
+)
+artifact_materialization_store = SQLiteArtifactMaterializationStore(settings)
+artifact_materialization_service = ArtifactMaterializationService(
+    store=artifact_materialization_store,
+    package_download_worker_store=package_download_worker_store,
+    runtime_safety_store=runtime_safety_store,
+    usage_store=usage_store,
+)
+sandbox_execution_store = SQLiteSandboxExecutionStore(settings)
+production_sandbox_gate_store = SQLiteProductionSandboxGateStore(settings)
+
+try:
+    if not runtime_safety_store.list_policies(scope="global_runtime"):
+        runtime_safety_service.create_default_kill_switch_policy(created_by="system")
+    if not package_download_worker_store.list_policies(scope="global"):
+        package_download_worker_service.create_disabled_worker_policy(created_by="system")
+    if not artifact_materialization_store.list_policies(scope="global"):
+        artifact_materialization_service.create_disabled_materialization_policy(created_by="system")
+except Exception:
+    logger.exception("runtime_governance_control_plane_seed_failed")
+
 from src.api.runtime_admin_router import create_runtime_admin_router
 app.include_router(create_runtime_admin_router(
     runtime_store=runtime_store,
     marketplace_store=marketplace_store,
     sandbox_policy_store=sandbox_policy_store,
     usage_store=usage_store,
+    runtime_safety_store=runtime_safety_store,
+    package_download_worker_store=package_download_worker_store,
+    artifact_materialization_store=artifact_materialization_store,
+    sandbox_execution_store=sandbox_execution_store,
+    production_sandbox_gate_store=production_sandbox_gate_store,
 ))
 logger.info("runtime_admin_api_registered")
 
@@ -676,6 +729,93 @@ app.include_router(create_runtime_execution_router(
 
 logger.info("runtime_execution_api_registered",
             extra={"event": "runtime_execution_api_ready"})
+
+# ═══════════════════════════════════════════
+# Sandbox v2 Core Contract — Step 1
+# ═══════════════════════════════════════════
+
+from src.adapters.sqlite_sandbox_v2_store import SQLiteSandboxV2Store
+from src.adapters.sqlite_sandbox_v2_queue import SQLiteSandboxV2Queue
+from src.open_platform.sandbox_v2.service import SandboxV2Service
+from src.open_platform.sandbox_v2.worker import SandboxV2Worker
+from src.open_platform.sandbox_v2.artifacts import LocalSandboxArtifactStore
+from src.open_platform.sandbox_v2.packages import LocalSandboxPackageQuarantineStore
+from src.open_platform.sandbox_v2.network import SandboxNetworkEgressService
+from src.open_platform.sandbox_v2.execution_provider import create_default_provider_registry
+from src.open_platform.sandbox_v2.container_provider import RootlessContainerExecutionProvider, SandboxContainerRuntimeConfig
+from src.open_platform.sandbox_v2.models import SandboxV2IsolationProvider, SandboxV2ContainerRuntime
+from src.open_platform.sandbox_v2.kill_switch import SandboxKillSwitchService
+from src.api.sandbox_v2 import create_sandbox_v2_router
+import shutil, platform as _plat
+
+sandbox_v2_store = SQLiteSandboxV2Store(settings)
+logger.info("sandbox_v2_store_initialized")
+
+sandbox_v2_queue = SQLiteSandboxV2Queue(settings)
+logger.info("sandbox_v2_queue_initialized")
+
+sandbox_v2_artifact_store = LocalSandboxArtifactStore(
+    artifact_root=getattr(settings, "sandbox_v2_artifact_root", ".sandbox_v2_artifacts"),
+)
+logger.info("sandbox_v2_artifact_store_initialized",
+            extra={"root": sandbox_v2_artifact_store.root})
+
+sandbox_v2_package_store = LocalSandboxPackageQuarantineStore(
+    quarantine_root=getattr(settings, "sandbox_v2_package_quarantine_root", ".sandbox_v2_package_quarantine"),
+)
+logger.info("sandbox_v2_package_quarantine_store_initialized",
+            extra={"root": sandbox_v2_package_store.root})
+
+sandbox_v2_network_service = SandboxNetworkEgressService(store=sandbox_v2_store)
+logger.info("sandbox_v2_network_service_initialized")
+
+sandbox_v2_execution_providers = create_default_provider_registry()
+# Add RootlessContainerExecutionProvider (disabled by default)
+_is_linux = _plat.system() == "Linux"
+_has_docker = shutil.which("docker") is not None
+_has_podman = shutil.which("podman") is not None
+_runtime = SandboxV2ContainerRuntime.DOCKER if _has_docker else (SandboxV2ContainerRuntime.PODMAN if _has_podman else SandboxV2ContainerRuntime.UNAVAILABLE)
+_container_config = SandboxContainerRuntimeConfig(
+    provider=SandboxV2IsolationProvider.DOCKER_ROOTLESS_FUTURE,
+    runtime=_runtime,
+    enabled=False,
+)
+_container_provider = RootlessContainerExecutionProvider(config=_container_config)
+sandbox_v2_execution_providers[SandboxV2IsolationProvider.DOCKER_ROOTLESS_FUTURE] = _container_provider
+sandbox_v2_execution_providers[SandboxV2IsolationProvider.PODMAN_ROOTLESS_FUTURE] = RootlessContainerExecutionProvider(
+    SandboxContainerRuntimeConfig(provider=SandboxV2IsolationProvider.PODMAN_ROOTLESS_FUTURE, runtime=SandboxV2ContainerRuntime.PODMAN, enabled=False)
+)
+logger.info("sandbox_v2_execution_providers_initialized",
+            extra={"providers": list(sandbox_v2_execution_providers.keys()), "container_runtime": _runtime, "is_linux": _is_linux})
+
+sandbox_v2_kill_switch = SandboxKillSwitchService(
+    store=sandbox_v2_store, queue=sandbox_v2_queue,
+    execution_providers=sandbox_v2_execution_providers,
+)
+logger.info("sandbox_v2_kill_switch_initialized")
+
+sandbox_v2_service = SandboxV2Service(
+    store=sandbox_v2_store,
+    queue=sandbox_v2_queue,
+    artifact_store=sandbox_v2_artifact_store,
+    package_store=sandbox_v2_package_store,
+    network_service=sandbox_v2_network_service,
+    execution_providers=sandbox_v2_execution_providers,
+    kill_switch=sandbox_v2_kill_switch,
+)
+logger.info("sandbox_v2_service_initialized")
+
+sandbox_v2_worker = SandboxV2Worker(
+    queue=sandbox_v2_queue,
+    service=sandbox_v2_service,
+    worker_id="sbxwkr_main",
+)
+logger.info("sandbox_v2_worker_initialized",
+            extra={"worker_id": sandbox_v2_worker.worker_id})
+
+app.include_router(create_sandbox_v2_router(sandbox_v2_service, worker=sandbox_v2_worker))
+logger.info("sandbox_v2_api_registered",
+            extra={"event": "sandbox_v2_api_ready"})
 
 # ═══════════════════════════════════════════
 # Artifact Sandbox — Agent 不执行，只生成 Artifact

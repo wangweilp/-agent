@@ -1,0 +1,18 @@
+
+> agent-memory-os@0.1.0 dev
+> next dev --hostname 127.0.0.1 --port 3000
+
+   ▲ Next.js 15.5.18
+   - Local:        http://127.0.0.1:3000
+   - Network:      http://127.0.0.1:3000
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 2.6s
+ ○ Compiling /account ...
+ ✓ Compiled /account in 10s (1525 modules)
+ GET /account 200 in 11780ms
+ GET /account 200 in 54ms
+ GET /account 200 in 54ms
+[?25h

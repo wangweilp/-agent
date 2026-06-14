@@ -255,7 +255,7 @@ class TestPruneOldLogs:
 
 class TestUserActivityTimeline:
     def test_user_activity_timeline(self, collab_store):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
         # Activity across 5 days
         for d in range(5):
             for i in range(d + 1):

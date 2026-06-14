@@ -156,10 +156,10 @@ export default function DeploymentStatusPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
-            Deployment Status
+            部署状态
           </h1>
           <p className="text-xs text-os-subtle mt-0.5">
-            System health, configuration, and deployment guide
+            系统健康、配置与部署指南
           </p>
         </div>
         <button
@@ -168,7 +168,7 @@ export default function DeploymentStatusPage() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated disabled:opacity-50 transition-colors"
         >
           <RefreshCw size={12} className={checking ? "animate-spin" : ""} />
-          {checking ? "Checking..." : "Check Health"}
+          {checking ? "检查中..." : "检查健康状况"}
         </button>
       </div>
 

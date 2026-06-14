@@ -48,7 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_am_status ON agent_modules(status);
 CREATE INDEX IF NOT EXISTS idx_am_category ON agent_modules(category);
 CREATE INDEX IF NOT EXISTS idx_am_name ON agent_modules(name);
 
-CREATE TABLE IF NOT EXISTS subscriptions (
+CREATE TABLE IF NOT EXISTS marketplace_subscriptions (
     id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
     agent_module_id TEXT NOT NULL,
@@ -56,8 +56,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     active INTEGER NOT NULL DEFAULT 1,
     UNIQUE(workspace_id, agent_module_id)
 );
-CREATE INDEX IF NOT EXISTS idx_sub_workspace ON subscriptions(workspace_id);
-CREATE INDEX IF NOT EXISTS idx_sub_module ON subscriptions(agent_module_id);
+CREATE INDEX IF NOT EXISTS idx_mksub_workspace ON marketplace_subscriptions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_mksub_module ON marketplace_subscriptions(agent_module_id);
 """
 
 
@@ -203,32 +203,32 @@ class SQLiteAgentModuleStore:
 
     def subscribe(self, sub: Subscription) -> Subscription:
         existing = self._exec(
-            "SELECT * FROM subscriptions WHERE workspace_id=? AND agent_module_id=?",
+            "SELECT * FROM marketplace_subscriptions WHERE workspace_id=? AND agent_module_id=?",
             [sub.workspace_id, sub.agent_module_id])
         if next(existing, None):
             raise SubscriptionAlreadyExistsError(f"已订阅 {sub.agent_module_id}")
-        self._exec("INSERT INTO subscriptions (id, workspace_id, agent_module_id, active) VALUES (?,?,?,?)",
+        self._exec("INSERT INTO marketplace_subscriptions (id, workspace_id, agent_module_id, active) VALUES (?,?,?,?)",
                    [sub.id, sub.workspace_id, sub.agent_module_id, 1])
         return sub
 
     def unsubscribe(self, workspace_id: str, agent_module_id: str) -> None:
         row = next(self._exec(
-            "SELECT * FROM subscriptions WHERE workspace_id=? AND agent_module_id=? AND active=1",
+            "SELECT * FROM marketplace_subscriptions WHERE workspace_id=? AND agent_module_id=? AND active=1",
             [workspace_id, agent_module_id]), None)
         if not row:
             raise SubscriptionNotFoundError(f"订阅不存在: {workspace_id}/{agent_module_id}")
-        self._exec("UPDATE subscriptions SET active=0 WHERE workspace_id=? AND agent_module_id=?",
+        self._exec("UPDATE marketplace_subscriptions SET active=0 WHERE workspace_id=? AND agent_module_id=?",
                    [workspace_id, agent_module_id])
 
     def list_subscriptions(self, workspace_id: str) -> list[Subscription]:
         rows = self._exec(
-            "SELECT * FROM subscriptions WHERE workspace_id=? AND active=1 ORDER BY subscribed_at DESC",
+            "SELECT * FROM marketplace_subscriptions WHERE workspace_id=? AND active=1 ORDER BY subscribed_at DESC",
             [workspace_id])
         return [self._row_to_subscription(dict(r)) for r in rows]
 
     def get_subscription(self, workspace_id: str, agent_module_id: str) -> Subscription | None:
         row = next(self._exec(
-            "SELECT * FROM subscriptions WHERE workspace_id=? AND agent_module_id=? AND active=1",
+            "SELECT * FROM marketplace_subscriptions WHERE workspace_id=? AND agent_module_id=? AND active=1",
             [workspace_id, agent_module_id]), None)
         return self._row_to_subscription(dict(row)) if row else None
 

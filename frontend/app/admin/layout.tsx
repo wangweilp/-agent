@@ -14,12 +14,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const adminNavItems = [
-  { href: "/admin", label: "Enterprise Dashboard", icon: LayoutDashboard },
-  { href: "/admin/organization", label: "Organization Center", icon: Building2 },
-  { href: "/admin/users", label: "User Management", icon: Users },
-  { href: "/admin/audit", label: "Audit Center", icon: Shield },
-  { href: "/admin/policy", label: "Policy Center", icon: FileText },
-  { href: "/admin/deployment", label: "Deployment Status", icon: Server },
+  { href: "/admin", label: "企业仪表盘", icon: LayoutDashboard },
+  { href: "/admin/organization", label: "组织中心", icon: Building2 },
+  { href: "/admin/users", label: "用户管理", icon: Users },
+  { href: "/admin/audit", label: "审计中心", icon: Shield },
+  { href: "/admin/policy", label: "策略中心", icon: FileText },
+  { href: "/admin/deployment", label: "部署状态", icon: Server },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

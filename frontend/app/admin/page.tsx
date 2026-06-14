@@ -176,10 +176,10 @@ export default function AdminDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
-            Enterprise Dashboard
+            企业仪表盘
           </h1>
           <p className="text-xs text-os-subtle mt-0.5">
-            Overview of all organizations, users, and system health
+            组织、用户与系统健康状况总览
           </p>
         </div>
         <button
@@ -188,7 +188,7 @@ export default function AdminDashboardPage() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors disabled:opacity-50"
         >
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          Refresh
+          刷新
         </button>
       </div>
 

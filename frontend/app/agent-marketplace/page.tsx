@@ -190,7 +190,7 @@ export default function MarketplaceHomePage() {
             企业内部 Agent 发现与安装中心
           </div>
           <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">
-            Agent Marketplace
+            智能体市场
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
             发现、安装、配置和治理企业内部 Agent，让组织智能体从可运行走向可分发。

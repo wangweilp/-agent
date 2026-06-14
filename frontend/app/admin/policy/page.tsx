@@ -337,15 +337,15 @@ export default function PolicyCenterPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-os-text-high tracking-tight">Policy Center</h1>
-          <p className="text-xs text-os-subtle mt-0.5">Manage data retention, access control, and role permissions</p>
+          <h1 className="text-lg font-semibold text-os-text-high tracking-tight">策略中心</h1>
+          <p className="text-xs text-os-subtle mt-0.5">管理数据留存、访问控制与角色权限</p>
         </div>
         <button
           onClick={() => { fetchRetention(); fetchAbac(); fetchRoles(); }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
         >
           <RefreshCw size={12} />
-          Refresh
+          刷新
         </button>
       </div>
 

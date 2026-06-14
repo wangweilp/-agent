@@ -40,12 +40,12 @@ export default function AdminReviewQueuePage() {
     <main className="mx-auto max-w-6xl px-4 py-8">
       <header className="mb-6">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
-          <Shield size={14} className="text-os-accent"/> Admin Only
+          <Shield size={14} className="text-os-accent"/> 仅管理员
         </div>
-        <h1 className="text-3xl font-semibold text-os-text-high">Agent Submission Review</h1>
+        <h1 className="text-3xl font-semibold text-os-text-high">智能体提交审核</h1>
         <p className="mt-2 max-w-xl text-sm text-os-subtle">审核开发者提交的 Agent Manifest，确保权限、安全声明和企业数据边界符合要求。</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {["Admin Only", "Review Required", "No Auto Publish", "No Remote Code Execution"].map(b => (
+          {["仅管理员", "需要审核", "禁止自动发布", "禁止远程代码执行"].map(b => (
             <span key={b} className="inline-flex items-center gap-1.5 rounded-full border border-os-border/60 bg-os-elevated px-2.5 py-1 text-2xs text-os-subtle">{b}</span>
           ))}
         </div>
@@ -59,11 +59,11 @@ export default function AdminReviewQueuePage() {
           {["", "submitted", "in_review", "approved", "rejected", "published", "withdrawn"].map(s => (
             <button key={s} onClick={() => setStatusF(s)}
               className={`rounded px-2 py-0.5 text-xs transition-colors ${statusF === s ? "bg-os-accent text-white" : "bg-os-elevated text-os-subtle hover:text-os-text-high"}`}>
-              {s || "All"}
+              {(() => { const m: Record<string,string>={"":"全部","submitted":"已提交","in_review":"审核中","approved":"已通过","rejected":"已拒绝","published":"已发布","withdrawn":"已撤回"}; return m[s]; })()}
             </button>
           ))}
         </div>
-        <input value={devF} onChange={e => setDevF(e.target.value)} placeholder="developer_id filter..."
+        <input value={devF} onChange={e => setDevF(e.target.value)} placeholder="按开发者 ID 筛选..."
           className="h-8 rounded border border-os-border bg-os-elevated px-2 text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent sm:w-48" />
         <button onClick={() => void fetch()} disabled={loading} className="inline-flex h-8 items-center gap-1.5 rounded border border-os-border px-2.5 text-xs text-os-subtle hover:text-os-text-high disabled:opacity-60">
           <RefreshCw size={12}/>刷新
@@ -104,11 +104,11 @@ export default function AdminReviewQueuePage() {
                   {canReview && (
                     <>
                       <button onClick={() => setDialog({ type: "approve", id: s.submission_id })}
-                        className="inline-flex h-7 items-center gap-1 rounded bg-emerald-400/10 px-2 text-xs text-emerald-300 hover:bg-emerald-400/15">Approve</button>
+                        className="inline-flex h-7 items-center gap-1 rounded bg-emerald-400/10 px-2 text-xs text-emerald-300 hover:bg-emerald-400/15">通过</button>
                       <button onClick={() => setDialog({ type: "reject", id: s.submission_id })}
-                        className="inline-flex h-7 items-center gap-1 rounded bg-red-400/10 px-2 text-xs text-red-300 hover:bg-red-400/15">Reject</button>
+                        className="inline-flex h-7 items-center gap-1 rounded bg-red-400/10 px-2 text-xs text-red-300 hover:bg-red-400/15">拒绝</button>
                       <button onClick={() => setDialog({ type: "request_changes", id: s.submission_id })}
-                        className="inline-flex h-7 items-center gap-1 rounded bg-amber-400/10 px-2 text-xs text-amber-300 hover:bg-amber-400/15">Changes</button>
+                        className="inline-flex h-7 items-center gap-1 rounded bg-amber-400/10 px-2 text-xs text-amber-300 hover:bg-amber-400/15">请求修改</button>
                     </>
                   )}
                 </div>
@@ -124,7 +124,7 @@ export default function AdminReviewQueuePage() {
 
       {/* Boundary Notice */}
       <section className="os-card mt-4 p-4">
-        <p className="text-2xs text-os-subtle">Approve only indicates review approval. Publishing to Marketplace requires Step 22-H. No MarketplaceAgent is created here. No remote code execution. No real payment.</p>
+        <p className="text-2xs text-os-subtle">通过仅表示审核通过；发布到智能体市场仍需后续发布流程。本页面不会直接创建市场智能体，不执行远程代码，也不产生真实支付。</p>
       </section>
     </main>
   );

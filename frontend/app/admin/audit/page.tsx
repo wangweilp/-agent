@@ -240,10 +240,10 @@ export default function AuditCenterPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
-            Audit Center
+            审计中心
           </h1>
           <p className="text-xs text-os-subtle mt-0.5">
-            Security and compliance audit trail
+            安全与合规审计追踪
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export default function AuditCenterPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors disabled:opacity-50"
           >
             <Download size={12} />
-            Export JSON
+            导出 JSON
           </button>
           <button
             onClick={() => {
@@ -264,7 +264,7 @@ export default function AuditCenterPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors"
           >
             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-            Refresh
+            刷新
           </button>
         </div>
       </div>

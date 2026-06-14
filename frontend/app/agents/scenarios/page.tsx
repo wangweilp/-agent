@@ -532,7 +532,7 @@ export default function ScenariosPage() {
       setError(null);
     } catch (e: unknown) {
       if (e instanceof Error && e.message?.includes("401")) {
-        setError("请先登录以访问 Internal Agent Center。所有 API 端点需要有效 JWT Token。");
+        setError("请先登录以访问内部智能体中心。所有 API 端点需要有效 JWT Token。");
       } else if (e instanceof Error && e.message?.includes("403")) {
         setError("权限不足。当前账号没有执行该操作的权限，请联系管理员。");
       } else {
@@ -617,7 +617,7 @@ export default function ScenariosPage() {
           </button>
         </div>
         <p className="text-xs text-gray-600">
-          Internal Agent Center · 每一次 Agent 执行都有 WorkflowExecution 记录 · Trace / Metrics / Steps 让组织智能体可解释、可审计
+          内部智能体中心 · 每一次 Agent 执行都有 WorkflowExecution 记录 · Trace / Metrics / Steps 让组织智能体可解释、可审计
         </p>
       </div>
 

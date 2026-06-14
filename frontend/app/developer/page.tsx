@@ -39,7 +39,7 @@ export default function DeveloperConsolePage() {
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
           <Code2 size={14} className="text-os-accent" /> Open Platform
         </div>
-        <h1 className="text-3xl font-semibold text-os-text-high">Developer Console</h1>
+        <h1 className="text-3xl font-semibold text-os-text-high">开发者控制台</h1>
         <p className="mt-2 text-sm text-os-subtle max-w-xl">构建、提交和跟踪 Cognitive OS Agent，从 Manifest 草稿进入审核流程。</p>
       </header>
       <section className="os-card flex min-h-48 flex-col items-center justify-center gap-3 text-center p-6">
@@ -60,10 +60,10 @@ export default function DeveloperConsolePage() {
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
           <Code2 size={14} className="text-os-accent" /> Open Platform
         </div>
-        <h1 className="text-3xl font-semibold text-os-text-high">Developer Console</h1>
+        <h1 className="text-3xl font-semibold text-os-text-high">开发者控制台</h1>
         <p className="mt-2 text-sm text-os-subtle max-w-xl">构建、提交和跟踪 Cognitive OS Agent，从 Manifest 草稿进入审核流程。</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {["Open Platform", "Manifest-first", "Review Required", "No Remote Code Execution"].map(b => (
+          {["开放平台", "Manifest 优先", "需要审核", "禁止远程代码执行"].map(b => (
             <span key={b} className="inline-flex items-center gap-1.5 rounded-full border border-os-border/60 bg-os-elevated px-2.5 py-1 text-2xs text-os-subtle">{b}</span>
           ))}
         </div>
@@ -116,11 +116,11 @@ export default function DeveloperConsolePage() {
       <section className="os-card mt-4 p-4">
         <h3 className="flex items-center gap-2 text-xs font-semibold text-os-subtle"><Shield size={13} className="text-os-accent"/> Open Platform 边界说明</h3>
         <ul className="mt-2 space-y-1 text-2xs text-os-subtle">
-          <li>• Developer Console 用于创建和提交 Agent Manifest</li>
-          <li>• Admin Review 由管理员通过审核面板完成</li>
-          <li>• 审核通过（Approved）不等于自动上架 Marketplace</li>
-          <li>• Step 22-H 才做 Marketplace Publish Integration</li>
-          <li>• 当前不支持真实支付 / Revenue Share / 远程代码执行</li>
+          <li>• 开发者控制台用于创建和提交 Agent Manifest</li>
+          <li>• 智能体审核由管理员通过审核面板完成</li>
+          <li>• 审核通过不等于自动上架智能体市场</li>
+          <li>• 后续发布流程中完成市场对接</li>
+          <li>• 当前不支持真实支付 / 收入分成 / 远程代码执行</li>
         </ul>
       </section>
     </main>
