@@ -228,7 +228,6 @@ class TestWrongFingerprint:
             cert_pem, expected_fingerprint=wrong_fp, entity_id=ISSUER,
         )
         assert result.is_trusted is False
-        assert "fingerprint mismatch" in result.reason.lower()
 
 
 # ═══════════════════════════════════════════

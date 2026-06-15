@@ -1,0 +1,22 @@
+{
+  "title": "Runtime Governance — Production Observability",
+  "version": "1.0",
+  "uid": "sandbox-v2-runtime",
+  "tags": ["sandbox-v2", "runtime", "governance", "observability", "step-23"],
+  "panels": [
+    {"id": 1, "type": "stat", "title": "Policy Evaluations Total", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "targets": [{"expr": "policy_evaluation_total"}]},
+    {"id": 2, "type": "stat", "title": "Policy Allows", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "targets": [{"expr": "policy_allow_total"}]},
+    {"id": 3, "type": "stat", "title": "Policy Denies", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "targets": [{"expr": "policy_deny_total"}]},
+    {"id": 4, "type": "stat", "title": "Policy Errors", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "targets": [{"expr": "policy_error_total"}]},
+    {"id": 5, "type": "stat", "title": "Sandbox Executions Total", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 6}, "targets": [{"expr": "sandbox_execution_total"}]},
+    {"id": 6, "type": "stat", "title": "Execution Success", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 6}, "targets": [{"expr": "sandbox_execution_success_total"}]},
+    {"id": 7, "type": "stat", "title": "Execution Failures", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 6}, "targets": [{"expr": "sandbox_execution_failure_total"}]},
+    {"id": 8, "type": "stat", "title": "Active Executions", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 6}, "targets": [{"expr": "sandbox_active_executions"}]},
+    {"id": 9, "type": "stat", "title": "Production Blockers", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 12}, "targets": [{"expr": "governance_production_blockers"}]},
+    {"id": 10, "type": "timeseries", "title": "Execution Latency (p95)", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}, "targets": [{"expr": "histogram_quantile(0.95, rate(sandbox_execution_latency_seconds_bucket[5m]))"}]},
+    {"id": 11, "type": "timeseries", "title": "Policy Evaluation Latency (p95)", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}, "targets": [{"expr": "histogram_quantile(0.95, rate(policy_evaluation_latency_seconds_bucket[5m]))"}]},
+    {"id": 12, "type": "timeseries", "title": "Deny Rate", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26}, "targets": [{"expr": "rate(policy_deny_total[5m])"}]},
+    {"id": 13, "type": "timeseries", "title": "Execution Failure Rate", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26}, "targets": [{"expr": "rate(sandbox_execution_failure_total[5m])"}]}
+  ],
+  "generated_at": "2026-06-14T00:00:00Z"
+}

@@ -167,6 +167,8 @@ class SandboxV2Settings:
     otel_logs_enabled: bool = False
     otel_export_interval_seconds: int = 60
     otel_include_sensitive_attributes: bool = False
+    # ── Step 23 — Production Observability Foundation ──
+    prometheus_enabled: bool = False
     observability_safe_mode: bool = True
     run_observability_integration: bool = False
 
@@ -711,6 +713,8 @@ def load_sandbox_v2_settings() -> SandboxV2Settings:
         # Observability (Step 18)
         observability_enabled=_env_bool("SANDBOX_V2_OBSERVABILITY_ENABLED", False),
         prometheus_export_enabled=_env_bool("SANDBOX_V2_PROMETHEUS_EXPORT_ENABLED", True),
+        # Step 23 — PROMETHEUS_ENABLED (new global observability flag)
+        prometheus_enabled=_env_bool("PROMETHEUS_ENABLED", False),
         prometheus_scrape_path=_env_str("SANDBOX_V2_PROMETHEUS_SCRAPE_PATH", "/api/runtime/sandbox-v2/monitoring/metrics/prometheus"),
         grafana_dashboard_enabled=_env_bool("SANDBOX_V2_GRAFANA_DASHBOARD_ENABLED", False),
         otel_enabled=_env_bool("SANDBOX_V2_OTEL_ENABLED", False),

@@ -2309,6 +2309,45 @@ def create_sandbox_v2_router(
             workspace_id=workspace_id,
         )
 
+    # ═══════════════════════════════════════════
+    # Step 23 — Production Observability Foundation endpoints
+    # ═══════════════════════════════════════════
+
+    @router.get("/observability/readiness")
+    async def observability_readiness() -> dict[str, Any]:
+        """Step 23 Observability Readiness.
+
+        展示：
+        - Prometheus metrics exporter status
+        - OpenTelemetry tracing status
+        - Dashboard availability
+        - Metrics domains registered
+        """
+        from src.observability.service import ObservabilityService
+        from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
+        settings = load_sandbox_v2_settings()
+        svc = ObservabilityService(settings=settings)
+        return svc.get_readiness()
+
+    @router.get("/observability/metrics")
+    async def observability_metrics() -> dict[str, Any]:
+        """Export all observability metrics as JSON."""
+        from src.observability.service import ObservabilityService
+        from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
+        settings = load_sandbox_v2_settings()
+        svc = ObservabilityService(settings=settings)
+        return svc.get_metrics_json()
+
+    @router.get("/observability/metrics/prometheus")
+    async def observability_metrics_prometheus():
+        """Export all observability metrics in Prometheus text format."""
+        from src.observability.service import ObservabilityService
+        from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
+        settings = load_sandbox_v2_settings()
+        svc = ObservabilityService(settings=settings)
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(content=svc.get_metrics_text(), media_type="text/plain")
+
     @router.get("/iam/sso/sessions")
     async def list_sso_sessions(
         organization_id: str = Query(default=""),

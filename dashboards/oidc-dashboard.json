@@ -1,0 +1,26 @@
+{
+  "title": "OIDC — Production Observability",
+  "version": "1.0",
+  "uid": "sandbox-v2-oidc",
+  "tags": ["sandbox-v2", "oidc", "observability", "step-23"],
+  "templating": {"list": []},
+  "panels": [
+    {"id": 1, "type": "stat", "title": "OIDC Login Total", "description": "Total OIDC login attempts", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "targets": [{"expr": "oidc_login_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 2, "type": "stat", "title": "OIDC Login Success", "description": "Successful logins", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "targets": [{"expr": "oidc_login_success_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 3, "type": "stat", "title": "OIDC Login Failure", "description": "Failed logins", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "targets": [{"expr": "oidc_login_failure_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 4, "type": "stat", "title": "Active Sessions", "description": "Active OIDC sessions", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "targets": [{"expr": "oidc_active_sessions", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 5, "type": "stat", "title": "Token Validations", "description": "Total token validations", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 6}, "targets": [{"expr": "oidc_token_validation_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 6, "type": "stat", "title": "Token Validation Failures", "description": "Failed token validations", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 6}, "targets": [{"expr": "oidc_token_validation_failure_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 7, "type": "stat", "title": "Nonce Replay Attacks", "description": "Nonce replay detections", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 6}, "targets": [{"expr": "oidc_nonce_replay_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 8, "type": "stat", "title": "JWKS Refresh Total", "description": "JWKS refreshes", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 6}, "targets": [{"expr": "oidc_jwks_refresh_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 9, "type": "stat", "title": "JWKS Refresh Failures", "description": "Failed JWKS refreshes", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 12}, "targets": [{"expr": "oidc_jwks_refresh_failure_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 10, "type": "stat", "title": "Claim Validations", "description": "Total claim validations", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 12}, "targets": [{"expr": "oidc_claim_validation_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 11, "type": "stat", "title": "Claim Validation Failures", "description": "Failed claim validations", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 12}, "targets": [{"expr": "oidc_claim_validation_failure_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 12, "type": "stat", "title": "Identity Mappings", "description": "Total identity mappings", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 12}, "targets": [{"expr": "oidc_identity_mapping_total", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 13, "type": "timeseries", "title": "Login Success Rate", "description": "OIDC login success per second", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}, "targets": [{"expr": "rate(oidc_login_success_total[5m])", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 14, "type": "timeseries", "title": "Token Validation Latency (p95)", "description": "Token validation latency histogram", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}, "targets": [{"expr": "histogram_quantile(0.95, rate(oidc_token_validation_latency_seconds_bucket[5m]))", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 15, "type": "timeseries", "title": "Nonce Replay Rate", "description": "Nonce replay per minute", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26}, "targets": [{"expr": "rate(oidc_nonce_replay_total[5m])", "datasource": "${DS_PROMETHEUS}"}]},
+    {"id": 16, "type": "timeseries", "title": "JWKS Refresh Failure Rate", "description": "JWKS refresh failure per minute", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26}, "targets": [{"expr": "rate(oidc_jwks_refresh_failure_total[5m])", "datasource": "${DS_PROMETHEUS}"}]}
+  ],
+  "generated_at": "2026-06-14T00:00:00Z"
+}

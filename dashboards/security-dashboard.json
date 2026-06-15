@@ -1,0 +1,22 @@
+{
+  "title": "Security & Audit — Production Observability",
+  "version": "1.0",
+  "uid": "sandbox-v2-security",
+  "tags": ["sandbox-v2", "security", "audit", "observability", "step-23"],
+  "panels": [
+    {"id": 1, "type": "stat", "title": "Audit Events Total", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "targets": [{"expr": "audit_event_total"}]},
+    {"id": 2, "type": "stat", "title": "Audit Allow Events", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "targets": [{"expr": "audit_event_allow_total"}]},
+    {"id": 3, "type": "stat", "title": "Audit Deny Events", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "targets": [{"expr": "audit_event_deny_total"}]},
+    {"id": 4, "type": "stat", "title": "Audit Write Failures", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "targets": [{"expr": "audit_write_failure_total"}]},
+    {"id": 5, "type": "stat", "title": "Security Events Total", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 6}, "targets": [{"expr": "security_event_total"}]},
+    {"id": 6, "type": "stat", "title": "Red-Team Detections", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 6}, "targets": [{"expr": "red_team_detection_total"}]},
+    {"id": 7, "type": "stat", "title": "Chain Verifications", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 6}, "targets": [{"expr": "audit_chain_verify_total"}]},
+    {"id": 8, "type": "stat", "title": "Chain Verify Failures", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 6}, "targets": [{"expr": "audit_chain_verify_failure_total"}]},
+    {"id": 9, "type": "stat", "title": "Audit Event Rate (avg)", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 12}, "targets": [{"expr": "audit_event_rate"}]},
+    {"id": 10, "type": "timeseries", "title": "Audit Event Rate", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}, "targets": [{"expr": "rate(audit_event_total[5m])"}]},
+    {"id": 11, "type": "timeseries", "title": "Security Event Rate", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}, "targets": [{"expr": "rate(security_event_total[5m])"}]},
+    {"id": 12, "type": "timeseries", "title": "Deny Decision Rate", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26}, "targets": [{"expr": "rate(audit_event_deny_total[5m])"}]},
+    {"id": 13, "type": "timeseries", "title": "Red-Team Detection Rate", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26}, "targets": [{"expr": "rate(red_team_detection_total[5m])"}]}
+  ],
+  "generated_at": "2026-06-14T00:00:00Z"
+}

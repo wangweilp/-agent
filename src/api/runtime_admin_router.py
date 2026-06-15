@@ -349,4 +349,27 @@ def create_runtime_admin_router(
         svc = SandboxV2SAMLStep22Service(settings=settings)
         return svc.get_saml_validation_readiness()
 
+    # ═══════════════════════════════════════════
+    # Step 23 — Observability Readiness (Runtime Admin)
+    # ═══════════════════════════════════════════
+
+    @router.get("/observability/readiness")
+    async def observability_readiness(
+        payload: TokenPayload = Depends(_require_admin),
+    ) -> dict[str, Any]:
+        """Runtime Admin 可视化 — Step 23 Observability Readiness。
+
+        展示：
+        - Prometheus: enabled/disabled + metrics count
+        - OTel: enabled/disabled + exporter + config_valid
+        - Tracing: enabled/disabled + spans recorded
+        - Dashboards: enabled/disabled + available list
+        - Metrics Domains: OIDC/SAML/Governance/Audit
+        """
+        from src.observability.service import ObservabilityService
+        from src.open_platform.sandbox_v2.config import load_sandbox_v2_settings
+        settings = load_sandbox_v2_settings()
+        svc = ObservabilityService(settings=settings)
+        return svc.get_readiness()
+
     return router

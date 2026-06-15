@@ -1,0 +1,24 @@
+{
+  "title": "SAML — Production Observability",
+  "version": "1.0",
+  "uid": "sandbox-v2-saml",
+  "tags": ["sandbox-v2", "saml", "observability", "step-23"],
+  "panels": [
+    {"id": 1, "type": "stat", "title": "SAML Assertions Total", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}, "targets": [{"expr": "saml_assertion_total"}]},
+    {"id": 2, "type": "stat", "title": "SAML Assertions Success", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}, "targets": [{"expr": "saml_assertion_success_total"}]},
+    {"id": 3, "type": "stat", "title": "SAML Assertions Failure", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}, "targets": [{"expr": "saml_assertion_failure_total"}]},
+    {"id": 4, "type": "stat", "title": "Active SAML Sessions", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}, "targets": [{"expr": "saml_active_sessions"}]},
+    {"id": 5, "type": "stat", "title": "Replay Attacks", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 6}, "targets": [{"expr": "saml_replay_attack_total"}]},
+    {"id": 6, "type": "stat", "title": "Metadata Refresh Total", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 6}, "targets": [{"expr": "saml_metadata_refresh_total"}]},
+    {"id": 7, "type": "stat", "title": "Metadata Refresh Failures", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 6}, "targets": [{"expr": "saml_metadata_refresh_failure_total"}]},
+    {"id": 8, "type": "stat", "title": "Cert Validation Failures", "gridPos": {"h": 6, "w": 6, "x": 18, "y": 6}, "targets": [{"expr": "saml_certificate_validation_failure_total"}]},
+    {"id": 9, "type": "stat", "title": "Signature Validations", "gridPos": {"h": 6, "w": 6, "x": 0, "y": 12}, "targets": [{"expr": "saml_signature_validation_total"}]},
+    {"id": 10, "type": "stat", "title": "Signature Validation Failures", "gridPos": {"h": 6, "w": 6, "x": 6, "y": 12}, "targets": [{"expr": "saml_signature_validation_failure_total"}]},
+    {"id": 11, "type": "stat", "title": "Identity Mappings", "gridPos": {"h": 6, "w": 6, "x": 12, "y": 12}, "targets": [{"expr": "saml_identity_mapping_total"}]},
+    {"id": 12, "type": "timeseries", "title": "Assertion Success Rate", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18}, "targets": [{"expr": "rate(saml_assertion_success_total[5m])"}]},
+    {"id": 13, "type": "timeseries", "title": "Replay Attack Rate", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18}, "targets": [{"expr": "rate(saml_replay_attack_total[5m])"}]},
+    {"id": 14, "type": "timeseries", "title": "Signature Failure Rate", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26}, "targets": [{"expr": "rate(saml_signature_validation_failure_total[5m])"}]},
+    {"id": 15, "type": "timeseries", "title": "Cert Validation Failure Rate", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26}, "targets": [{"expr": "rate(saml_certificate_validation_failure_total[5m])"}]}
+  ],
+  "generated_at": "2026-06-14T00:00:00Z"
+}
