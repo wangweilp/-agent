@@ -34,6 +34,10 @@ class CreatePlanRequest(BaseModel):
     input_payload: dict[str, Any] = Field(default_factory=dict)
     execution_mode: str = Field(default="sandbox_reserved")
 
+
+class WorkerPreviewReq(BaseModel):
+    mode: str = Field(default="disabled_only")
+
 NON_EXEC = ["no_package_download","no_package_execution","no_entrypoint_execution",
     "no_network_used","no_subprocess_used","no_container_used","no_queue_created",
     "no_job_dispatched","no_agent_runtime_used","no_agent_registry_used",
@@ -147,8 +151,6 @@ def create_runtime_execution_router(
         result = policy_translator.translate_policy(pol)
         _try_usage(usage_store, plan.tenant_id, payload.user_id, UsageResource.RUNTIME_EXECUTION_POLICY_PREVIEW, {"plan_id": plan_id})
         return {"translation": result.to_dict(), "non_execution_guarantees": NON_EXEC}
-
-    class WorkerPreviewReq(BaseModel): mode: str = Field(default="disabled_only")
 
     @admin_r.post("/{plan_id}/worker-preview")
     async def worker_preview(plan_id: str, body: WorkerPreviewReq = WorkerPreviewReq(),

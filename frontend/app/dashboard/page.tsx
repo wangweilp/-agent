@@ -20,7 +20,6 @@ import { PageTransition, StaggerItem } from "@/components/animations/page-transi
 import { CardSkeleton } from "@/components/animations/skeleton";
 import { StatusCard } from "@/components/dashboard/status-card";
 import { TraceTimeline } from "@/components/dashboard/trace-timeline";
-import { AgentStatusPanel } from "@/components/dashboard/agent-status";
 import { MemoryChart } from "@/components/dashboard/memory-chart";
 import { RuntimeMonitor } from "@/components/dashboard/runtime-monitor";
 import { TopicList } from "@/components/dashboard/topic-list";

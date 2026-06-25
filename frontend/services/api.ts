@@ -1,5 +1,5 @@
 import type {
-  AgentStatus, ChatRequest, ChatResponse, DashboardMetrics, Memory, ReflectionInsight, ToolInfo, TraceEntry, UploadResult,
+  AgentStatus, ChatRequest, ChatResponse, Memory, ReflectionInsight, ToolInfo, TraceEntry, UploadResult,
   AuthTokens, AuthUser, LoginResponse, RegisterResponse,
   Workspace, WorkspaceMember, WorkspaceDashboard, ActivityEvent, AuditLogEntry,
   ActionPlan, Notification,
@@ -11,6 +11,12 @@ import type {
   SyncExecution,
   SyncStats,
 } from "@/types/sync";
+import type {
+  AgentPerformanceResponse,
+  GrowthResponse,
+  MemoryHealthResponse,
+  OverviewResponse,
+} from "@/types/dashboard-v2";
 import { getAccessToken } from "@/stores/auth-store";
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -228,9 +234,6 @@ export const api = {
   },
 
   dashboard: {
-    metrics(): Promise<DashboardMetrics> {
-      return request("/dashboard/metrics");
-    },
     traces(): Promise<TraceEntry[]> {
       return request("/dashboard/traces");
     },
@@ -873,6 +876,35 @@ export const api = {
     },
     config(): Promise<import("@/types").AdminConfig> {
       return request("/api/admin/config");
+    },
+  },
+
+  // ── Dashboard V2 (Observability Console) ──
+
+  debug: {
+    retrieve(params: { q: string; top_k?: number }): Promise<import("@/types").RetrieveHit[]> {
+      const sp = new URLSearchParams();
+      sp.set("q", params.q);
+      if (params.top_k) sp.set("top_k", String(params.top_k));
+      return request(`/debug/retrieve?${sp.toString()}`);
+    },
+  },
+
+  dashboardV2: {
+    overview(): Promise<OverviewResponse> {
+      return request("/dashboard/v2/overview");
+    },
+    growth(days?: number): Promise<GrowthResponse> {
+      const qs = days ? `?days=${days}` : "";
+      return request(`/dashboard/v2/growth${qs}`);
+    },
+    agentPerformance(days?: number): Promise<AgentPerformanceResponse> {
+      const qs = days ? `?days=${days}` : "";
+      return request(`/dashboard/v2/agent-performance${qs}`);
+    },
+    memoryHealth(days?: number): Promise<MemoryHealthResponse> {
+      const qs = days ? `?days=${days}` : "";
+      return request(`/dashboard/v2/memory-health${qs}`);
     },
   },
 };

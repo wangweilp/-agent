@@ -1,4 +1,4 @@
-﻿"""Cognitive Agent — 真 Tool Calling + Reflective 循环 + 安全护栏。
+"""Cognitive Agent — 真 Tool Calling + Reflective 循环 + 安全护栏。
 Think → Act → Reflect，不依赖任何具体适配器。
 """
 import concurrent.futures
@@ -176,6 +176,40 @@ class CognitiveAgent:
         self._system_prompt = system_prompt or SYSTEM_PROMPT
         self._short_term: list[Message] = []
         self._current_trace_id: str = ""
+        # Phase 27.2: 缓存最后一次 LLM 调用的 token usage（供 routes 层读取写入 analytics）
+        # 不估算、不推断、不伪造 — 仅当 LLM response.usage 存在时填充
+        self._last_usage: dict[str, int] | None = None
+
+    @property
+    def last_usage(self) -> dict[str, int] | None:
+        """返回最后一次 LLM 调用的 token usage（来自 response.usage）。
+
+        Returns:
+            {"prompt_tokens": int, "completion_tokens": int} 或 None（流式模式或未调用 LLM）
+        """
+        return self._last_usage
+
+    def _capture_usage(self, response: Any) -> None:
+        """从 LLM response 对象提取 usage 信息（若存在）。
+
+        OpenAI 兼容 response.usage 含 prompt_tokens / completion_tokens。
+        流式模式下 usage 通常为 None，此时不更新（保持上次值或 None）。
+
+        Phase 27 H3: 累加而非覆盖，覆盖所有 tool calling 轮次的 token 用量。
+        """
+        try:
+            usage = getattr(response, "usage", None)
+            if usage is None:
+                return
+            prompt_tokens = getattr(usage, "prompt_tokens", None)
+            completion_tokens = getattr(usage, "completion_tokens", None)
+            if prompt_tokens is not None or completion_tokens is not None:
+                if self._last_usage is None:
+                    self._last_usage = {"prompt_tokens": 0, "completion_tokens": 0}
+                self._last_usage["prompt_tokens"] += int(prompt_tokens or 0)
+                self._last_usage["completion_tokens"] += int(completion_tokens or 0)
+        except Exception:
+            logger.debug("capture_usage_failed", exc_info=True)
 
     # ── 公共 API ──
 
@@ -183,6 +217,8 @@ class CognitiveAgent:
         """处理单轮用户输入，返回最终回复。"""
         t_start = time.monotonic()
         self._current_trace_id = str(uuid.uuid4())
+        # Phase 27 H3: 每次 run 重置 token usage，避免跨请求污染
+        self._last_usage = None
         emit(
             EventType.AGENT_START,
             trace_id=self._current_trace_id,
@@ -218,6 +254,8 @@ class CognitiveAgent:
                 tools=TOOL_DEFINITIONS,
                 tool_choice="auto",
             )
+            # Phase 27.2: 捕获 LLM token usage（非流式模式 response.usage 可用）
+            self._capture_usage(response)
             msg = response.choices[0].message
             logger.info(
                 "llm_response",

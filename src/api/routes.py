@@ -1,4 +1,4 @@
-﻿"""FastAPI 路由 — /chat 端点与 SSE 流式返回。
+"""FastAPI 路由 — /chat 端点与 SSE 流式返回。
 
 SSE 事件类型：
 - event: token      → 逐块回复文本
@@ -12,11 +12,13 @@ import json
 import logging
 import threading
 from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from src.api.errors import safe_error, MSG_INTERNAL_ERROR
+from src.api.middleware import get_token_payload
 from src.api.schemas import (
     ChatRequest,
     ChatResponse,
@@ -24,6 +26,7 @@ from src.api.schemas import (
     MemoryUpdateRequest,
 )
 from src.core.agent import CognitiveAgent
+from src.core.auth import TokenPayload
 
 logger = logging.getLogger(__name__)
 
@@ -60,21 +63,89 @@ def _memory_to_dict(m, vs=None) -> dict:
     }
 
 
-def create_router(agent: CognitiveAgent) -> APIRouter:
+def _record_chat_analytics(
+    analytics_pipeline: Any,
+    tenant_id: str,
+    workspace_id: str,
+    user_id: str,
+    usage: dict[str, int] | None,
+) -> None:
+    """fire-and-forget 记录 Chat 用户活动 + Token 用量。
+
+    严格参考 src/agents/registry.py 的 analytics 调用模式：
+    - asyncio.create_task 包装
+    - 失败仅日志，不影响 /chat 业务流程
+    - analytics_pipeline 为 None 时静默跳过
+    - token 数据仅来自 LLM response.usage，不估算、不伪造；usage 为 None 时 token=0
+
+    Phase 27 M2: 两个 create_task 分别使用独立 try/except，
+    任一失败不影响另一个调度。
+    """
+    if analytics_pipeline is None:
+        return
+
+    # 记录用户活动
+    try:
+        asyncio.create_task(
+            analytics_pipeline.record_chat_activity(
+                tenant_id=tenant_id or "",
+                workspace_id=workspace_id or "",
+                user_id=user_id or "",
+                messages=1,
+                active_minutes=1,
+            )
+        )
+    except Exception:
+        logger.warning("chat_activity_record_failed", exc_info=True)
+
+    # 记录 Token 用量
+    try:
+        prompt_tokens = 0
+        completion_tokens = 0
+        if usage is not None:
+            prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
+            completion_tokens = int(usage.get("completion_tokens", 0) or 0)
+        asyncio.create_task(
+            analytics_pipeline.record_chat_token_usage(
+                tenant_id=tenant_id or "",
+                workspace_id=workspace_id or "",
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=0.0,
+            )
+        )
+    except Exception:
+        logger.warning("chat_token_record_failed", exc_info=True)
+
+
+def create_router(agent: CognitiveAgent, analytics_pipeline: Any = None) -> APIRouter:
     router = APIRouter()
 
     @router.post("/chat", response_model=ChatResponse)
-    async def chat(request: ChatRequest) -> ChatResponse:
+    async def chat(
+        request: ChatRequest,
+        payload: TokenPayload | None = Depends(get_token_payload),
+    ) -> ChatResponse:
         try:
             reply = await asyncio.to_thread(agent.run, request.content)
+            # Phase 27.2: 记录 Chat analytics（fire-and-forget，失败不影响主流程）
+            _record_chat_analytics(
+                analytics_pipeline=analytics_pipeline,
+                tenant_id="",
+                workspace_id=payload.workspace_id if payload else "",
+                user_id=payload.user_id if payload else "",
+                usage=agent.last_usage,
+            )
             return ChatResponse(reply=reply)
         except Exception as e:
-            logger.exception("chat endpoint error")
             logger.exception("chat_endpoint_error")
             raise HTTPException(status_code=500, detail=MSG_INTERNAL_ERROR)
 
     @router.post("/chat/stream")
-    async def chat_stream(request: ChatRequest):
+    async def chat_stream(
+        request: ChatRequest,
+        payload: TokenPayload | None = Depends(get_token_payload),
+    ):
         async def generate():
             loop = asyncio.get_running_loop()
             queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
@@ -95,6 +166,15 @@ def create_router(agent: CognitiveAgent) -> APIRouter:
                 event_type, data = await queue.get()
                 if event_type == "done":
                     yield f"event: done\ndata: {json.dumps({'status': 'complete'})}\n\n"
+                    # Phase 27.2: 流式完成后记录 Chat analytics
+                    # 流式模式 response.usage 通常不可用，token 记录 0（不伪造）
+                    _record_chat_analytics(
+                        analytics_pipeline=analytics_pipeline,
+                        tenant_id="",
+                        workspace_id=payload.workspace_id if payload else "",
+                        user_id=payload.user_id if payload else "",
+                        usage=agent.last_usage,
+                    )
                     break
                 elif event_type == "error":
                     yield f"event: error\ndata: {json.dumps({'message': data})}\n\n"

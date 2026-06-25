@@ -1,6 +1,8 @@
 """Team Analytics Domain Models — WorkspaceAnalytics + AnalyticsStore protocol.
 
 六边形架构核心层：只定义数据类和协议。
+
+从原 src/core/analytics.py 迁移，保持向后兼容。
 """
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable

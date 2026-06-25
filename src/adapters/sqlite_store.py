@@ -1,8 +1,9 @@
-﻿"""SQLite 记忆存储适配器 — 实现 MemoryStore 协议。
+"""SQLite 记忆存储适配器 — 实现 MemoryStore 协议。
 
 管理 notes / entities / memory_entities / relations 四张表。
 语义搜索职责由上层 Retriever 编排，不在此层实现。
 """
+import asyncio
 import json
 import logging
 import sqlite3
@@ -91,6 +92,69 @@ class SQLiteStoreAdapter:
             self._db = Database(conn)
 
         self._init_schema()
+        # Analytics Pipeline（可选注入，默认 None，向后兼容）
+        self._analytics_pipeline: Any = None
+        # Phase 27 B1: 惰性捕获的事件循环引用，供非 async 线程上下文使用
+        self._analytics_loop: Any = None
+
+    def set_analytics_pipeline(self, pipeline: Any) -> None:
+        """注入 Analytics Pipeline（AnalyticsPipeline 协议，async）。
+
+        设为 None 可禁用 analytics 记录。
+        """
+        self._analytics_pipeline = pipeline
+
+    # ── Analytics 记录辅助（fire-and-forget，失败仅日志）──
+
+    def _record_memory_event(
+        self,
+        method_name: str,
+        memory_type: str = "",
+        tenant_id: str = "",
+        workspace_id: str = "",
+    ) -> None:
+        """fire-and-forget 调用 AnalyticsPipeline.record_memory_* 方法。
+
+        Phase 27 B1: 双路径调度 + 惰性事件循环捕获
+        - async 上下文（有 running loop）→ asyncio.create_task 快速路径，同时捕获 loop 引用
+        - 非 async 线程上下文（无 running loop）→ run_coroutine_threadsafe 线程安全路径
+        - 所有异常用 try/except Exception 兜底，analytics 失败不得影响业务流程
+        """
+        if self._analytics_pipeline is None:
+            return
+        method = getattr(self._analytics_pipeline, method_name, None)
+        if method is None:
+            return
+        coro = method(
+            tenant_id=tenant_id or "",
+            workspace_id=workspace_id or "",
+            memory_type=memory_type or "episodic",
+        )
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is not None:
+                # 快速路径：当前线程有 running loop，直接 create_task
+                asyncio.create_task(coro)
+                # 惰性捕获 loop 引用，供后续非 async 线程使用
+                self._analytics_loop = loop
+                return
+
+            # 线程安全路径：从非 async 线程调度到已捕获的主事件循环
+            if self._analytics_loop is not None and not self._analytics_loop.is_closed():
+                asyncio.run_coroutine_threadsafe(coro, self._analytics_loop)
+            else:
+                # loop 尚未捕获（首次调用来自 sync 线程）或已关闭，丢弃该事件
+                coro.close()
+        except Exception:
+            logger.warning(
+                "memory_analytics_record_failed",
+                exc_info=True,
+                extra={"method": method_name},
+            )
 
     def _init_schema(self) -> None:
         self._db.conn.row_factory = sqlite3.Row
@@ -194,6 +258,12 @@ class SQLiteStoreAdapter:
         archived_at = memory.archived_at.isoformat() if memory.archived_at else None
         with self._write_lock:
             with self._db.conn:
+                # Phase 27 H1: UPSERT 前检查记录是否存在（在写锁内，原子性保证）
+                existing = self._db.execute(
+                    "SELECT 1 FROM notes WHERE id = ?", (memory.id,)
+                ).fetchone()
+                is_update = existing is not None
+
                 self._db.execute(
                     """INSERT INTO notes (id, content, summary, source, timestamp,
                        importance, entities_json, relations_json, memory_type,
@@ -240,12 +310,30 @@ class SQLiteStoreAdapter:
                         (memory.id, rel["s"], rel["p"], rel["o"]),
                     )
 
+        # Analytics: 根据实际操作类型记录事件（fire-and-forget，失败不影响主流程）
+        if is_update:
+            self._record_memory_event(
+                "record_memory_update",
+                memory_type=memory.memory_type,
+            )
+        else:
+            self._record_memory_event(
+                "record_memory_insert",
+                memory_type=memory.memory_type,
+            )
+
         return memory.id
 
     def delete(self, memory_id: str) -> None:
         """删除一条记忆及其关联的实体/关系记录。"""
+        # Phase 27 M1: 在写锁内查询 memory_type，供 analytics 记录
         with self._write_lock:
             with self._db.conn:
+                row = self._db.execute(
+                    "SELECT memory_type FROM notes WHERE id = ?", (memory_id,)
+                ).fetchone()
+                memory_type = row["memory_type"] if row else ""
+
                 self._db.execute(
                     "DELETE FROM memory_entities WHERE memory_id = ?", (memory_id,)
                 )
@@ -255,6 +343,12 @@ class SQLiteStoreAdapter:
                 self._db.execute(
                     "DELETE FROM notes WHERE id = ?", (memory_id,)
                 )
+
+        # Analytics: 记录 DELETE 事件（fire-and-forget，失败不影响主流程）
+        self._record_memory_event(
+            "record_memory_delete",
+            memory_type=memory_type,
+        )
 
     def search_by_entity(self, entity_name: str) -> list[Memory]:
         rows = self._db.execute(
@@ -291,7 +385,13 @@ class SQLiteStoreAdapter:
                 row = self._db.execute(
                     "SELECT * FROM notes WHERE id = ?", (memory_id,)
                 ).fetchone()
-        return self._row_to_memory(dict(row))
+        memory = self._row_to_memory(dict(row))
+        # Analytics: 记录 HIT 事件（fire-and-forget，失败不影响主流程）
+        self._record_memory_event(
+            "record_memory_hit",
+            memory_type=memory.memory_type,
+        )
+        return memory
 
     def get_recent(self, limit: int) -> list[Memory]:
         rows = self._db.execute(
@@ -315,11 +415,26 @@ class SQLiteStoreAdapter:
 
     def update_status(self, memory_id: str, status: str) -> None:
         """原子更新单条记忆状态。"""
+        # Phase 28 P28-01: 在写锁内查询 memory_type，消除 UPDATE→释放锁→SELECT 的并发窗口
+        memory_type = ""
         with self._write_lock:
             with self._db.conn:
+                if status == "deleted":
+                    row = self._db.execute(
+                        "SELECT memory_type FROM notes WHERE id = ?", (memory_id,)
+                    ).fetchone()
+                    memory_type = row["memory_type"] if row else ""
+
                 self._db.execute(
                     "UPDATE notes SET status = ? WHERE id = ?", (status, memory_id)
                 )
+
+        # Analytics: 软删除（status="deleted"）时记录 DELETE 事件
+        if status == "deleted":
+            self._record_memory_event(
+                "record_memory_delete",
+                memory_type=memory_type,
+            )
 
     # ── 内部方法 ──────────────────────────────────────────────────────
 

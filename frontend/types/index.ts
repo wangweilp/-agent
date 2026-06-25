@@ -15,6 +15,19 @@ export interface Memory {
   embedding_status?: string;
 }
 
+export interface RetrieveHit {
+  memory_id: string;
+  content: string;
+  source: string;
+  importance: number;
+  rrf_score: number;
+  time_factor: number;
+  importance_factor: number;
+  access_bonus: number;
+  final_score: number;
+  timestamp: string;
+}
+
 export interface ToolCall {
   tool_name: string;
   arguments: Record<string, unknown>;
@@ -55,17 +68,6 @@ export interface AgentStatus {
   memory_count: number;
   tool_calls_total: number;
   uptime: number;
-}
-
-export interface DashboardMetrics {
-  memory_count: number;
-  memory_growth: number;
-  recall_success_rate: number;
-  reflection_count: number;
-  tool_calls_today: number;
-  avg_latency_ms: number;
-  token_usage: number;
-  active_sessions: number;
 }
 
 export interface ReflectionInsight {

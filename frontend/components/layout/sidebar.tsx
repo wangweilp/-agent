@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,33 +28,116 @@ import {
   ShoppingBag,
   UserCircle,
   ServerCog,
+  Gauge,
+  ShieldAlert,
+  BrainCircuit,
+  Network,
+  Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-const navItems = [
-  { href: "/dashboard", label: "仪表盘", icon: LayoutDashboard, active: true },
-  { href: "/chat", label: "对话", icon: MessageSquare },
-  { href: "/memory", label: "记忆", icon: Brain },
-  { href: "/timeline", label: "时间轴", icon: Clock },
-  { href: "/graph", label: "知识图谱", icon: GitGraph },
-  { href: "/audio", label: "音频", icon: Mic },
-  { href: "/video", label: "视频", icon: Video },
-  { href: "/workspace", label: "工作区", icon: Building2 },
-  { href: "/reflection", label: "反思", icon: Lightbulb },
-  { href: "/tools", label: "工具中心", icon: Wrench },
-  { href: "/agents", label: "内部智能体中心", icon: Bot },
-  { href: "/agent-marketplace", label: "智能体市场", icon: ShoppingBag },
-  { href: "/developer", label: "开发者控制台", icon: Code2 },
-  { href: "/admin/agent-submissions", label: "智能体审核", icon: ShieldCheck },
-  { href: "/admin/runtime", label: "运行时管理", icon: ServerCog },
-  { href: "/admin", label: "管理", icon: Shield },
-  { href: "/pricing", label: "套餐", icon: Crown },
-  { href: "/billing", label: "账单", icon: CreditCard },
-  { href: "/analytics", label: "运营分析", icon: BarChart3 },
-  { href: "/account", label: "账户", icon: UserCircle },
-  { href: "/debug", label: "Debug", icon: Bug },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Zap;
+};
+
+type NavSection = {
+  id: string;
+  label: string;
+  accent: "emerald" | "rose" | "violet" | "indigo" | "zinc";
+  items: NavItem[];
+};
+
+// ── 系统层级导航：Control Plane > Cognitive Plane > Observability Plane ──
+// 知维 OS（Zhiwei OS）— AI Operating System
+const navSections: NavSection[] = [
+  {
+    id: "kernel",
+    label: "Causal Kernel",
+    accent: "emerald",
+    items: [
+      { href: "/causal-kernel", label: "因果内核", icon: Network },
+      { href: "/causal-graph", label: "因果图引擎", icon: Workflow },
+    ],
+  },
+  {
+    id: "control",
+    label: "Control Plane",
+    accent: "rose",
+    items: [
+      { href: "/runtime", label: "运行时控制面", icon: ShieldAlert },
+    ],
+  },
+  {
+    id: "cognitive",
+    label: "Cognitive Plane",
+    accent: "violet",
+    items: [
+      { href: "/memory-console", label: "记忆智能控制台", icon: BrainCircuit },
+      { href: "/memory", label: "记忆管理", icon: Brain },
+      { href: "/reflection", label: "反思", icon: Lightbulb },
+      { href: "/graph", label: "知识图谱", icon: GitGraph },
+    ],
+  },
+  {
+    id: "observability",
+    label: "Observability Plane",
+    accent: "indigo",
+    items: [
+      { href: "/dashboard", label: "仪表盘", icon: LayoutDashboard },
+      { href: "/timeline", label: "时间轴", icon: Clock },
+      { href: "/dashboard-v2", label: "Observability", icon: Gauge },
+      { href: "/debug", label: "Debug", icon: Bug },
+    ],
+  },
+  {
+    id: "platform",
+    label: "Platform",
+    accent: "zinc",
+    items: [
+      { href: "/chat", label: "对话", icon: MessageSquare },
+      { href: "/audio", label: "音频", icon: Mic },
+      { href: "/video", label: "视频", icon: Video },
+      { href: "/tools", label: "工具中心", icon: Wrench },
+      { href: "/agents", label: "内部智能体中心", icon: Bot },
+      { href: "/agent-marketplace", label: "智能体市场", icon: ShoppingBag },
+      { href: "/workspace", label: "工作区", icon: Building2 },
+    ],
+  },
+  {
+    id: "admin",
+    label: "Admin & Dev",
+    accent: "zinc",
+    items: [
+      { href: "/developer", label: "开发者控制台", icon: Code2 },
+      { href: "/admin/agent-submissions", label: "智能体审核", icon: ShieldCheck },
+      { href: "/admin/runtime", label: "运行时管理", icon: ServerCog },
+      { href: "/admin", label: "管理", icon: Shield },
+      { href: "/analytics", label: "运营分析", icon: BarChart3 },
+      { href: "/pricing", label: "套餐", icon: Crown },
+      { href: "/billing", label: "账单", icon: CreditCard },
+      { href: "/account", label: "账户", icon: UserCircle },
+    ],
+  },
 ];
+
+const accentMap = {
+  emerald: "text-emerald-400",
+  rose: "text-rose-400",
+  violet: "text-violet-400",
+  indigo: "text-indigo-400",
+  zinc: "text-os-muted",
+};
+
+const activeAccentBg = {
+  emerald: "bg-emerald-400/10 text-emerald-400",
+  rose: "bg-rose-400/10 text-rose-400",
+  violet: "bg-violet-400/10 text-violet-400",
+  indigo: "bg-indigo-400/10 text-indigo-400",
+  zinc: "bg-os-accent/10 text-os-accent",
+};
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -80,52 +163,73 @@ export function Sidebar() {
                 exit={{ opacity: 0 }}
                 className="text-sm font-semibold text-os-text-high tracking-tight whitespace-nowrap"
               >
-                Agent OS
+                知维 OS
               </motion.span>
             )}
           </AnimatePresence>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-all duration-150 group",
-                isActive
-                  ? "bg-os-accent/10 text-os-accent"
-                  : "text-os-text hover:text-os-text-high hover:bg-os-elevated",
-                collapsed && "justify-center px-0",
-              )}
-            >
-              <item.icon size={18} className="shrink-0" />
-              <AnimatePresence>
-                {!collapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="whitespace-nowrap"
+      {/* Nav — 按系统层级分组 */}
+      <nav className="flex-1 py-2 px-2 overflow-y-auto">
+        {navSections.map((section) => (
+          <div key={section.id} className="mb-3">
+            {/* Section label */}
+            {!collapsed && (
+              <div className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 text-2xs font-medium uppercase tracking-wider",
+                accentMap[section.accent],
+              )}>
+                <span className="w-1 h-1 rounded-full bg-current opacity-60" />
+                {section.label}
+              </div>
+            )}
+            {collapsed && (
+              <div className="my-1 mx-2 h-px bg-os-border/50" />
+            )}
+
+            {/* Section items */}
+            <div className="space-y-0.5 mt-0.5">
+              {section.items.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-all duration-150 group",
+                      isActive
+                        ? activeAccentBg[section.accent]
+                        : "text-os-text hover:text-os-text-high hover:bg-os-elevated",
+                      collapsed && "justify-center px-0",
+                    )}
                   >
-                    {item.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-              {isActive && !collapsed && (
-                <motion.div
-                  layoutId="sidebar-active"
-                  className="ml-auto w-1 h-1 rounded-full bg-os-accent"
-                  transition={{ duration: 0.2 }}
-                />
-              )}
-            </Link>
-          );
-        })}
+                    <item.icon size={18} className="shrink-0" />
+                    <AnimatePresence>
+                      {!collapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="whitespace-nowrap"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                    {isActive && !collapsed && (
+                      <motion.div
+                        layoutId={`sidebar-active-${section.id}`}
+                        className="ml-auto w-1 h-1 rounded-full bg-current"
+                        transition={{ duration: 0.2 }}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Collapse button */}

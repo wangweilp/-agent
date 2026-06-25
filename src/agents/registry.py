@@ -96,6 +96,7 @@ class AgentRegistry:
         self._memory: MemoryProvider | None = None
         self._kg: KnowledgeGraphProvider | None = None
         self._metrics_store: Any = None  # AgentMetricsStore, 延迟注入
+        self._analytics_pipeline: Any = None  # AnalyticsPipeline, 延迟注入
 
     # ── 依赖注入 ──
 
@@ -112,6 +113,10 @@ class AgentRegistry:
     def set_metrics_store(self, metrics_store: Any) -> None:
         """注入 Agent 指标存储（AgentMetricsStore 协议）。"""
         self._metrics_store = metrics_store
+
+    def set_analytics_pipeline(self, pipeline: Any) -> None:
+        """注入 Analytics Pipeline（AnalyticsPipeline 协议，async）。"""
+        self._analytics_pipeline = pipeline
 
     # ── 注册 / 注销 ──
 
@@ -298,6 +303,19 @@ class AgentRegistry:
                 self._metrics_store.record_event(event)
             except Exception as e:
                 logger.warning("agent_metrics_record_failed", extra={"error": str(e)})
+
+        # 记录到 Analytics Pipeline（async，fire-and-forget）
+        if result is not None and self._analytics_pipeline is not None:
+            try:
+                import asyncio
+                asyncio.create_task(self._analytics_pipeline.record_agent_run_full(
+                    result=result,
+                    tenant_id=tenant_id or "",
+                    workspace_id=workspace_id or "",
+                    user_id=user_id or "",
+                ))
+            except Exception:
+                logger.warning("analytics_pipeline_record_failed", exc_info=True)
 
         return result
 

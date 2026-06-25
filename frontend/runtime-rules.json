@@ -1,0 +1,86 @@
+{
+  "$schema": "runtime-rules-spec-v1",
+  "generated_at": "2026-06-25",
+  "based_on": ["frontend/contract-graph.json", "frontend/validation-report.json"],
+  "phase": "RUNTIME_RULE_SPECIFICATION",
+  "system_status": "FROZEN — Architecture Baseline v1.0",
+  "enforcement_status": {
+    "implemented": false,
+    "planned": false,
+    "classification": "SPEC_ONLY — not a runtime system",
+    "warning": "This file is a specification reference for future CI gate design. It is NOT an enforced runtime system. Treating this as enforced will cause spec drift. No fetch wrapper, store middleware, route guard, or import guard has been injected into production code.",
+    "freeze_rationale": "YAGNI — zero runtime drift observed; v3 enforcement solves hypothetical problems with high invasive risk to 48 routes / 56 components / 4 stores"
+  },
+  "enforcement_mode": "WARN (development) / BLOCK (CI gate) — THEORETICAL ONLY",
+  "rules": [
+    {
+      "id": "API_GUARD_001",
+      "type": "api_guard",
+      "description": "Block UI calls to API endpoints not registered in contract-graph",
+      "condition": "fetch() target path NOT IN backend_endpoints registry",
+      "source_of_truth": "contract-graph.json → layers.backend_endpoints",
+      "action_warn": "console.warn('[Contract] API endpoint not in graph: <path>')",
+      "action_block": "throw Error('[Contract] Blocked unregistered API call: <path>')",
+      "applies_to": "services/api.ts request() function"
+    },
+    {
+      "id": "API_GUARD_002",
+      "type": "api_guard",
+      "description": "Warn on response schema field drift (extra/missing fields vs declared type)",
+      "condition": "Object.keys(response) != Object.keys(declaredResponseType)",
+      "source_of_truth": "frontend/types/*.ts (TypeScript interfaces)",
+      "action_warn": "console.warn('[Contract] Response schema drift: <endpoint> expected <fields>, got <fields>')",
+      "action_block": "disabled (too noisy for production — warn only)",
+      "applies_to": "services/api.ts request() response handler"
+    },
+    {
+      "id": "UI_BINDING_GUARD_001",
+      "type": "ui_binding_guard",
+      "description": "Warn when component renders without data source binding",
+      "condition": "Component listed in api_consumers but no active useQuery/useEffect fetching data",
+      "source_of_truth": "contract-graph.json → layers.api_consumers",
+      "action_warn": "console.warn('[Contract] Component <name> has API binding but no active fetch')",
+      "action_block": "disabled (components may intentionally defer fetch)",
+      "applies_to": "React component mount lifecycle"
+    },
+    {
+      "id": "STORE_GUARD_001",
+      "type": "store_guard",
+      "description": "Warn when store state field has no consumer reference",
+      "condition": "Store field NOT referenced by any component via useStore(selector)",
+      "source_of_truth": "contract-graph.json → layers.stores + validation-report.json orphan_store_states",
+      "action_warn": "console.warn('[Contract] Store field <store>.<field> has no consumer')",
+      "action_block": "disabled (state may be set for future use)",
+      "applies_to": "Zustand store creation"
+    },
+    {
+      "id": "ROUTE_GUARD_001",
+      "type": "route_guard",
+      "description": "Warn when page.tsx exists but route not in Sidebar navItems",
+      "condition": "app/<route>/page.tsx exists AND route NOT IN layout/Sidebar.tsx navItems",
+      "source_of_truth": "contract-graph.json → layers.routes + components/layout/Sidebar.tsx",
+      "action_warn": "console.warn('[Contract] Route <path> not mounted in Sidebar')",
+      "action_block": "disabled (hidden routes are intentional — e.g., /debug)",
+      "applies_to": "Next.js App Router page resolution"
+    },
+    {
+      "id": "ORPHAN_GUARD_001",
+      "type": "orphan_guard",
+      "description": "Block import of components not registered in contract graph",
+      "condition": "Component file exists in components/ BUT NOT IN api_consumers mapping",
+      "source_of_truth": "validation-report.json → checks.orphan_ui_nodes",
+      "action_warn": "console.warn('[Contract] Orphan component imported: <path>')",
+      "action_block": "throw Error('[Contract] Blocked orphan component: <path> — register in contract-graph first')",
+      "applies_to": "ES module import resolution",
+      "current_violations": ["components/workspace/analytics-card.tsx"]
+    }
+  ],
+  "rule_count": 6,
+  "coverage": {
+    "api_layer": true,
+    "ui_layer": true,
+    "store_layer": true,
+    "route_layer": true,
+    "orphan_detection": true
+  }
+}

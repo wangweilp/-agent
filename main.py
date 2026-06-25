@@ -4,6 +4,7 @@
     uvicorn main:app --reload --host 0.0.0.0 --port 8000
     python main.py --cli          # CLI 交互模式
 """
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -49,6 +50,11 @@ from src.adapters.collab_adapter import DefaultMultiAgentCoordinator
 from src.adapters.alert_store import AlertStoreAdapter
 from src.adapters.report_store import ReportStoreAdapter
 from src.adapters.usage_collector import UsageCollector
+# P3: Config dispatch + health routes extracted to dedicated modules
+from src.bootstrap.config_dispatch import config_dispatch
+# P8/P10: Unified system entry points (consolidates orchestrator + state)
+from src.bootstrap.system import init_system_runtime
+from src.health.config_routes import create_config_health_router
 from src.api.alert_router import create_alert_router
 from src.api.admin_router import create_admin_router
 from src.api.billing_router import create_billing_router
@@ -58,6 +64,9 @@ from src.api.subscription_router import create_subscription_router
 from src.api.tenant_router import create_tenant_router
 from src.api.usage_router import create_usage_router
 from src.api.growth_analytics_router import create_growth_analytics_router
+from src.api.dashboard_v2_router import create_dashboard_v2_router
+from src.core.analytics.analytics_repository import AnalyticsRepository
+from src.core.dashboard_v2_service import DashboardV2Service
 from src.core.agent import CognitiveAgent
 from src.core.import_worker import ImportWorker
 from src.core.import_pipeline import ImportMemoryPipeline
@@ -135,21 +144,72 @@ def create_agent(settings: Settings) -> tuple[CognitiveAgent, MemoryWriteWorker,
     return agent, memory_writer, llm
 
 
+# ── Phase 27.3: Dashboard Alert 后台评估循环 ──
+# 每 60s 调用 DashboardAlertEvaluator.evaluate_all("default")
+# 用 asyncio.to_thread 包装同步方法，避免阻塞事件循环
+# 循环内 try/except 包裹，单次评估失败不退出循环
+_dashboard_alert_task = None
+
+
+async def _dashboard_alert_evaluation_loop(
+    evaluator: "DashboardAlertEvaluator",
+    interval_seconds: int = 60,
+) -> None:
+    """Dashboard 告警评估后台循环。
+
+    - 每 interval_seconds 秒执行一次 evaluate_all("default")
+    - 单次评估失败仅记录日志，继续循环
+    - 评估方法为同步（SQLite 查询），用 asyncio.to_thread 包装
+    """
+    while True:
+        try:
+            await asyncio.to_thread(evaluator.evaluate_all, "default")
+        except Exception:
+            logger.warning("dashboard_alert_evaluator_loop_error", exc_info=True)
+        await asyncio.sleep(interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _dashboard_alert_task
     logger.info("服务启动")
+    # Phase 27.3: 启动 Dashboard 告警评估后台任务（每 60s 一次）
+    if dashboard_alert_evaluator is not None:
+        _dashboard_alert_task = asyncio.create_task(
+            _dashboard_alert_evaluation_loop(dashboard_alert_evaluator)
+        )
+        logger.info("dashboard_alert_evaluator_task_started")
     yield
     logger.info("服务关闭，等待后台任务刷盘...")
+    # Phase 27.3: 取消 Dashboard 告警评估后台任务
+    if _dashboard_alert_task is not None:
+        _dashboard_alert_task.cancel()
+        try:
+            await _dashboard_alert_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("dashboard_alert_evaluator_task_cancelled")
     usage_collector.shutdown()
     import_worker.shutdown()
     agent.shutdown()
+    # P8: unified shutdown via SystemRuntime facade (EventBus + future hooks)
+    system_runtime.shutdown_system()
 
 
 settings = bootstrap()
+# P10: Unified system entry point — single facade for init/status/shutdown.
+# Inlined UnifiedSystemState; no separate proxy module.
+system_runtime = init_system_runtime(settings)
+system_runtime.initialize_system()
 agent, memory_writer, llm = create_agent(settings)
 
 # 预加载 embedding 模型，避免首次请求阻塞
 agent._embedding.warmup()
+
+# L2 Replay Engine: initialize Event Bridge (backend → frontend SSE)
+from src.bootstrap.event_bridge import init_event_emitter
+from src.api.event_bridge_router import create_event_bridge_router
+init_event_emitter(system_runtime.event_bus)
 
 app = FastAPI(
     title="Agent Memory API",
@@ -188,7 +248,6 @@ auth_store.flush()
 collab_store = CollabStore(settings)
 collab_service = CollaborationService(collab_store, auth_store)
 
-app.include_router(create_router(agent))
 app.include_router(create_dashboard_router(agent, memory_writer))
 app.include_router(create_timeline_router(agent))
 app.include_router(create_graph_router(agent))
@@ -198,6 +257,8 @@ app.include_router(create_upload_router(settings, llm, memory_writer, agent))
 app.include_router(create_auth_router(token_service, auth_store))
 app.include_router(create_workspace_router(collab_service, auth_store, agent))
 app.include_router(create_analytics_router(collab_service, agent))
+# L2 Replay Engine: Event Bridge SSE endpoint
+app.include_router(create_event_bridge_router())
 
 # ── Multi-Agent Collaboration Router ──
 retrieval_service = MemoryRetrievalService(
@@ -327,6 +388,37 @@ app.include_router(create_alert_router(alert_store, usage_store))
 app.include_router(create_report_router(report_store, usage_store, subscription_store))
 app.include_router(create_growth_analytics_router(usage_store, subscription_store))
 
+# ── Step 19.6: Dashboard V2 (P0 指标) ──
+dashboard_v2_repo = AnalyticsRepository(usage_store._db)
+dashboard_v2_service = DashboardV2Service(dashboard_v2_repo)
+app.include_router(create_dashboard_v2_router(dashboard_v2_service))
+logger.info("dashboard_v2 routers registered",
+            extra={"event": "dashboard_v2_bootstrap_complete"})
+
+# ── Phase 27.3: Dashboard Alert Evaluator 实例化 + 规则播种 ──
+from src.core.analytics.dashboard_alert_evaluator import DashboardAlertEvaluator
+dashboard_alert_evaluator = DashboardAlertEvaluator(
+    repo=dashboard_v2_repo,
+    alert_store=alert_store,
+)
+# 幂等播种 Dashboard 告警规则（仅当 default 租户尚无 Dashboard 规则时）
+try:
+    _existing_rules = alert_store.list_rules("default")
+    _existing_names = {r.name for r in _existing_rules}
+    _dashboard_rule_names = {
+        "agent_success_rate_low",
+        "agent_p95_latency_high",
+        "token_daily_cost_high",
+    }
+    if not _dashboard_rule_names.issubset(_existing_names):
+        dashboard_alert_evaluator.seed_dashboard_rules("default")
+        logger.info("dashboard_alert_rules_seeded",
+                    extra={"event": "dashboard_alert_rules_seeded"})
+    else:
+        logger.info("dashboard_alert_rules_already_seeded")
+except Exception:
+    logger.warning("dashboard_alert_seed_failed", exc_info=True)
+
 logger.info("growth & analytics center routers registered",
             extra={"event": "growth_analytics_bootstrap_complete"})
 
@@ -360,7 +452,7 @@ class _AgentMemoryProvider:
         from src.core.types import Memory
         from datetime import datetime, timezone
         m = Memory(content=content, source=metadata.get("source", "agent") if metadata else "agent")
-        self._ms.save(m)
+        self._ms.store(m)
         try:
             emb = self._emb.encode(content)
             self._vs.add(m.id, emb, {"memory_id": m.id})
@@ -376,21 +468,21 @@ class _AgentKGProvider:
 
     def query_entities(self, query: str, top_k: int = 10) -> list[GraphEntity]:
         try:
-            rows = self._ms.db.query(
+            rows = self._ms._db.execute(
                 "SELECT * FROM entities WHERE name LIKE ? LIMIT ?",
                 [f"%{query}%", top_k],
-            )
+            ).fetchall()
             return [GraphEntity(id=str(r["id"]), name=r["name"], entity_type=r.get("entity_type", "")) for r in rows]
         except Exception:
             return []
 
     def query_relations(self, entity_id: str) -> list[GraphRelation]:
         try:
-            rows = self._ms.db.query(
-                "SELECT * FROM relations WHERE subject_id = ? OR object_id = ? LIMIT 20",
+            rows = self._ms._db.execute(
+                "SELECT * FROM relations WHERE subject = ? OR object = ? LIMIT 20",
                 [entity_id, entity_id],
-            )
-            return [GraphRelation(source=str(r["subject_id"]), target=str(r["object_id"]), predicate=r.get("predicate", "related")) for r in rows]
+            ).fetchall()
+            return [GraphRelation(source=str(r["subject"]), target=str(r["object"]), predicate=r.get("predicate", "related")) for r in rows]
         except Exception:
             return []
 
@@ -426,6 +518,19 @@ agent_registry.set_providers(
 from src.agents.metrics import InMemoryAgentMetricsStore
 agent_metrics_store = InMemoryAgentMetricsStore(usage_store=usage_store)
 agent_registry.set_metrics_store(agent_metrics_store)
+
+# 注入 Analytics Pipeline（Phase 25 — Dashboard V2 真实数据源）
+from src.core.analytics.analytics_store import AnalyticsStore as AnalyticsPipelineStore
+from src.core.analytics.analytics_pipeline import AnalyticsPipeline
+analytics_store = AnalyticsPipelineStore(settings)
+analytics_pipeline = AnalyticsPipeline(analytics_store)
+agent_registry.set_analytics_pipeline(analytics_pipeline)
+# Phase 27.1: Memory Runtime 接入 Analytics Pipeline（fire-and-forget，失败不影响 Memory 业务）
+agent._memory_store.set_analytics_pipeline(analytics_pipeline)
+# Phase 27.2: Chat Runtime 接入 Analytics Pipeline（/chat + /chat/stream 记录 DAU + Token）
+app.include_router(create_router(agent, analytics_pipeline=analytics_pipeline))
+logger.info("analytics pipeline initialized",
+            extra={"event": "analytics_pipeline_ready"})
 
 # 注册内置 Agent
 agent_registry.register(create_knowledge_agent(
@@ -969,11 +1074,11 @@ from src.adapters.marketplace_analytics_store import SQLiteMarketplaceAnalyticsS
 from src.open_platform.marketplace_analytics_service import MarketplaceAnalyticsService
 from src.api.marketplace_analytics_router import create_marketplace_analytics_router
 
-analytics_store = SQLiteMarketplaceAnalyticsStore(settings)
-logger.info("analytics_store_initialized")
+marketplace_analytics_store = SQLiteMarketplaceAnalyticsStore(settings)
+logger.info("marketplace_analytics_store_initialized")
 
 analytics_service = MarketplaceAnalyticsService(
-    analytics_store,
+    marketplace_analytics_store,
     governance_store=governance_store,
     agent_module_store=agent_module_store,
 )
@@ -1027,6 +1132,25 @@ app.include_router(create_billing_analytics_router(
 ))
 logger.info("billing_rbac_analytics_api_registered",
             extra={"event": "billing_rbac_analytics_ready"})
+
+
+# ── P3: Config dispatch observability endpoint (extracted to src/health/) ────
+app.include_router(create_config_health_router(settings, config_dispatch))
+
+# ── P5: System readiness endpoint (orchestrator-aggregated) ──────────────────
+@app.get("/health/system", tags=["health"])
+async def health_system() -> dict:
+    """Aggregate system readiness across all registered adapters."""
+    return system_runtime.get_runtime_readiness()
+
+# ── P6: Unified system state endpoint (config + runtime merged) ──────────────
+@app.get("/health/unified", tags=["health"])
+async def health_unified() -> dict:
+    """Single source of truth: merges config (requested) + runtime (actual).
+
+    Runtime is authoritative when config and runtime disagree.
+    """
+    return system_runtime.get_unified_state()
 
 
 def main() -> None:
