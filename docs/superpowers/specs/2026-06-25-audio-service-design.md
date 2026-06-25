@@ -86,6 +86,7 @@ class AudioService:
         *,
         whisper_model: str = "base",
         event_bus: EventBus | None = None,
+        retry_strategy: str = "none",   # "none" | "once" | "exponential"
     ) -> None: ...
 
     def transcribe(
@@ -188,7 +189,111 @@ AUDIO_TRANSCRIPTION_FAILED    = "audio.transcription.failed"
 
 ---
 
-## 6. 事件桥接（后端 → 前端 SSE）
+## 6. Event Contract Layer v1（⚠️ 必须严格遵守）
+
+本节定义 AudioService 作为 OS Event Source Module 的全部契约。所有实现、测试、replay、observability 均依赖这些契约正确执行。
+
+### 6.1 event_id — 确定性唯一约束
+
+```
+event_id = sha256(trace_id || file_name || timestamp_iso || event_type)
+```
+
+- **确定性**: 同一输入始终产生同一 event_id（非随机 uuid），保证 replay 幂等。
+- **唯一性**: trace_id + timestamp + event_type 组合在单一 trace 内唯一。
+- **碰撞策略**: 若 sha256 碰撞（概率可忽略），按 lexicographic order + sequence number 去重。
+
+事件内字段 `"event_id"` 始终携带此值。
+
+### 6.2 事件排序规则（Event Ordering Guarantee）
+
+同一 `trace_id` 内的事件 **必须** 按以下优先级严格有序：
+
+```
+Ordering Rule:
+  1. trace_id (分区键)
+  2. timestamp (单调递增)
+  3. event_type priority: started < completed < failed
+  4. lexicographic(event_id) — 兜底
+```
+
+- 同一 `timestamp` 内 `started` 始终在 `completed` 之前。
+- 违反排序的事件在 replay 时标记为 `ordering_violation`，但仍可消费（不丢弃）。
+- 实现方式：`AudioService` 内部使用 `time.monotonic_ns()` 保证单调递增。
+
+### 6.3 SSE 幂等契约（SSE Idempotent Contract）
+
+SSE 消费者（前端 `EventBridgeClient`）必须支持：
+
+- **`Last-Event-ID` 重放**: 断线重连时发送 `Last-Event-ID: <last_event_id>`，后端从 `StructuredEventEmitter` 环形缓冲区回放该 ID 之后的事件。
+- **去重**: 前端通过 `event_id` 去重（`Set<event_id>` 窗口 = 最近 10000 条）。
+- **幂等处理**: 同一 `event_id` 重复到达 → 静默丢弃，不触发任何 handler。
+
+后端 `StructuredEventEmitter` 在转发 audio 事件时，将 `event_id` 放入 SSE `id:` 字段：
+```
+id: <event_id>
+data: { ... }
+```
+
+### 6.4 失败重试语义（Failure Retry Semantics）
+
+| 配置 | 行为 |
+|------|------|
+| `retry_strategy = "none"` (默认) | failed 事件 emit 一次，返回 `""`，不重试 |
+| `retry_strategy = "once"` | 失败后立即重试一次，仍失败则 emit failed + 返回 `""` |
+| `retry_strategy = "exponential"` | 最多 3 次，间隔 1s/2s/4s，全部失败后 emit failed + 返回 `""` |
+
+- 每次重试独立 emit `started` 事件（带 `retry_number` 字段）。
+- 最终 failed 事件带 `retry_count` 总次数。
+- `AudioService` 构造函数接受 `retry_strategy` 参数，默认 `"none"`。
+
+### 6.5 线程与进程级安全（完整契约）
+
+```python
+class AudioService:
+    def __init__(self):
+        self._model_lock = threading.Lock()       # 模型加载互斥
+        self._transcribe_lock = threading.Lock()  # 转录互斥（whisper 非线程安全）
+
+    def _load_whisper(self):
+        # Double-check locking — 标准模式
+        if self._whisper is not None:
+            return self._whisper
+        with self._model_lock:
+            if self._whisper is not None:         # 二次检查
+                return self._whisper
+            import whisper
+            self._whisper = whisper.load_model(self._whisper_model_name)
+        return self._whisper
+
+    def transcribe(self, audio_path, ...):
+        with self._transcribe_lock:               # whisper.transcribe 本身非线程安全
+            wh = self._load_whisper()
+            # ... event emit + transcribe ...
+```
+
+**关键约束**:
+- 模型加载 (`load_model`) 由 `_model_lock` 保护 — 只关心加载一次。
+- 转录调用 (`wh.transcribe`) 由 `_transcribe_lock` 保护 — whisper 的 `transcribe()` 本身不是线程安全的。
+- EventBus 的 `emit()` 已经是线程安全的（`EventBus` 内部持有 Lock），AudioService 不做额外保护。
+- `_whisper` 哨兵值 `False` 表示"已尝试加载但失败"，避免重复 import 尝试。
+
+### 6.6 Trace Propagation Contract（因果链传递契约）
+
+```
+Rule 1 (生成): context is None → AudioService 内部生成 trace_id = str(uuid4())
+Rule 2 (传递): context is not None → 使用 context.trace_id 原样传递
+Rule 3 (跨模块): VideoAnalyzer.analyze() 入口生成一次 trace_id，贯穿:
+                 ffmpeg → OCR → AudioService.transcribe() → LLM分析
+                 → 5个 MemoryTask
+Rule 4 (不可变): trace_id 一旦生成，在整个分析管线内不可修改
+```
+
+**验证方法**: 同一视频的 VideoAnalyzer 事件链中，所有 `started/completed/failed` 必须共享同一 `trace_id`。
+
+---
+
+## 7. 事件桥接（后端 → 前端 SSE）
 
 在 `src/bootstrap/event_bridge.py` 的 `_BACKEND_EVENT_MAP` 中追加：
 
@@ -217,9 +322,9 @@ AUDIO_TRANSCRIPTION_FAILED: {
 
 ---
 
-## 7. 调用方适配
+## 8. 调用方适配
 
-### 7.1 AudioAnalyzer（改造后）
+### 8.1 AudioAnalyzer（改造后）
 
 ```python
 class AudioAnalyzer:
@@ -241,7 +346,7 @@ class AudioAnalyzer:
     # 删除: _load_whisper()
 ```
 
-### 7.2 VideoAnalyzer（改造后）
+### 8.2 VideoAnalyzer（改造后）
 
 ```python
 class VideoAnalyzer:
@@ -273,7 +378,7 @@ class VideoAnalyzer:
     # 删除: _load_whisper()
 ```
 
-### 7.3 main.py 组装
+### 8.3 main.py 组装
 
 ```python
 # 旧
@@ -291,27 +396,18 @@ video_analyzer = VideoAnalyzer(llm, audio_service, settings)
 
 ---
 
-## 8. 线程安全
+## 9. 线程安全（实现概要）
 
-```python
-class AudioService:
-    def __init__(self, ...):
-        self._lock = threading.Lock()
+完整契约见 [6.5 线程与进程级安全](#65-线程与进程级安全完整契约)。实现要点：
 
-    def _load_whisper(self):
-        if self._whisper is not None:
-            return self._whisper
-        with self._lock:
-            if self._whisper is not None:    # double-check
-                return self._whisper
-            import whisper
-            self._whisper = whisper.load_model(self._whisper_model_name)
-        return self._whisper
-```
+- `_model_lock` + double-check locking → 保证模型仅加载一次
+- `_transcribe_lock` → 保护 `whisper.transcribe()`（非线程安全）
+- `_whisper = False` 哨兵 → 加载失败不重复 import
+- EventBus emit 已内置线程安全 → AudioService 不做额外保护
 
 ---
 
-## 9. 不做的边界
+## 10. 不做的边界
 
 | ❌ 不做 | 原因 |
 |---------|------|
@@ -323,7 +419,7 @@ class AudioService:
 
 ---
 
-## 10. 测试要点
+## 11. 测试要点
 
 - [ ] `AudioService.transcribe()` standalone mode (event_bus=None)
 - [ ] `AudioService.transcribe()` emits started/completed/failed via EventBus
@@ -334,10 +430,16 @@ class AudioService:
 - [ ] `VideoAnalyzer` works with injected AudioService (no regression)
 - [ ] SSE endpoint streams audio events to frontend
 - [ ] failed event carries correct error_code
+- [ ] event_id is deterministic (same inputs → same id)
+- [ ] events within same trace are strictly ordered (started < completed < failed)
+- [ ] SSE idempotency: duplicate event_id silently dropped
+- [ ] retry_strategy="once" retries exactly once on failure
+- [ ] retry_strategy="exponential" retries up to 3 times with 1s/2s/4s backoff
+- [ ] trace_id propagates unchanged across AudioService.transcribe() calls
 
 ---
 
-## 11. 风险 & Trade-off
+## 12. 风险 & Trade-off
 
 | 风险 | 缓解 |
 |------|------|
