@@ -127,7 +127,7 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
               <textarea
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="描述希望这个 Agent 处理的任务、输入或约束"
+                placeholder="描述希望这个智能体处理的任务、输入或约束"
                 rows={3}
                 className="resize-none rounded-md border border-os-border bg-os-elevated px-3 py-2 text-sm leading-6 text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
               />

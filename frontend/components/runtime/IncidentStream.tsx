@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import type { RuntimeGovernanceSummary } from "@/types/runtime-admin";
+import { layout } from "@/styles/layout";
 
 interface Props {
   governance?: RuntimeGovernanceSummary;
@@ -45,7 +46,7 @@ export function IncidentStream({ governance }: Props) {
   return (
     <div className="space-y-4">
       {/* ── Summary tiles ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         <SummaryTile
           label="Total Incidents"
           value={incidents.length}
@@ -169,7 +170,7 @@ export function IncidentStream({ governance }: Props) {
         <div className="os-card p-4">
           <div className="flex items-center gap-2 mb-3">
             <ShieldAlert size={12} className="text-os-muted" />
-            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">Incident Store Governance</h4>
+            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">Incident Store 治理</h4>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-2xs mb-3">
             <MetaItem label="Status" value={incidentModule.status} />

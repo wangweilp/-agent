@@ -1,11 +1,22 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Zap, Mail, Lock, User, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { api } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
+
+// ── 终端启动日志序列 ──
+
+const BOOT_LOGS = [
+  "> INITIALIZING ZHIWEI OS KERNEL...",
+  "> [OK] causal-kernel mounted",
+  "> [OK] memory-store connected",
+  "> [OK] enforcement-layer ready",
+  "> AWAITING AUTHENTICATION...",
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,6 +29,22 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // 终端启动日志打字机效果
+  const [visibleLogs, setVisibleLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < BOOT_LOGS.length) {
+        setVisibleLogs((prev) => [...prev, BOOT_LOGS[i]]);
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 350);
+    return () => clearInterval(timer);
+  }, []);
 
   const isValid =
     email.trim().length >= 3 &&
@@ -59,7 +86,7 @@ export default function LoginPage() {
           }
         );
 
-        router.push("/dashboard");
+        router.push("/home");
       } catch (e: unknown) {
         const msg =
           e instanceof Error ? e.message : "操作失败，请重试";
@@ -77,26 +104,61 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-os-base flex items-center justify-center p-4">
-      {/* Background grid */}
-      <div className="absolute inset-0 bg-os-grid bg-os-grid opacity-30 pointer-events-none" />
+    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-os-surface via-[#000000] to-[#000000]">
+      {/* 网格背景层 */}
+      <div className="absolute inset-0 bg-grid-subtle opacity-40 pointer-events-none" />
 
-      <div className="relative w-full max-w-[380px] animate-fade-in">
+      {/* 装饰性光晕 */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full bg-os-accent/5 blur-3xl pointer-events-none" />
+
+      <div className="relative w-full max-w-[400px] z-10">
+        {/* 终端启动日志 */}
+        <div className="mb-6 font-mono text-2xs text-os-subtle/70 space-y-0.5 min-h-[88px]">
+          {visibleLogs.map((log, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "flex items-center gap-1",
+                (log ?? "").includes("[OK]") && "text-emerald-400/60",
+                (log ?? "").includes("AWAITING") && "text-os-accent/70",
+              )}
+            >
+              <span>{log ?? ""}</span>
+              {i === visibleLogs.length - 1 && i < BOOT_LOGS.length - 0 && (
+                <span className="inline-block w-1.5 h-3 bg-os-accent/60 animate-pulse" />
+              )}
+            </motion.div>
+          ))}
+        </div>
+
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-os-accent/15 flex items-center justify-center mb-4 ring-1 ring-os-accent/20">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="w-12 h-12 rounded-xl bg-os-accent/15 flex items-center justify-center mb-4 ring-1 ring-os-accent/20 shadow-[0_0_20px_rgba(129,140,248,0.2)]"
+          >
             <Zap size={22} className="text-os-accent" />
-          </div>
+          </motion.div>
           <h1 className="text-xl font-semibold text-os-text-high tracking-tight">
-            Agent OS
+            知维 OS
           </h1>
           <p className="text-sm text-os-subtle mt-1.5">
             {mode === "login" ? "登录到你的认知工作台" : "创建你的 AI 第二大脑"}
           </p>
         </div>
 
-        {/* Card */}
-        <div className="os-card p-6">
+        {/* Card — 极致毛玻璃质感 */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="backdrop-blur-2xl bg-os-surface/40 border border-os-border/50 shadow-2xl rounded-2xl p-6"
+        >
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name (register only) */}
             {mode === "register" && (
@@ -209,7 +271,7 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-        </div>
+        </motion.div>
 
         {/* Toggle mode */}
         <p className="text-center text-xs text-os-subtle mt-4">

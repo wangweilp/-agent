@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { RuntimeGovernanceSummary } from "@/types/runtime-admin";
 import { getSandboxV2Readiness } from "@/services/runtime-admin";
+import { layout } from "@/styles/layout";
 
 interface Props {
   governance?: RuntimeGovernanceSummary;
@@ -49,7 +50,7 @@ export function RedTeamResults({ governance }: Props) {
   return (
     <div className="space-y-4">
       {/* ── Summary ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         <SummaryTile
           label="Total Tests"
           value={results.length}

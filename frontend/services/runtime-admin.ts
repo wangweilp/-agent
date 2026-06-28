@@ -40,6 +40,7 @@ import type {
   SandboxV2LoadTestingReadiness, SandboxV2LoadTestConfig,
   SandboxV2LoadTestResult, SandboxV2SLODefinition,
   SandboxV2SLOEvaluation, SandboxV2CapacityPlan,
+  RuntimeControlPlaneStatus, RuntimeIncidentsResponse,
 } from "@/types/runtime-admin";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
@@ -159,6 +160,18 @@ export async function disableSandboxPolicy(policyId: string) {
 
 export async function getRuntimeGovernanceSummary() {
   return fetchJSON<RuntimeGovernanceSummary>(RA_BASE, "/governance/summary");
+}
+
+// ═══════════════════ Phase 4 — Security Control Plane Dashboard ═══════════════════
+
+/** GET /admin/runtime/status — 安全控制面全局状态（模拟模式） */
+export async function getRuntimeStatus() {
+  return fetchJSON<RuntimeControlPlaneStatus>(RA_BASE, "/status");
+}
+
+/** GET /admin/runtime/incidents — 模拟安全事件拦截遥测 */
+export async function listRuntimeIncidents() {
+  return fetchJSON<RuntimeIncidentsResponse>(RA_BASE, "/incidents");
 }
 
 // ═══════════════════ Sandbox v2 (Step 1 — Core Contract) ═══════════════════

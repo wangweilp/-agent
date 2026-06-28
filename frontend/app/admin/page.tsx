@@ -24,6 +24,7 @@ import { cn, formatNumber } from "@/lib/utils";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
 import type { AdminSummary, GrowthDataPoint } from "@/types";
+import { layout } from "@/styles/layout";
 
 // ── Types ──
 
@@ -210,7 +211,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Charts + Recent Audit */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={layout.grid.threeLg}>
         {/* Growth Chart (2/3) */}
         <div className="lg:col-span-2 os-card p-4 rounded-lg border border-os-border/30 bg-os-surface">
           <div className="flex items-center gap-2 mb-4">
@@ -230,17 +231,19 @@ export default function AdminDashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={256}>
               <BarChart data={growthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272A" />
-                <XAxis dataKey="week" tick={{ fill: "#52525B", fontSize: 10 }} axisLine={{ stroke: "#27272A" }} />
-                <YAxis tick={{ fill: "#52525B", fontSize: 10 }} axisLine={{ stroke: "#27272A" }} />
+                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="week" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#18181B",
                     border: "1px solid #27272A",
-                    borderRadius: "8px",
+                    borderRadius: "12px",
                     fontSize: "12px",
                     color: "#E4E4E7",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
                   }}
+                  itemStyle={{ color: "#A1A1AA" }}
                 />
                 <Bar dataKey="count" fill="#818CF8" radius={[4, 4, 0, 0]} />
               </BarChart>

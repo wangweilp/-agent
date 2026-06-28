@@ -6,6 +6,7 @@ import {
   Building2,
   Users,
   Shield,
+  ShieldAlert,
   FileText,
   Server,
   ChevronRight,
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 const adminNavItems = [
   { href: "/admin", label: "企业仪表盘", icon: LayoutDashboard },
+  { href: "/admin/runtime", label: "运行时治理", icon: ShieldAlert },
   { href: "/admin/organization", label: "组织中心", icon: Building2 },
   { href: "/admin/users", label: "用户管理", icon: Users },
   { href: "/admin/audit", label: "审计中心", icon: Shield },
@@ -27,8 +29,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex h-full">
-      {/* Admin Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-os-border/60 bg-os-base/80 backdrop-blur-sm flex flex-col">
+      {/* Admin Sidebar — 移动端隐藏（主侧边栏抽屉已含管理导航），桌面端保留双栏 */}
+      <aside className="hidden md:flex w-56 shrink-0 border-r border-os-border/60 bg-os-base/80 backdrop-blur-sm flex-col">
         <div className="px-4 py-4 border-b border-os-border/60">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-6 h-6 rounded-lg bg-os-accent/10 flex items-center justify-center">

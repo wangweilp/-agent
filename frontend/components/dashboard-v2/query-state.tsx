@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, RefreshCw, Inbox } from "lucide-react";
+import { AlertCircle, RefreshCw, Inbox, type LucideIcon } from "lucide-react";
 import { CardSkeleton } from "@/components/animations/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -8,15 +8,22 @@ import { cn } from "@/lib/utils";
 
 export function EmptyState({
   message = "暂无数据",
+  description,
+  icon: Icon = Inbox,
   className,
 }: {
   message?: string;
+  description?: string;
+  icon?: LucideIcon;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center h-48 gap-2 text-os-muted", className)}>
-      <Inbox size={20} className="text-os-subtle" />
-      <p className="text-2xs">{message}</p>
+    <div className={cn("flex flex-col items-center justify-center gap-3 py-12 text-center", className)}>
+      <Icon className="w-12 h-12 text-os-muted/50" strokeWidth={1.5} />
+      <div className="space-y-1">
+        <p className="text-sm text-os-text">{message}</p>
+        {description && <p className="text-xs text-os-subtle">{description}</p>}
+      </div>
     </div>
   );
 }

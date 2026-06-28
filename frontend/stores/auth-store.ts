@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type { AuthUser, AuthTokens, Workspace } from "@/types";
 
 // Module-level token reference so api.ts can read it without circular imports
@@ -73,6 +73,37 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "agent-os-auth",
+      // 自定义 storage：防御脏数据（如 "undefined" 字符串）导致 JSON.parse 崩溃
+      storage: createJSONStorage(() => {
+        const safeStorage: Storage = {
+          getItem: (name: string) => {
+            try {
+              const raw = localStorage.getItem(name);
+              // 防御脏数据：非合法 JSON 直接视为不存在
+              if (raw != null) JSON.parse(raw);
+              return raw;
+            } catch {
+              // 脏数据 — 清理并返回 null，避免 hydration 崩溃
+              try { localStorage.removeItem(name); } catch { /* ignore */ }
+              return null;
+            }
+          },
+          setItem: (name: string, value: string) => {
+            try { localStorage.setItem(name, value); } catch { /* ignore */ }
+          },
+          removeItem: (name: string) => {
+            try { localStorage.removeItem(name); } catch { /* ignore */ }
+          },
+          clear: () => {
+            try { localStorage.clear(); } catch { /* ignore */ }
+          },
+          key: (index: number) => {
+            try { return localStorage.key(index); } catch { return null; }
+          },
+          length: typeof window !== "undefined" ? localStorage.length : 0,
+        };
+        return safeStorage;
+      }),
       // Only persist these keys
       partialize: (state) => ({
         token: state.token,

@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { api } from "@/services/api";
 import type { RbacUser, RbacRole } from "@/types";
+import { layout } from "@/styles/layout";
 
 // ── Constants ──
 
@@ -189,7 +190,7 @@ export default function UserManagementPage() {
       </div>
 
       {/* ── Stats Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         {[
           { icon: Users, label: "总用户", value: stats.total, accent: "indigo" as const },
           { icon: Shield, label: "已授权", value: stats.withRoles, accent: "emerald" as const },

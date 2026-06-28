@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Check,
@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Sparkles,
   HelpCircle,
+  Crown,
 } from "lucide-react";
 import { api } from "@/services/api";
 import type { PlanPreview, PlanLimit } from "@/types";
@@ -41,37 +42,85 @@ const FEATURE_DEFS: {
   { key: "embedding_calls_per_day", label: "Embedding/日", icon: TrendingUp, format: (v) => formatNumeric(v) },
 ];
 
-const ACCENT_MAP: Record<string, { border: string; bg: string; badge: string; glow: string }> = {
-  free: {
-    border: "border-os-border",
-    bg: "",
-    badge: "bg-os-muted/50 text-os-text",
-    glow: "",
+// ── 3 阶套餐映射 ──
+// 将后端任意套餐映射为顶级 SaaS 三阶卡片（Hobby / Pro / Enterprise）
+type TierKind = "hobby" | "pro" | "enterprise";
+
+interface TierMeta {
+  kind: TierKind;
+  display: string;
+  tagline: string;
+  cta: string;
+  badge?: string;
+}
+
+const TIER_META: Record<TierKind, TierMeta> = {
+  hobby: {
+    kind: "hobby",
+    display: "Hobby",
+    tagline: "免费开始体验个人知识管理",
+    cta: "免费开始",
   },
-  personal: {
-    border: "border-blue-500/30",
-    bg: "bg-blue-500/[0.04]",
-    badge: "bg-blue-500/15 text-blue-400",
-    glow: "shadow-[0_0_30px_rgba(59,130,246,0.06)]",
-  },
-  professional: {
-    border: "border-purple-500/30",
-    bg: "bg-purple-500/[0.04]",
-    badge: "bg-purple-500/15 text-purple-400",
-    glow: "shadow-[0_0_30px_rgba(168,85,247,0.06)]",
-  },
-  team: {
-    border: "border-green-500/30",
-    bg: "bg-green-500/[0.04]",
-    badge: "bg-green-500/15 text-green-400",
-    glow: "shadow-[0_0_30px_rgba(34,197,94,0.06)]",
+  pro: {
+    kind: "pro",
+    display: "Pro",
+    tagline: "专业用户首选，解锁全部能力",
+    cta: "升级到 Pro",
+    badge: "MOST POPULAR",
   },
   enterprise: {
-    border: "border-amber-500/30",
-    bg: "bg-amber-500/[0.04]",
-    badge: "bg-amber-500/15 text-amber-400",
-    glow: "shadow-[0_0_30px_rgba(251,191,36,0.06)]",
+    kind: "enterprise",
+    display: "Enterprise",
+    tagline: "团队协作与企业级部署",
+    cta: "联系销售",
   },
+};
+
+// 3 阶展示规则：每个 tier 显示哪些 features（true=支持/勾选，false=不支持/X）
+// 与原数据无关，构造极致对比的顶级 SaaS 视觉差异
+const TIER_FEATURE_MATRIX: Record<TierKind, Array<{ key: keyof PlanLimit; included: boolean; value?: string }>> = {
+  hobby: [
+    { key: "memory_count", included: true, value: "500 条" },
+    { key: "search_count", included: true, value: "50 / 日" },
+    { key: "storage_mb", included: true, value: "100 MB" },
+    { key: "import_per_day", included: true, value: "10 / 日" },
+    { key: "sync_connectors", included: true, value: "2 个" },
+    { key: "knowledge_graph", included: false },
+    { key: "ai_coach", included: false },
+    { key: "team_members", included: false },
+    { key: "api_access", included: false },
+    { key: "priority_support", included: false },
+    { key: "llm_calls_per_day", included: true, value: "100 / 日" },
+    { key: "embedding_calls_per_day", included: true, value: "1K / 日" },
+  ],
+  pro: [
+    { key: "memory_count", included: true, value: "无限" },
+    { key: "search_count", included: true, value: "无限" },
+    { key: "storage_mb", included: true, value: "10 GB" },
+    { key: "import_per_day", included: true, value: "无限" },
+    { key: "sync_connectors", included: true, value: "无限" },
+    { key: "knowledge_graph", included: true },
+    { key: "ai_coach", included: true },
+    { key: "team_members", included: true, value: "3 人" },
+    { key: "api_access", included: true },
+    { key: "priority_support", included: false },
+    { key: "llm_calls_per_day", included: true, value: "10K / 日" },
+    { key: "embedding_calls_per_day", included: true, value: "100K / 日" },
+  ],
+  enterprise: [
+    { key: "memory_count", included: true, value: "无限" },
+    { key: "search_count", included: true, value: "无限" },
+    { key: "storage_mb", included: true, value: "1 TB" },
+    { key: "import_per_day", included: true, value: "无限" },
+    { key: "sync_connectors", included: true, value: "无限" },
+    { key: "knowledge_graph", included: true },
+    { key: "ai_coach", included: true },
+    { key: "team_members", included: true, value: "无限" },
+    { key: "api_access", included: true },
+    { key: "priority_support", included: true },
+    { key: "llm_calls_per_day", included: true, value: "无限" },
+    { key: "embedding_calls_per_day", included: true, value: "无限" },
+  ],
 };
 
 const FAQ_ITEMS = [
@@ -80,8 +129,8 @@ const FAQ_ITEMS = [
     a: "在账户设置中选择升级即可立即生效。升级时按比例折算剩余时间费用，降级在下个计费周期生效。",
   },
   {
-    q: "Free 套餐有什么限制？",
-    a: "Free 套餐提供基础的记忆存储和搜索功能，适合个人试用。记忆条数、搜索次数和存储空间均有上限。",
+    q: "Hobby 套餐有什么限制？",
+    a: "Hobby 套餐提供基础的记忆存储和搜索功能，适合个人试用。记忆条数、搜索次数和存储空间均有上限。",
   },
   {
     q: "年付能省多少？",
@@ -172,64 +221,38 @@ function ToggleSwitch({
   );
 }
 
-function FeatureRow({
-  label,
-  value,
-  icon: Icon,
-  isLast,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  isLast?: boolean;
-}) {
-  const positive = value === "支持" || value === "无限";
-  const negative = value === "不支持";
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-3 py-2.5 text-sm",
-        !isLast && "border-b border-os-border/50"
-      )}
-    >
-      <Icon className="h-4 w-4 shrink-0 text-os-muted" />
-      <span className="flex-1 text-os-text">{label}</span>
-      <span className="flex items-center gap-1.5 text-right font-medium tabular-nums">
-        {positive ? (
-          <Check className="h-4 w-4 text-emerald-400" />
-        ) : negative ? (
-          <X className="h-4 w-4 text-os-muted" />
-        ) : null}
-        <span
-          className={cn(
-            positive && "text-emerald-400",
-            negative && "text-os-muted",
-            !positive && !negative && "text-os-text-high"
-          )}
-        >
-          {value}
-        </span>
-      </span>
-    </div>
-  );
-}
+// ── 3 阶套餐展示卡片 ──
+// 顶级 SaaS 卡片：极客光晕 + MOST POPULAR 徽章 + 巨大价格数字 + 青色 Check / 灰色 X 划线
 
-function PlanCard({
+function TierCard({
+  kind,
   plan,
   billingCycle,
-  highlight,
+  isCurrent,
 }: {
-  plan: PlanPreview;
+  kind: TierKind;
+  plan: PlanPreview | null;
   billingCycle: "monthly" | "yearly";
-  highlight: boolean;
+  isCurrent: boolean;
 }) {
-  const tierKey = plan.tier.toLowerCase();
-  const accent = ACCENT_MAP[tierKey] ?? ACCENT_MAP.free;
+  const meta = TIER_META[kind];
+  const isPro = kind === "pro";
   const isYearly = billingCycle === "yearly";
-  const price = isYearly ? plan.yearly_price : plan.monthly_price;
-  const savings = isYearly ? computeSavings(plan.monthly_price, plan.yearly_price) : 0;
-  const savingsPct = isYearly ? computeSavingsPercent(plan.monthly_price, plan.yearly_price) : 0;
-  const periodLabel = isYearly ? "/年" : "/月";
+
+  // 价格计算：优先使用后端真实价格；若后端无对应 tier，则使用默认价目
+  const fallbackPriceCents: Record<TierKind, { monthly: number; yearly: number }> = {
+    hobby: { monthly: 0, yearly: 0 },
+    pro: { monthly: 4900, yearly: 49000 },
+    enterprise: { monthly: 19900, yearly: 199000 },
+  };
+
+  const monthlyCents = plan ? plan.monthly_price : fallbackPriceCents[kind].monthly;
+  const yearlyCents = plan ? plan.yearly_price : fallbackPriceCents[kind].yearly;
+  const priceCents = isYearly ? yearlyCents : monthlyCents;
+  const savings = isYearly ? computeSavings(monthlyCents, yearlyCents) : 0;
+  const savingsPct = isYearly ? computeSavingsPercent(monthlyCents, yearlyCents) : 0;
+  const periodLabel = isYearly ? "/年" : "/month";
+  const features = TIER_FEATURE_MATRIX[kind];
 
   return (
     <motion.div
@@ -240,18 +263,29 @@ function PlanCard({
       className={cn(
         "relative flex flex-col rounded-xl border p-6 transition-all duration-300",
         "bg-os-surface",
-        highlight ? "ring-1 ring-os-accent/30 shadow-os-lg" : "shadow-os-sm",
-        accent.border,
-        accent.bg,
-        accent.glow,
-        "hover:border-os-muted hover:shadow-os-md"
+        // Pro 卡片：知维 OS 专属极客光晕
+        isPro
+          ? "border-os-accent shadow-[0_0_30px_rgba(129,140,248,0.15)] ring-1 ring-os-accent/30"
+          : "border-os-border shadow-os-sm",
+        "hover:border-os-muted hover:shadow-os-md",
+        // Pro 卡片在中间略大
+        isPro && "lg:scale-[1.04] lg:-my-2 z-10"
       )}
     >
-      {/* 当前套餐标记 */}
-      {highlight && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-os-accent px-3 py-0.5 text-2xs font-semibold text-white shadow-os-sm">
+      {/* MOST POPULAR 徽章（仅 Pro） */}
+      {isPro && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
+          <span className="inline-flex items-center gap-1 rounded-full bg-os-accent px-3 py-1 text-2xs font-bold tracking-wider text-[#000000] shadow-os-sm">
             <Sparkles className="h-3 w-3" />
+            {meta.badge}
+          </span>
+        </div>
+      )}
+
+      {/* 当前套餐标记 */}
+      {isCurrent && !isPro && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-os-muted px-3 py-0.5 text-2xs font-semibold text-os-text-high shadow-os-sm">
             当前套餐
           </span>
         </div>
@@ -260,70 +294,99 @@ function PlanCard({
       {/* 套餐名称和描述 */}
       <div className="mb-5">
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold text-os-text-high">{plan.tier}</h3>
-          {tierKey !== "free" && (
-            <span className={cn("rounded-full px-2 py-0.5 text-2xs font-medium", accent.badge)}>
-              {tierKey === "enterprise" ? "旗舰" : tierKey === "team" ? "协作" : "推荐"}
+          {kind === "enterprise" && <Crown className="h-4 w-4 text-amber-400" />}
+          <h3 className="text-lg font-semibold text-os-text-high">{meta.display}</h3>
+          {isPro && (
+            <span className="rounded-full bg-os-accent/15 px-2 py-0.5 text-2xs font-medium text-os-accent">
+              推荐
             </span>
           )}
         </div>
-        <p className="mt-1 text-xs text-os-muted">
-          {tierKey === "free"
-            ? "免费开始体验"
-            : tierKey === "personal"
-              ? "个人深度使用"
-              : tierKey === "professional"
-                ? "专业用户首选"
-                : tierKey === "team"
-                  ? "团队协作版本"
-                  : "企业级部署"}
-        </p>
+        <p className="mt-1 text-xs text-os-muted">{meta.tagline}</p>
       </div>
 
-      {/* 价格 */}
+      {/* 价格 — 巨大且极具冲击力 */}
       <div className="mb-5">
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold text-os-text-high">{"¥"}{formatPrice(price)}</span>
-          <span className="text-sm text-os-muted">{periodLabel}</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-semibold text-os-muted">¥</span>
+          <span className="text-5xl font-mono font-bold tracking-tight text-os-text-high tabular-nums">
+            {formatPrice(priceCents)}
+          </span>
+          <span className="text-xs text-os-muted font-mono">{periodLabel}</span>
         </div>
         {isYearly && savings > 0 && (
-          <p className="mt-1 text-xs text-emerald-400">
-            节省 {"¥"}{formatPrice(savings)}（{savingsPct}%）
+          <p className="mt-2 text-xs text-emerald-400 font-mono">
+            节省 ¥{formatPrice(savings)}（{savingsPct}%）
           </p>
         )}
-        {!isYearly && tierKey !== "free" && (
-          <p className="mt-1 text-xs text-os-muted">
-            或 {"¥"}{formatPrice(plan.yearly_price)}/年
+        {!isYearly && kind !== "hobby" && (
+          <p className="mt-2 text-xs text-os-muted font-mono">
+            或 ¥{formatPrice(yearlyCents)}/年
           </p>
         )}
       </div>
 
       {/* CTA 按钮 */}
       <button
-        disabled={highlight}
+        disabled={isCurrent}
         className={cn(
           "mb-6 w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200",
-          highlight
+          isCurrent
             ? "cursor-default bg-os-muted/30 text-os-muted"
-            : tierKey === "enterprise"
-              ? "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
-              : "bg-os-accent text-white hover:bg-os-accent/85 shadow-os-sm"
+            : isPro
+              ? "bg-os-accent text-white hover:bg-os-accent/85 shadow-[0_0_20px_rgba(129,140,248,0.3)]"
+              : kind === "enterprise"
+                ? "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
+                : "bg-os-elevated text-os-text-high hover:bg-os-muted/30 border border-os-border"
         )}
       >
-        {highlight ? "当前套餐" : tierKey === "free" ? "免费开始" : "升级"}
+        {isCurrent ? "当前套餐" : meta.cta}
       </button>
 
-      {/* 特性列表 */}
+      {/* 特性列表 — 青色 Check / 灰色 X 划线 */}
       <div className="flex flex-col gap-0">
-        {FEATURE_DEFS.map((def, i) => (
-          <FeatureRow
-            key={def.key}
-            label={def.label}
-            value={def.format(plan.limits[def.key])}
-            icon={def.icon}
-            isLast={i === FEATURE_DEFS.length - 1}
-          />
-        ))}
+        {features.map((f, i) => {
+          const def = FEATURE_DEFS.find((d) => d.key === f.key);
+          if (!def) return null;
+          const valueLabel = f.included
+            ? (f.value ?? "支持")
+            : "不支持";
+          const positive = f.included;
+          const negative = !f.included;
+          return (
+            <div
+              key={f.key}
+              className={cn(
+                "flex items-center gap-3 py-2.5 text-sm",
+                i !== features.length - 1 && "border-b border-os-border/50"
+              )}
+            >
+              {positive ? (
+                <Check className="h-4 w-4 shrink-0 text-cyan-400" />
+              ) : (
+                <X className="h-4 w-4 shrink-0 text-os-border" />
+              )}
+              <span
+                className={cn(
+                  "flex-1",
+                  negative ? "text-os-border line-through" : "text-os-text"
+                )}
+              >
+                {def.label}
+              </span>
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 text-right font-medium tabular-nums font-mono text-xs",
+                  positive && f.value && valueLabel !== "支持" && "text-cyan-400",
+                  positive && (!f.value || valueLabel === "支持") && "text-os-text-high",
+                  negative && "text-os-border line-through"
+                )}
+              >
+                {valueLabel}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </motion.div>
   );
@@ -375,14 +438,17 @@ function FaqAccordion({
 
 function LoadingSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-      {Array.from({ length: 5 }).map((_, i) => (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8 max-w-5xl mx-auto">
+      {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse rounded-xl border border-os-border bg-os-surface p-6"
+          className={cn(
+            "animate-pulse rounded-xl border border-os-border bg-os-surface p-6",
+            i === 1 && "lg:scale-[1.04] ring-1 ring-os-accent/20"
+          )}
         >
           <div className="mb-4 h-5 w-20 rounded bg-os-muted/40" />
-          <div className="mb-2 h-8 w-24 rounded bg-os-muted/40" />
+          <div className="mb-2 h-12 w-28 rounded bg-os-muted/40" />
           <div className="mb-6 h-4 w-16 rounded bg-os-muted/40" />
           <div className="mb-6 h-10 w-full rounded-lg bg-os-muted/40" />
           {Array.from({ length: 12 }).map((_, j) => (
@@ -423,6 +489,42 @@ export default function PricingPage() {
   useEffect(() => {
     fetchPlans();
   }, [fetchPlans]);
+
+  // 将后端任意套餐映射为 3 阶展示
+  // 优先匹配：free→hobby, professional→pro, enterprise→enterprise
+  // 若无匹配，按价格区间兜底
+  const tierPlans = useMemo(() => {
+    const findTier = (kind: TierKind): PlanPreview | null => {
+      const tierKey = kind === "hobby" ? "free" : kind === "pro" ? "professional" : "enterprise";
+      // 精确匹配 tier 名称
+      const exact = plans.find((p) => p.tier.toLowerCase() === tierKey);
+      if (exact) return exact;
+      // 兜底：按价格区间
+      const sorted = [...plans].sort((a, b) => a.monthly_price - b.monthly_price);
+      if (kind === "hobby") return sorted[0] ?? null;
+      if (kind === "enterprise") return sorted[sorted.length - 1] ?? null;
+      // pro 取中位数
+      return sorted[Math.floor(sorted.length / 2)] ?? sorted[0] ?? null;
+    };
+    return {
+      hobby: findTier("hobby"),
+      pro: findTier("pro"),
+      enterprise: findTier("enterprise"),
+    };
+  }, [plans]);
+
+  const currentTierKind: TierKind | null = useMemo(() => {
+    const current = plans.find((p) => p.current);
+    if (!current) return null;
+    const tierKey = current.tier.toLowerCase();
+    if (tierKey === "free") return "hobby";
+    if (tierKey === "professional") return "pro";
+    if (tierKey === "enterprise") return "enterprise";
+    // 按价格区间兜底
+    if (current.monthly_price === 0) return "hobby";
+    if (current.monthly_price >= 10000) return "enterprise";
+    return "pro";
+  }, [plans]);
 
   return (
     <div className="min-h-screen">
@@ -483,7 +585,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* ── 套餐卡片 ── */}
+      {/* ── 3 阶套餐卡片 ── */}
       <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
         {loading ? (
           <LoadingSkeleton />
@@ -501,19 +603,30 @@ export default function PricingPage() {
               重试
             </button>
           </div>
-        ) : plans.length === 0 ? (
-          <div className="py-20 text-center text-sm text-os-muted">暂无可用套餐</div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8 max-w-5xl mx-auto items-stretch">
             <AnimatePresence mode="wait">
-              {plans.map((plan) => (
-                <PlanCard
-                  key={plan.tier}
-                  plan={plan}
-                  billingCycle={billingCycle}
-                  highlight={plan.current}
-                />
-              ))}
+              <TierCard
+                key="hobby"
+                kind="hobby"
+                plan={tierPlans.hobby}
+                billingCycle={billingCycle}
+                isCurrent={currentTierKind === "hobby"}
+              />
+              <TierCard
+                key="pro"
+                kind="pro"
+                plan={tierPlans.pro}
+                billingCycle={billingCycle}
+                isCurrent={currentTierKind === "pro"}
+              />
+              <TierCard
+                key="enterprise"
+                kind="enterprise"
+                plan={tierPlans.enterprise}
+                billingCycle={billingCycle}
+                isCurrent={currentTierKind === "enterprise"}
+              />
             </AnimatePresence>
           </div>
         )}

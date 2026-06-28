@@ -44,7 +44,7 @@ import type {
 const DEMO_MEETINGS = [
   {
     label: "项目复盘会议",
-    meeting_title: "Cognitive OS v2.0 项目复盘会议",
+    meeting_title: "知维 OS v2.0 项目复盘会议",
     meeting_notes:
       "参会人：张总(项目负责人)、李工(研发组长)、王经理(产品经理)、赵运营(运营)\n\n会议内容：\n1. 项目进度回顾：v2.0 已完成 AI Coach、Knowledge Graph、Memory Search Center 等核心模块，决定下周启动内部测试。\n2. 技术方案讨论：李工汇报后端已采用六边形架构，API 响应时间降到 50ms 以下。企业 AI Agent 平台已完成 Runtime 和 Registry。\n3. 下一步计划：张总确定比赛演示方案、李工负责性能优化、王经理梳理演示场景、赵运营准备企业案例数据。\n4. 风险点：比赛日期临近需要集中打磨演示效果。",
   },
@@ -52,13 +52,13 @@ const DEMO_MEETINGS = [
     label: "新人培训会议",
     meeting_title: "新人入职培训 — Enterprise AI Agent 平台",
     meeting_notes:
-      "参会人：刘HR、新员工小陈、新员工小林、导师李工\n\n会议内容：\n1. 平台认知：刘HR介绍黔智脑 Cognitive OS 核心模块：Memory、Knowledge Graph、AI Coach、Enterprise AI Agent。\n2. 技术架构：导师李工讲解六边形架构、PEOR Agent 循环、WorkflowEngine 9种节点类型。\n3. 新人7天学习计划：第1-2天熟悉代码、第3-4天深入Memory/KG、第5天理解Agent Runtime、第6天实践业务场景、第7天写自己的Agent并测试。",
+      "参会人：刘HR、新员工小陈、新员工小林、导师李工\n\n会议内容：\n1. 平台认知：刘HR介绍知维 OS (Zhiwei OS) 核心模块：Memory、Knowledge Graph、AI Coach、Enterprise AI Agent。\n2. 技术架构：导师李工讲解六边形架构、PEOR Agent 循环、WorkflowEngine 9种节点类型。\n3. 新人7天学习计划：第1-2天熟悉代码、第3-4天深入Memory/KG、第5天理解Agent Runtime、第6天实践业务场景、第7天写自己的Agent并测试。",
   },
 ];
 
 const DEMO_QUESTIONS = [
   { department: "engineering", label: "研发部 — 技术风险评估", question: "当前 Enterprise AI Agent 平台的技术风险有哪些？下一步应如何排期？" },
-  { department: "product", label: "产品部 — 差异化价值", question: "如何用最简单的话让企业客户理解 Cognitive OS 的差异化价值？" },
+  { department: "product", label: "产品部 — 差异化价值", question: "如何用最简单的话让企业客户理解 知维 OS 的差异化价值？" },
   { department: "sales", label: "销售部 — 付费说服力", question: "客户问「企业为什么要为内部知识管理付费」时，应该如何回答？" },
   { department: "hr", label: "HR — 新人学习计划", question: "请为新入职的 AI 工程师生成一份 7 天学习计划。" },
   { department: "support", label: "客服部 — 知识图谱价值", question: "客户问「知识图谱对企业有什么实际用处」时，应该如何回答？" },
@@ -70,10 +70,10 @@ const DEMO_QUESTIONS = [
 
 function CapabilityCards() {
   return (
-    <div className="grid grid-cols-3 gap-3 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
       {[
-        { icon: Workflow, label: "Workflow 编排", desc: "Agent 串联执行" },
-        { icon: Database, label: "Memory / KG", desc: "知识库 + 图谱调用" },
+        { icon: Workflow, label: "Workflow 编排", desc: "智能体串联执行" },
+        { icon: Database, label: "记忆 / KG", desc: "知识库 + 图谱调用" },
         { icon: Layers, label: "Trace / Metrics", desc: "每一步可审计" },
       ].map(({ icon: Icon, label, desc }) => (
         <div key={label} className="rounded-lg border border-gray-800 bg-gray-900/40 p-3 text-center">
@@ -147,9 +147,9 @@ function ScenarioCard({
       {/* Flow visualization */}
       <div className="flex items-center gap-1 mb-4 overflow-x-auto text-2xs text-gray-600 pb-1">
         {isM2T ? (
-          <>会议纪要 <ArrowRight size={10} /> Meeting Agent <ArrowRight size={10} /> Knowledge Agent <ArrowRight size={10} /> KG <ArrowRight size={10} /> Training Agent <ArrowRight size={10} /> WorkflowExecution</>
+          <>会议纪要 <ArrowRight size={10} /> Meeting 智能体 <ArrowRight size={10} /> Knowledge 智能体 <ArrowRight size={10} /> KG <ArrowRight size={10} /> Training 智能体 <ArrowRight size={10} /> WorkflowExecution</>
         ) : (
-          <>部门问题 <ArrowRight size={10} /> Department Agent <ArrowRight size={10} /> Memory <ArrowRight size={10} /> KG <ArrowRight size={10} /> Recommendation <ArrowRight size={10} /> Execution</>
+          <>部门问题 <ArrowRight size={10} /> Department 智能体 <ArrowRight size={10} /> 记忆 <ArrowRight size={10} /> KG <ArrowRight size={10} /> Recommendation <ArrowRight size={10} /> Execution</>
         )}
       </div>
 
@@ -663,7 +663,7 @@ export default function ScenariosPage() {
                   <select value={daInput.department}
                     onChange={(e) => setDaInput((p) => ({ ...p, department: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors">
-                    <option value="">选择部门…部门 Agent 默认遵守知识边界</option>
+                    <option value="">选择部门…部门智能体默认遵守知识边界</option>
                     <option value="engineering">研发部</option>
                     <option value="product">产品部</option>
                     <option value="operations">运营部</option>

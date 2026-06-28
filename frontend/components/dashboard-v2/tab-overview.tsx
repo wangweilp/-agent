@@ -24,6 +24,7 @@ import {
   formatDelta,
   formatCompact,
 } from "./format";
+import { layout } from "@/styles/layout";
 
 const STALE = 60 * 1000; // 60s
 
@@ -31,7 +32,7 @@ function KpiGroup({ title, children }: { title: string; children: React.ReactNod
   return (
     <div className="space-y-2">
       <h3 className="text-2xs font-medium text-os-muted uppercase tracking-wider px-1">{title}</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">{children}</div>
+      <div className={layout.grid.fourLg}>{children}</div>
     </div>
   );
 }
@@ -50,7 +51,7 @@ export function TabOverview() {
       onRetry={() => refetch()}
       errorText="概览数据加载失败"
       skeleton={
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className={layout.grid.fourLg}>
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="os-card p-4 space-y-3">
               <div className="h-3 w-16 rounded bg-os-elevated shimmer-bg" />
@@ -79,15 +80,15 @@ export function TabOverview() {
           <KpiCard icon={Repeat} label="D7 留存" value={formatPercent(data?.retention_d7 ?? 0)} accent="violet" sub="7日留存率" />
         </KpiGroup>
 
-        <KpiGroup title="Agent 性能">
-          <KpiCard icon={Bot} label="Agent 成功率" value={formatPercent(data?.agent_success_rate ?? 0)} accent="emerald" sub="今日" />
+        <KpiGroup title="智能体性能">
+          <KpiCard icon={Bot} label="智能体成功率" value={formatPercent(data?.agent_success_rate ?? 0)} accent="emerald" sub="今日" />
           <KpiCard icon={Timer} label="P95 延迟" value={formatLatency(data?.p95_latency_ms ?? 0)} accent="amber" sub="今日" />
           <KpiCard icon={Coins} label="Token 成本" value={formatCents(data?.token_cost_today_cents ?? 0)} accent="rose" sub="今日" />
         </KpiGroup>
 
-        <KpiGroup title="Memory 健康">
+        <KpiGroup title="记忆健康">
           <KpiCard icon={Brain} label="总记忆" value={formatCompact(data?.total_memories ?? 0)} accent="indigo" sub="全量" />
-          <KpiCard icon={Target} label="命中率" value={formatPercent(data?.memory_hit_rate ?? 0)} accent="emerald" sub="Memory Hit Rate" />
+          <KpiCard icon={Target} label="命中率" value={formatPercent(data?.memory_hit_rate ?? 0)} accent="emerald" sub="记忆 Hit Rate" />
           <KpiCard icon={GitBranch} label="净增长" value={formatDelta(data?.net_growth_today ?? 0)} accent="cyan" sub="今日" />
         </KpiGroup>
       </div>

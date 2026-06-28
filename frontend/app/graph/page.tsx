@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, GitGraph, RotateCcw, X, Brain, Activity,
-  ZoomIn, ZoomOut,
+  ZoomIn, ZoomOut, Maximize, Network as NetworkIcon,
 } from "lucide-react";
 import { DataSet } from "vis-data";
 import { Network, type Data, type Edge, type Node } from "vis-network";
@@ -68,10 +68,10 @@ const EDGE_PRIMARY   = "rgba(111,123,255,0.55)";
 const EDGE_SECONDARY = "rgba(139,128,188,0.22)";
 const EDGE_COOCCUR   = "rgba(90,82,128,0.18)";
 
-// Highlight palette
-const HL_BG     = "#5B8DEE";
-const HL_BORDER = "#7BA5F7";
-const HL_EDGE   = "rgba(91,141,238,0.65)";
+// Highlight palette — cyan accent for selection (per Zhiwei OS design system)
+const HL_BG     = "#22D3EE";
+const HL_BORDER = "#22D3EE";
+const HL_EDGE   = "#A78BFA";
 const DIM_NODE  = "rgba(110,108,135,0.15)";
 const DIM_BORDER_NODE = "rgba(110,108,135,0.08)";
 const DIM_EDGE  = "rgba(80,76,110,0.08)";
@@ -252,12 +252,12 @@ export default function GraphPage() {
       id: n.id,
       color: {
         background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
-        border: "rgba(255,255,255,0.08)",
-        highlight: { background: NODE_COLORS[n.type] || "#7F8CFF", border: "rgba(255,255,255,0.25)" },
-        hover: { background: NODE_COLORS[n.type] || "#7F8CFF", border: "rgba(255,255,255,0.4)" },
+        border: "rgba(129,140,248,0.4)",
+        highlight: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+        hover: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
       },
       borderWidth: 1,
-      font: { color: "rgba(228,228,231,0.7)", size: 9, face: "Inter, sans-serif" },
+      font: { color: "#A1A1AA", size: 9, face: "Inter, sans-serif" },
       shadow: false,
     })));
 
@@ -265,8 +265,8 @@ export default function GraphPage() {
       id: `${e.source}__${e.target}__${e.relation}`,
       color: {
         color: e.relation === "co_occurrence" ? EDGE_COOCCUR : EDGE_SECONDARY,
-        highlight: HL_EDGE,
-        hover: "rgba(145,155,255,0.45)",
+        highlight: "#A78BFA",
+        hover: "#A78BFA",
       },
       width: Math.max(e.weight * 0.55, 0.35),
     })));
@@ -306,24 +306,21 @@ export default function GraphPage() {
       value: (Math.max(n.importance, 3) + Math.min(n.memory_count, 10)) * NODE_SIZE_SCALE,
       color: {
         background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
-        border: "rgba(255,255,255,0.08)",
-        highlight: { background: NODE_COLORS[n.type] || "#7F8CFF", border: "rgba(255,255,255,0.25)" },
-        hover: { background: NODE_COLORS[n.type] || "#7F8CFF", border: "rgba(255,255,255,0.4)" },
+        border: "rgba(129,140,248,0.4)",
+        highlight: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+        hover: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
       },
-      font: { color: "rgba(228,228,231,0.65)", size: 9, face: "Inter, sans-serif" },
+      font: { color: "#A1A1AA", size: 9, face: "Inter, sans-serif" },
       borderWidth: 1,
       shape: n.type === "concept" ? "diamond" : n.type === "memory" ? "box" : "dot",
       size: (9 + Math.min(n.memory_count * 2, 32)) * NODE_SIZE_SCALE,
       shadow: { enabled: true, color: NODE_GLOW[n.type] || "rgba(127,140,255,0.2)", size: 8 },
     })));
 
-    // ── Curved Bézier edges with edge-bundling ──
+    // ── Smooth continuous edges ──
     const edges = new DataSet(graphData.edges.map((e, idx) => {
       const weight = e.weight;
       const isCooccur = e.relation === "co_occurrence";
-      // alternate CW / CCW to reduce overlapping
-      const roundness = 0.15 + Math.min(weight * 0.04, 0.25);
-      const smoothType = idx % 2 === 0 ? "curvedCW" : "curvedCCW";
       return {
         id: `${e.source}__${e.target}__${e.relation}`,
         from: e.source,
@@ -333,14 +330,11 @@ export default function GraphPage() {
         value: weight,
         color: {
           color: isCooccur ? EDGE_COOCCUR : EDGE_SECONDARY,
-          highlight: HL_EDGE,
-          hover: "rgba(145,155,255,0.45)",
+          highlight: "#A78BFA",
+          hover: "#A78BFA",
         },
         width: Math.max(weight * 0.55, 0.35),
-        smooth: {
-          type: smoothType,
-          roundness: roundness,
-        },
+        smooth: { enabled: true, type: "continuous", roundness: 0 },
         font: { color: "rgba(200,200,220,0.35)", size: 7, strokeWidth: 0 },
         arrows: { to: { enabled: false } },
       };
@@ -366,9 +360,23 @@ export default function GraphPage() {
         navigationButtons: false,
       },
       nodes: {
+        shape: "dot",
+        color: {
+          background: "rgba(129,140,248,0.1)",
+          border: "#818CF8",
+          highlight: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+          hover: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+        },
+        font: { color: "#A1A1AA", face: "Inter, sans-serif" },
         scaling: { min: 4 * NODE_SIZE_SCALE, max: 28 * NODE_SIZE_SCALE },
       },
       edges: {
+        color: {
+          color: "#3F3F46",
+          highlight: "#A78BFA",
+          hover: "#A78BFA",
+        },
+        smooth: { enabled: true, type: "continuous", roundness: 0 },
         scaling: { min: 0.25, max: 6 },
       },
       layout: { improvedLayout: true },
@@ -397,24 +405,24 @@ export default function GraphPage() {
           color: {
             background: HL_BG,
             border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#A5C5FF" },
-            hover: { background: "#4A7BDE", border: HL_BORDER },
+            highlight: { background: HL_BORDER, border: "#22D3EE" },
+            hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 2.5,
-          font: { color: "#D6E4FF", size: 11, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(91,141,238,0.5)", size: 16 },
+          font: { color: "#A1A1AA", size: 11, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(34,211,238,0.5)", size: 16 },
         };
         if (hl.has(n.id)) return {
           id: n.id,
           color: {
             background: HL_BG,
             border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#A5C5FF" },
-            hover: { background: "#4A7BDE", border: HL_BORDER },
+            highlight: { background: HL_BORDER, border: "#22D3EE" },
+            hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 2,
-          font: { color: "rgba(214,228,255,0.85)", size: 10, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(91,141,238,0.35)", size: 10 },
+          font: { color: "#A1A1AA", size: 10, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(34,211,238,0.35)", size: 10 },
         };
         return {
           id: n.id,
@@ -433,7 +441,7 @@ export default function GraphPage() {
       networkData(network).edges.update(graphData.edges.map(e => {
         const eid = `${e.source}__${e.target}__${e.relation}`;
         return hlEdgeIds.has(eid)
-          ? { id: eid, color: { color: HL_EDGE, highlight: "#8DAEFF", hover: "#A5C5FF" }, width: Math.max(e.weight * 0.9, 0.9) }
+          ? { id: eid, color: { color: HL_EDGE, highlight: "#A78BFA", hover: "#A78BFA" }, width: Math.max(e.weight * 0.9, 0.9) }
           : { id: eid, color: { color: DIM_EDGE, highlight: DIM_EDGE, hover: DIM_EDGE }, width: Math.max(e.weight * 0.2, 0.15) };
       }));
     });
@@ -469,24 +477,24 @@ export default function GraphPage() {
           color: {
             background: HL_BG,
             border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#A5C5FF" },
-            hover: { background: "#4A7BDE", border: HL_BORDER },
+            highlight: { background: HL_BORDER, border: "#22D3EE" },
+            hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 3,
-          font: { color: "#D6E4FF", size: 12, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(91,141,238,0.55)", size: 20 },
+          font: { color: "#A1A1AA", size: 12, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(34,211,238,0.55)", size: 20 },
         };
         if (hl.has(n.id)) return {
           id: n.id,
           color: {
             background: HL_BG,
             border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#A5C5FF" },
-            hover: { background: "#4A7BDE", border: HL_BORDER },
+            highlight: { background: HL_BORDER, border: "#22D3EE" },
+            hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 2.2,
-          font: { color: "rgba(214,228,255,0.9)", size: 10, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(91,141,238,0.4)", size: 12 },
+          font: { color: "#A1A1AA", size: 10, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(34,211,238,0.4)", size: 12 },
         };
         return {
           id: n.id,
@@ -505,7 +513,7 @@ export default function GraphPage() {
       networkData(network).edges.update(graphData.edges.map(e => {
         const eid = `${e.source}__${e.target}__${e.relation}`;
         return hlEdgeIds.has(eid)
-          ? { id: eid, color: { color: HL_EDGE, highlight: "#8DAEFF", hover: "#A5C5FF" }, width: Math.max(e.weight * 1, 0.9) }
+          ? { id: eid, color: { color: HL_EDGE, highlight: "#A78BFA", hover: "#A78BFA" }, width: Math.max(e.weight * 1, 0.9) }
           : { id: eid, color: { color: DIM_EDGE, highlight: DIM_EDGE, hover: DIM_EDGE }, width: Math.max(e.weight * 0.2, 0.15) };
       }));
     });
@@ -526,6 +534,17 @@ export default function GraphPage() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Esc 键关闭 focusNode 元数据侧边面板
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && focusNodeId) {
+        clearHighlight();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [focusNodeId, clearHighlight]);
 
   useEffect(() => () => {
     if (networkRef.current) { networkRef.current.destroy(); networkRef.current = null; }
@@ -653,6 +672,23 @@ export default function GraphPage() {
             </div>
           ) : null}
 
+          {/* ── HUD 浮动工具栏（右上角，毛玻璃效果） ── */}
+          <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5 p-1.5 rounded-xl border border-os-border/40 bg-os-elevated/80 backdrop-blur-md shadow-os-md">
+            <button onClick={zoomIn} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="放大">
+              <ZoomIn size={15} />
+            </button>
+            <button onClick={zoomOut} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="缩小">
+              <ZoomOut size={15} />
+            </button>
+            <button onClick={resetView} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="适应屏幕">
+              <Maximize size={15} />
+            </button>
+            <div className="h-px bg-os-border/40 mx-1" />
+            <button onClick={resetView} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="重新布局">
+              <NetworkIcon size={15} />
+            </button>
+          </div>
+
           <div
             ref={containerRef}
             className="w-full h-full relative z-[2]"
@@ -661,6 +697,60 @@ export default function GraphPage() {
         </div>
 
         <EntityDrawer entityName={selectedEntity} onClose={() => setSelectedEntity(null)} />
+
+        {/* ── focusNode 元数据侧边面板（左侧滑出） ── */}
+        <AnimatePresence>
+          {focusNodeId && graphDataRef.current && (() => {
+            const node = graphDataRef.current.nodes.find(n => n.id === focusNodeId);
+            if (!node) return null;
+            const nodeColor = NODE_COLORS[node.type] || "#818CF8";
+            return (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="absolute top-3 left-3 z-20 w-64 rounded-xl border border-os-border/50 bg-os-surface/90 backdrop-blur-md shadow-os-lg overflow-hidden"
+              >
+                {/* 顶部色条 — 节点类型标识 */}
+                <div className="h-0.5" style={{ background: nodeColor }} />
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <p className="text-2xs text-os-muted uppercase tracking-wider">{node.type}</p>
+                      <p className="text-sm font-medium text-os-text-high truncate">{node.label}</p>
+                    </div>
+                    <button
+                      onClick={clearHighlight}
+                      className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-os-muted hover:text-os-text-high hover:bg-os-elevated transition-colors"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xs text-os-muted">重要性</span>
+                      <span className="text-xs font-mono font-medium text-os-text-high">{node.importance ?? "N/A"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xs text-os-muted">关联记忆</span>
+                      <span className="text-xs font-mono font-medium text-os-text-high">{node.memory_count ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xs text-os-muted">分组</span>
+                      <span className="text-xs font-mono font-medium text-os-text-high">{node.group ?? "default"}</span>
+                    </div>
+                  </div>
+                  {/* 节点 ID（截断显示） */}
+                  <div className="pt-2 border-t border-os-border/30">
+                    <p className="text-2xs text-os-muted uppercase tracking-wider mb-1">Node ID</p>
+                    <p className="text-2xs font-mono text-os-subtle truncate">{node.id}</p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

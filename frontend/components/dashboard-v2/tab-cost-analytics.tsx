@@ -9,6 +9,7 @@ import { SectionCard } from "./section-card";
 import { KpiCard } from "./kpi-card";
 import { formatCents, estimateMonthlyCostCents } from "./format";
 import { cn } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 const STALE = 5 * 60 * 1000;
 const RANGES = [
@@ -70,7 +71,7 @@ export function TabCostAnalytics() {
         <RangeSwitcher value={days} onChange={setDays} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         <KpiCard icon={Coins} label="区间总成本" value={formatCents(totalCost)} accent="rose" sub={`${days} 天`} />
         <KpiCard icon={CalendarDays} label="日均成本" value={formatCents(dailyAvg)} accent="amber" sub="Daily Avg" />
         <KpiCard icon={Flame} label="Burn Rate" value={formatCents(dailyAvg)} accent="rose" sub="每日烧录" />
@@ -89,7 +90,7 @@ export function TabCostAnalytics() {
         />
       </SectionCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={layout.grid.twoLg}>
         <PlaceholderPanel
           title="Forecast 预测"
           icon={<TrendingUp size={14} />}

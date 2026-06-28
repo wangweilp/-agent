@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FileText, CreditCard, RotateCcw, Download, Eye, AlertCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { FileText, CreditCard, RotateCcw, Download, Eye, AlertCircle, TrendingUp } from "lucide-react";
 import { api } from "@/services/api";
 import type { Invoice, Payment, Refund, BillingAccount } from "@/types";
 
@@ -134,10 +143,120 @@ function ErrorState({ message }: { message: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Neon Billing Chart — 发光的消费账单趋势图
+// 使用 linearGradient 从 os-accent（顶部）渐变到透明（底部）
+// 数据源：从现有 invoices 按日期聚合（无新增 API 调用）
+// ═══════════════════════════════════════════════════════════════
+
+interface SpendTrendPoint {
+  date: string;
+  spend: number; // 元
+  label: string;
+}
+
+function deriveSpendTrend(invoices: Invoice[]): SpendTrendPoint[] {
+  if (invoices.length === 0) return [];
+  // 按日期聚合
+  const byDate = new Map<string, number>();
+  for (const inv of invoices) {
+    const d = new Date(inv.created_at);
+    const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+    byDate.set(key, (byDate.get(key) ?? 0) + inv.amount / 100);
+  }
+  // 排序并生成连续序列
+  const sorted = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return sorted.map(([date, spend]) => {
+    const d = new Date(date);
+    return {
+      date,
+      spend: Number(spend.toFixed(2)),
+      label: `${d.getMonth() + 1}/${d.getDate()}`,
+    };
+  });
+}
+
+const BILLING_TOOLTIP_STYLE = {
+  backgroundColor: "#111113",
+  border: "1px solid #818CF8",
+  borderRadius: "12px",
+  fontSize: "12px",
+  color: "#E4E4E7",
+  boxShadow: "0 0 20px rgba(129,140,248,0.15)",
+};
+
+function NeonBillingChart({ trend }: { trend: SpendTrendPoint[] }) {
+  if (trend.length === 0) {
+    return (
+      <div className="bg-os-surface border border-os-border rounded-xl p-4">
+        <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-os-accent" />
+          消费趋势
+        </h3>
+        <div className="flex items-center justify-center h-[200px] text-xs text-os-subtle">
+          暂无消费数据
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-os-surface border border-os-border rounded-xl p-4">
+      <h3 className="mb-3 text-sm font-semibold text-os-text-high flex items-center gap-2">
+        <TrendingUp className="h-4 w-4 text-os-accent" />
+        消费趋势
+        <span className="ml-auto text-2xs font-mono text-os-subtle">{trend.length} 期</span>
+      </h3>
+      <ResponsiveContainer width="100%" height={200}>
+        <AreaChart data={trend} margin={{ top: 6, right: 8, left: 8, bottom: 0 }}>
+          <defs>
+            {/* 霓虹渐变：os-accent 顶部 → 透明底部 */}
+            <linearGradient id="neonSpendGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#818CF8" stopOpacity={0.6} />
+              <stop offset="60%" stopColor="#818CF8" stopOpacity={0.15} />
+              <stop offset="100%" stopColor="#818CF8" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "#52525B", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: "#52525B", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            width={48}
+          />
+          <Tooltip
+            contentStyle={BILLING_TOOLTIP_STYLE}
+            itemStyle={{ color: "#818CF8" }}
+            formatter={(value: number) => [`¥${value.toFixed(2)}`, "消费"]}
+          />
+          <Area
+            type="monotone"
+            dataKey="spend"
+            stroke="#818CF8"
+            strokeWidth={2}
+            fill="url(#neonSpendGradient)"
+            dot={{ fill: "#818CF8", r: 2, strokeWidth: 0 }}
+            activeDot={{ r: 4, fill: "#818CF8", stroke: "#111113", strokeWidth: 2 }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Tab: Invoices
 // ═══════════════════════════════════════════════════════════════
 
 function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
+  // 消费趋势派生（基于现有 invoices，无新增 API 调用）
+  const spendTrend = useMemo(() => deriveSpendTrend(invoices), [invoices]);
+
   if (invoices.length === 0) {
     return <EmptyState icon={FileText} message="暂无账单" />;
   }
@@ -148,21 +267,30 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
 
   return (
     <div className="space-y-4">
-      {/* Summary row */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Summary row — Total Spend 带发光效果 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-os-surface border border-os-border rounded-xl p-4">
           <p className="text-xs text-os-subtle">总账单数</p>
           <p className="text-xl font-semibold text-os-text-high mt-1">{totalCount}</p>
         </div>
-        <div className="bg-os-surface border border-os-border rounded-xl p-4">
-          <p className="text-xs text-os-subtle">总金额</p>
-          <p className="text-xl font-semibold text-os-text-high mt-1">{fmtAmount(totalAmount)}</p>
+        {/* Total Spend — 微弱文本阴影发光 */}
+        <div className="bg-os-surface border border-os-accent/30 rounded-xl p-4 shadow-[0_0_20px_rgba(129,140,248,0.08)]">
+          <p className="text-xs text-os-subtle flex items-center gap-1">
+            <TrendingUp className="h-3 w-3 text-os-accent" />
+            总消费
+          </p>
+          <p className="text-xl font-semibold text-os-accent mt-1 font-mono tabular-nums drop-shadow-md">
+            {fmtAmount(totalAmount)}
+          </p>
         </div>
         <div className="bg-os-surface border border-os-border rounded-xl p-4">
           <p className="text-xs text-os-subtle">已支付</p>
           <p className="text-xl font-semibold text-emerald-400 mt-1">{fmtAmount(paidAmount)}</p>
         </div>
       </div>
+
+      {/* Neon Billing Chart — 发光消费趋势图 */}
+      <NeonBillingChart trend={spendTrend} />
 
       {/* Table */}
       <div className="bg-os-surface border border-os-border rounded-xl overflow-hidden">

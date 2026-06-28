@@ -19,7 +19,12 @@ import type {
 } from "@/types/dashboard-v2";
 import { getAccessToken } from "@/stores/auth-store";
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+// Unified API base URL — single source of truth for backend target.
+// Used by the centralized request<T>() helper for all fetch calls.
+// Display-only consumers (e.g. anchor hrefs to /docs, /redoc) should import this
+// rather than re-declaring a hardcoded fallback, so the URL stays in one place.
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const BASE = API_BASE_URL;
 const IMPORTS_PATH = "/imports";
 
 class ApiError extends Error {

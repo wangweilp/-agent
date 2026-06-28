@@ -5,6 +5,7 @@
  */
 
 import { getAccessToken } from "@/stores/auth-store";
+import { API_BASE_URL } from "./api";
 import type {
   MarketplaceAnalyticsSummary,
   MarketplaceBrowseParams,
@@ -19,7 +20,7 @@ import type {
   TenantAgentInstallation,
 } from "@/types/marketplace";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API_BASE = API_BASE_URL;
 const MKP_API_BASE = `${API_BASE}/agent-marketplace`;
 
 export class MarketplaceApiError extends Error {

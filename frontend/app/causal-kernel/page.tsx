@@ -19,14 +19,15 @@ import {
 import type {
   SystemEvent, EventSource, EventSeverity, CauseType,
 } from "@/types/event-bus";
+import { layout } from "@/styles/layout";
 
 // ── 事件来源样式映射 ──
 const SOURCE_STYLE: Record<EventSource, { color: string; bg: string; border: string; label: string }> = {
-  runtime: { color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/25", label: "Runtime" },
-  memory: { color: "text-violet-400", bg: "bg-violet-400/10", border: "border-violet-400/25", label: "Memory" },
-  governance: { color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/25", label: "Governance" },
-  agent: { color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/25", label: "Agent" },
-  observability: { color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/25", label: "Observability" },
+  runtime: { color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/25", label: "运行时" },
+  memory: { color: "text-violet-400", bg: "bg-violet-400/10", border: "border-violet-400/25", label: "记忆" },
+  governance: { color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/25", label: "治理" },
+  agent: { color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/25", label: "智能体" },
+  observability: { color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/25", label: "可观测性" },
 };
 
 const SEVERITY_STYLE: Record<EventSeverity, { color: string; dot: string }> = {
@@ -38,7 +39,7 @@ const SEVERITY_STYLE: Record<EventSeverity, { color: string; dot: string }> = {
 const CAUSE_LABELS: Record<CauseType, string> = {
   user_action: "用户行为",
   system_policy: "系统策略",
-  agent_decision: "Agent 决策",
+  agent_decision: "智能体决策",
   system_event: "系统事件",
   external_trigger: "外部触发",
 };
@@ -104,12 +105,12 @@ export default function CausalKernelPage() {
         </div>
 
         {/* ── 内核统计磁贴 ── */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <StatTile label="Runtime" value={stats.bySource.runtime} icon={<ShieldAlert size={12} />} accent="rose" />
-          <StatTile label="Memory" value={stats.bySource.memory} icon={<BrainCircuit size={12} />} accent="violet" />
-          <StatTile label="Governance" value={stats.bySource.governance} icon={<AlertTriangle size={12} />} accent="amber" />
-          <StatTile label="Agent" value={stats.bySource.agent} icon={<Cpu size={12} />} accent="cyan" />
-          <StatTile label="Observability" value={stats.bySource.observability} icon={<Activity size={12} />} accent="emerald" />
+        <div className={layout.grid.five}>
+          <StatTile label="运行时" value={stats.bySource.runtime} icon={<ShieldAlert size={12} />} accent="rose" />
+          <StatTile label="记忆" value={stats.bySource.memory} icon={<BrainCircuit size={12} />} accent="violet" />
+          <StatTile label="治理" value={stats.bySource.governance} icon={<AlertTriangle size={12} />} accent="amber" />
+          <StatTile label="智能体" value={stats.bySource.agent} icon={<Cpu size={12} />} accent="cyan" />
+          <StatTile label="可观测性" value={stats.bySource.observability} icon={<Activity size={12} />} accent="emerald" />
         </div>
 
         {/* ── 边界声明 ── */}
@@ -229,7 +230,7 @@ function ReplayTab() {
   const { events, isLoading } = useEventReplay(selectedTrace);
 
   return (
-    <div className="grid grid-cols-12 gap-4">
+    <div className={layout.grid.twelve}>
       {/* 左侧：Trace 列表 */}
       <div className="col-span-12 lg:col-span-3 space-y-2">
         <div className="text-2xs font-medium text-os-subtle uppercase tracking-wider flex items-center gap-1.5">
@@ -314,7 +315,7 @@ function CausalChainTab() {
   }, [useKernelStats()]);
 
   return (
-    <div className="grid grid-cols-12 gap-4">
+    <div className={layout.grid.twelve}>
       {/* 左侧：根事件列表 */}
       <div className="col-span-12 lg:col-span-4 space-y-2">
         <div className="text-2xs font-medium text-os-subtle uppercase tracking-wider flex items-center gap-1.5">

@@ -5,13 +5,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   Building2, Plus, Users, Crown, Shield, User, Eye,
-  ChevronRight, Loader2, AlertCircle,
+  ChevronRight, Loader2, AlertCircle, Zap, Send, X,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { PageTransition, StaggerItem } from "@/components/animations/page-transition";
 import { CardSkeleton } from "@/components/animations/skeleton";
 import { cn } from "@/lib/utils";
+import { kernelApi, kernelSafe, type RouteResponse } from "@/lib/core-client";
 import type { Workspace, WorkspaceRole } from "@/types";
 
 const roleMeta: Record<WorkspaceRole, { icon: typeof User; label: string; color: string }> = {
@@ -28,6 +30,30 @@ export default function WorkspacePage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState("");
+
+  // ── Kernel Ping 面板状态 ──
+  const [kernelOpen, setKernelOpen] = useState(false);
+  const [kernelInput, setKernelInput] = useState("");
+  const [kernelResult, setKernelResult] = useState<RouteResponse | null>(null);
+  const [kernelLoading, setKernelLoading] = useState(false);
+  const [kernelError, setKernelError] = useState("");
+
+  const handleKernelPing = async () => {
+    if (!kernelInput.trim()) return;
+    setKernelLoading(true);
+    setKernelError("");
+    setKernelResult(null);
+    const result = await kernelSafe(
+      kernelApi.routeIntent(kernelInput.trim()),
+      "意图路由请求失败",
+    );
+    if (result) {
+      setKernelResult(result);
+    } else {
+      setKernelError("后端无响应，请确认 uvicorn 已启动在 localhost:8000");
+    }
+    setKernelLoading(false);
+  };
 
   // Fetch workspace list via /auth/me which returns workspaces with role info
   const { data: meData, isLoading } = useQuery({
@@ -62,8 +88,8 @@ export default function WorkspacePage() {
 
   const handleSwitch = (ws: Workspace) => {
     setCurrentWorkspace(ws);
-    // Navigate to dashboard or stay - for now just stay on workspace page
-    router.push("/dashboard");
+    // 切换工作区后回到工作台门面首页
+    router.push("/home");
   };
 
   if (!token) {
@@ -80,7 +106,7 @@ export default function WorkspacePage() {
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-5 max-w-[900px] mx-auto">
+      <div className="p-4 md:p-6 space-y-5 max-w-[900px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -223,6 +249,131 @@ export default function WorkspacePage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* ── Kernel Ping 浮动面板（右下角） ── */}
+      <div className="fixed bottom-4 right-4 z-[150] flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {kernelOpen && (
+            <motion.div
+              key="kernel-panel"
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-[90vw] md:w-80 rounded-xl border border-os-border/50 bg-os-surface/95 backdrop-blur-xl shadow-os-lg overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-os-border/30">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-os-text-high tracking-wide">
+                    Kernel Ping
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setKernelOpen(false);
+                    setKernelResult(null);
+                    setKernelError("");
+                  }}
+                  className="text-os-muted hover:text-os-text-high transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={kernelInput}
+                    onChange={(e) => {
+                      setKernelInput(e.target.value);
+                      setKernelError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleKernelPing();
+                    }}
+                    placeholder="输入文本测试意图路由..."
+                    className="flex-1 h-9 px-3 rounded-md bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                  />
+                  <button
+                    onClick={handleKernelPing}
+                    disabled={kernelLoading || !kernelInput.trim()}
+                    className="shrink-0 w-9 h-9 flex items-center justify-center rounded-md bg-os-accent text-white hover:bg-os-accent/90 disabled:opacity-40 transition-colors"
+                  >
+                    {kernelLoading ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                  </button>
+                </div>
+
+                {/* Error */}
+                {kernelError && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-md bg-red-400/10 border border-red-400/20">
+                    <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-300">{kernelError}</p>
+                  </div>
+                )}
+
+                {/* Result */}
+                {kernelResult && (
+                  <div className="p-3 rounded-md bg-os-accent/5 border border-os-accent/20 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xs text-os-muted">意图</span>
+                      <span className={cn(
+                        "text-xs font-mono font-semibold px-1.5 py-0.5 rounded",
+                        kernelResult.intent === "CODE_EXECUTION"
+                          ? "bg-amber-400/10 text-amber-400"
+                          : "bg-purple-400/10 text-purple-400",
+                      )}>
+                        {kernelResult.intent}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xs text-os-muted">置信度</span>
+                      <span className="text-xs font-mono text-os-text-high">
+                        {(kernelResult.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xs text-os-muted">原始输入</span>
+                      <span className="text-xs text-os-subtle truncate max-w-[180px]">
+                        {kernelResult.raw_query}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty hint */}
+                {!kernelResult && !kernelError && !kernelLoading && (
+                  <p className="text-2xs text-os-muted text-center">
+                    输入关键词如 "搜索记忆" 或 "执行代码" 测试路由
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Toggle button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setKernelOpen((v) => !v)}
+          className={cn(
+            "w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors",
+            kernelOpen
+              ? "bg-os-accent text-white"
+              : "bg-os-surface/90 border border-os-border/50 text-os-subtle hover:text-os-accent",
+          )}
+          title="Kernel Ping 测试面板"
+        >
+          <Zap size={18} />
+        </motion.button>
       </div>
     </PageTransition>
   );

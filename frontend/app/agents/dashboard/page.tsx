@@ -41,7 +41,7 @@ export default function AgentDashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Agent 总数", value: stats.total_agents, color: "text-indigo-600" },
+          { label: "智能体总数", value: stats.total_agents, color: "text-indigo-600" },
           { label: "已启用", value: stats.enabled_agents, color: "text-green-600" },
           { label: "总调用次数", value: stats.total_usage, color: "text-blue-600" },
           {
@@ -63,7 +63,7 @@ export default function AgentDashboardPage() {
         {/* Agent 列表 */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Agent 列表</h2>
+            <h2 className="font-semibold text-gray-900">智能体列表</h2>
           </div>
           <div className="divide-y divide-gray-100">
             {stats.agents.map((a) => (

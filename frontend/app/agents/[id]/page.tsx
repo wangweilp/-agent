@@ -58,7 +58,7 @@ export default function AgentDetailPage() {
       const result = await runAgent({
         agent_id: id,
         title: query || "人工触发",
-        description: query || "从 Agent Detail 页面手动触发",
+        description: query || "从智能体 Detail 页面手动触发",
       });
       setRunResult(result);
     } catch (e: unknown) {
@@ -108,7 +108,7 @@ export default function AgentDetailPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16">
         <div className="p-4 rounded-lg bg-red-50 text-red-700">
-          {error || "Agent 不存在"}
+          {error || "智能体不存在"}
         </div>
       </div>
     );

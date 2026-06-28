@@ -10,8 +10,8 @@ interface AgentPermissionPanelProps {
 }
 
 function permissionLabel(perm: string): string {
-  if (perm.startsWith("agent:")) return `Agent — ${perm.replace("agent:", "")}`;
-  if (perm.startsWith("memory:")) return `Memory — ${perm.replace("memory:", "")}`;
+  if (perm.startsWith("agent:")) return `智能体 — ${perm.replace("agent:", "")}`;
+  if (perm.startsWith("memory:")) return `记忆 — ${perm.replace("memory:", "")}`;
   if (perm.startsWith("kg:")) return `Knowledge Graph — ${perm.replace("kg:", "")}`;
   return perm;
 }

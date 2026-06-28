@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
 import { useAuthStore } from "@/stores/auth-store";
-import { Building2, ChevronDown, LogOut } from "lucide-react";
+import { Building2, ChevronDown, LogOut, Menu } from "lucide-react";
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const status = useAgentStore((s) => s.status);
   const traceId = useAgentStore((s) => s.traceId);
   const currentWorkspace = useAuthStore((s) => s.currentWorkspace);
@@ -36,10 +36,20 @@ export function Header() {
   };
 
   return (
-    <header className="h-12 border-b border-os-border/60 bg-os-base/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 relative">
+    <header className="h-12 border-b border-os-border/60 bg-os-base/80 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0 relative">
       {/* 底部光条 */}
       <div className="absolute bottom-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-os-accent/10 to-transparent" />
       <div className="flex items-center gap-4">
+        {/* 移动端汉堡菜单 */}
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden -ml-1 p-1 rounded-md text-os-subtle hover:text-os-text-high hover:bg-os-elevated transition-colors"
+            aria-label="打开菜单"
+          >
+            <Menu size={18} />
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <div className={cn("w-2 h-2 rounded-full", statusDot[status] || "bg-zinc-600")} />
           <span className="text-xs text-os-subtle">{statusLabel[status] || status}</span>

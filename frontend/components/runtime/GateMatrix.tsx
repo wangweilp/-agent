@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RuntimeGovernanceSummary } from "@/types/runtime-admin";
+import { layout } from "@/styles/layout";
 
 interface Props {
   governance?: RuntimeGovernanceSummary;
@@ -26,7 +27,7 @@ export function GateMatrix({ governance }: Props) {
   return (
     <div className="space-y-4">
       {/* ── Gate status overview ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className={layout.grid.threeMd}>
         {GATES.map((gate, i) => {
           const panel = modules?.[gate.key];
           const records = (panel?.[gate.key === "package_download_worker_gate" ? "recent_denials" :
@@ -112,7 +113,7 @@ export function GateMatrix({ governance }: Props) {
       </div>
 
       {/* ── Detailed gate records ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={layout.grid.threeLg}>
         {GATES.map((gate) => {
           const panel = modules?.[gate.key];
           const records = (panel?.[gate.key === "package_download_worker_gate" ? "recent_denials" :

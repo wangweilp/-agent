@@ -18,8 +18,8 @@ import { VectorInspector } from "@/components/memory-console/VectorInspector";
 type TabId = "overview" | "timeline" | "reflection" | "retrieval";
 
 const TABS: { id: TabId; label: string; icon: typeof Layers; hint: string }[] = [
-  { id: "overview", label: "Memory Overview", icon: Layers, hint: "STM / WM / LTM 三层认知" },
-  { id: "timeline", label: "Memory Flow", icon: Clock, hint: "记忆流转时间线" },
+  { id: "overview", label: "记忆 Overview", icon: Layers, hint: "STM / WM / LTM 三层认知" },
+  { id: "timeline", label: "记忆 Flow", icon: Clock, hint: "记忆流转时间线" },
   { id: "reflection", label: "Reflection Engine", icon: Sparkles, hint: "冲突修复与洞察" },
   { id: "retrieval", label: "Retrieval Inspector", icon: Search, hint: "向量检索探针" },
 ];

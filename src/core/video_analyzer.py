@@ -124,10 +124,14 @@ class VideoAnalyzer:
         "video/webm", "video/x-msvideo", "video/x-flv",
     }
 
-    def __init__(self, llm: ChatModel, settings: Settings | None = None) -> None:
+    def __init__(
+        self, llm: ChatModel, settings: Settings | None = None, *, whisper_model: str = "base",
+    ) -> None:
         self._llm = llm
         self._settings = settings
         self._frame_interval = (settings.video_keyframe_interval if settings else 5)
+        self._whisper_model_name = whisper_model
+        self._whisper = None  # lazy load
 
     # ── 公共 API ──
 
@@ -269,19 +273,36 @@ class VideoAnalyzer:
 
         return "\n".join(all_text)
 
-    def _transcribe_audio(self, audio_path: str) -> str:
-        """转录提取的音频轨道。复用 Whisper 模式（与 AudioAnalyzer 一致）。"""
+    def _load_whisper(self):
+        """Lazy-load Whisper 模型（与 AudioAnalyzer 一致）。"""
+        if self._whisper is not None:
+            return self._whisper
         try:
             import whisper
-            model = whisper.load_model("base")
-            result = model.transcribe(audio_path, verbose=False)
-            text = result.get("text", "").strip()
+            self._whisper = whisper.load_model(self._whisper_model_name)
+            logger.info("whisper_loaded", extra={"model": self._whisper_model_name})
+            return self._whisper
+        except ImportError:
+            logger.debug("whisper_not_installed_for_video")
+            self._whisper = False  # sentinel
+            return None
+        except Exception:
+            logger.warning("whisper_load_failed", exc_info=True)
+            self._whisper = False
+            return None
+
+    def _transcribe_audio(self, audio_path: str) -> str:
+        """转录提取的音频轨道。复用 Whisper 模式（与 AudioAnalyzer 一致）。"""
+        wh = self._load_whisper()
+        if wh is None:
+            return ""
+
+        try:
+            result = wh.transcribe(audio_path, verbose=False)
+            text = result.get("text", "").strip()  # type: ignore[union-attr]
             if text:
                 logger.info("video_audio_transcribed", extra={"length": len(text)})
             return text
-        except ImportError:
-            logger.debug("whisper_not_installed_for_video")
-            return ""
         except Exception:
             logger.debug("video_transcription_failed", exc_info=True)
             return ""

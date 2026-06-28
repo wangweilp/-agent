@@ -87,7 +87,7 @@ export default function SubmissionDetailPage() {
 
       {/* Manifest editor / viewer */}
       <section className="os-card mb-4 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-os-text-high">Agent Manifest</h3>
+        <h3 className="mb-3 text-sm font-semibold text-os-text-high">智能体 Manifest</h3>
         {isDraft ? (
           <>
             <textarea rows={18} value={manifestText} onChange={e => setManifestText(e.target.value)} spellCheck={false}
@@ -140,7 +140,7 @@ export default function SubmissionDetailPage() {
           <Info label="Developer ID" value={sub.developer_id} mono />
           <Info label="Source" value={sub.source_type} />
           <Info label="Package URL" value={sub.package_url || "-"} />
-          <Info label="Mkp Agent ID" value={sub.marketplace_agent_id || "-"} mono />
+          <Info label="Mkp 智能体 ID" value={sub.marketplace_agent_id || "-"} mono />
           <Info label="Submitted" value={sub.submitted_at ? new Date(sub.submitted_at).toLocaleString("zh-CN") : "-"} />
           <Info label="Reviewed" value={sub.reviewed_at ? new Date(sub.reviewed_at).toLocaleString("zh-CN") : "-"} />
           <Info label="Reviewed By" value={sub.reviewed_by || "-"} />

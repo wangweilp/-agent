@@ -1,0 +1,23 @@
+# ============================================================
+# Zhiwei Cognitive OS - Backend Dependencies
+# Python 3.11+ | Async-first | Pydantic v2 | FastAPI
+# ============================================================
+
+# --- Web framework & ASGI server ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# --- Data validation & settings ---
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# --- LLM orchestration & vector retrieval ---
+llama-index>=0.10.40
+llama-index-vector-stores-chroma>=0.1.5
+llama-index-embeddings-openai>=0.1.7
+
+# --- Vector database ---
+chromadb>=0.4.24
+
+# --- OpenAI client (embeddings / chat) ---
+openai>=1.12.0

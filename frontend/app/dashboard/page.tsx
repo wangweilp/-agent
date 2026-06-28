@@ -28,6 +28,7 @@ import { RecentReflections } from "@/components/dashboard/recent-reflections";
 import { EntityList } from "@/components/dashboard/entity-list";
 import { SaaSMetrics } from "@/components/dashboard/saas-metrics";
 import { cn, formatNumber } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 // ── 辅助函数 ──
 
@@ -150,9 +151,9 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-5 max-w-[1440px] mx-auto">
+      <div className={`${layout.pageDashboard} space-y-5 max-w-[1440px] mx-auto`}>
         {/* ── Page header ── */}
-        <div className="flex items-center justify-between">
+        <div className={layout.flexBetween}>
           <div>
             <h1 className="text-lg font-semibold text-os-text-high tracking-tight">记忆仪表盘</h1>
             <p className="text-xs text-os-subtle mt-0.5">你的第二大脑 — 记忆全景</p>
@@ -167,7 +168,7 @@ export default function DashboardPage() {
         <SaaSMetrics />
 
         {/* ── Memory Stats Cards (5 格) ── */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className={layout.grid.five}>
           <StaggerItem delay={0}>
             <StatusCard
               icon={Brain}
@@ -211,7 +212,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Memory Growth + Top Topics ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className={layout.grid.threeLg}>
           {/* Growth Chart (2/3) */}
           <div className="lg:col-span-2">
             <StaggerItem delay={0.15}>
@@ -254,7 +255,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Recent Memories + Recent Reflections ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className={layout.grid.twoLg}>
           {/* Recent Memories */}
           <StaggerItem delay={0.25}>
             <div className="os-card p-4 h-full">
@@ -288,7 +289,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Top Entities + System Health ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className={layout.grid.threeLg}>
           {/* Top Entities */}
           <div className="lg:col-span-2">
           <StaggerItem delay={0.35}>

@@ -44,6 +44,11 @@ export interface CausalGraphData {
   leaves: CausalGraphNode[];
   /** 是否正在构建 */
   isBuilding: boolean;
+  /**
+   * 水合凭据 — trace_id 对应的 build() 是否已至少完成一次
+   * 用于区分「正在水合」与「合法空图」，不要用 nodes.length 反推 lifecycle
+   */
+  hydrated: boolean;
   /** 重新构建（手动触发） */
   rebuild: () => void;
 }
@@ -63,6 +68,7 @@ export function useCausalGraph(trace_id: string | null): CausalGraphData {
   const [graph, setGraph] = useState<CausalGraph | null>(null);
   const [criticalPath, setCriticalPath] = useState<CriticalPath | null>(null);
   const [isBuilding, setIsBuilding] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const traceRef = useRef(trace_id);
   traceRef.current = trace_id;
 
@@ -71,6 +77,7 @@ export function useCausalGraph(trace_id: string | null): CausalGraphData {
     if (!tid) {
       setGraph(null);
       setCriticalPath(null);
+      setHydrated(false);
       return;
     }
     setIsBuilding(true);
@@ -81,9 +88,14 @@ export function useCausalGraph(trace_id: string | null): CausalGraphData {
     const cp = g ? causalGraphEngine.getCriticalPath(tid) : null;
     setCriticalPath(cp);
     setIsBuilding(false);
+    // 标记 lifecycle 完成 — 这是区分「正在水合」与「合法空图」的唯一凭据
+    // 注意：g 可能为 null（trace 存在但无事件），此时 hydrated 仍应为 true
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    // trace 切换时重置水合凭据，保证下一轮 build 期间 traceState 正确回到 hydrating
+    setHydrated(false);
     build();
 
     if (!trace_id) return;
@@ -113,6 +125,7 @@ export function useCausalGraph(trace_id: string | null): CausalGraphData {
     roots,
     leaves,
     isBuilding,
+    hydrated,
     rebuild: build,
   };
 }

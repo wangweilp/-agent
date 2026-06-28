@@ -70,12 +70,12 @@ describe("DashboardV2Page", () => {
 
   it("renders the page header", () => {
     renderWithQuery(<DashboardV2Page />);
-    expect(screen.getByText("Observability Console")).toBeInTheDocument();
+    expect(screen.getByText("可观测性 Console")).toBeInTheDocument();
   });
 
   it("renders all 6 tab buttons", () => {
     renderWithQuery(<DashboardV2Page />);
-    const labels = ["Overview", "Growth", "Agent Performance", "Memory Health", "Cost Analytics", "Alerts"];
+    const labels = ["Overview", "Growth", "智能体性能", "记忆健康", "Cost Analytics", "Alerts"];
     for (const label of labels) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }

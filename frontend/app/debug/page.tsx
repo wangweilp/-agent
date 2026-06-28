@@ -7,7 +7,7 @@ import {
   Search, Brain, Layers, Clock, AlertCircle, Zap,
   Activity, Eye, Hash, BarChart3, ChevronRight,
 } from "lucide-react";
-import { api } from "@/services/api";
+import { api, apiFetch } from "@/services/api";
 import { PageTransition } from "@/components/animations/page-transition";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -56,13 +56,13 @@ const eventLabels: Record<string, { label: string; color: string }> = {
   "reflection.run": { label: "反思运行", color: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20" },
   "reflection.insight": { label: "反思洞察", color: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20" },
   "reflection.skipped": { label: "反思跳过", color: "bg-rose-400/10 text-rose-400 border-rose-400/20" },
-  "agent.start": { label: "Agent 启动", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20" },
-  "agent.done": { label: "Agent 完成", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20" },
+  "agent.start": { label: "智能体启动", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20" },
+  "agent.done": { label: "智能体完成", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20" },
   "tool.call_start": { label: "工具调用", color: "bg-slate-400/10 text-slate-400 border-slate-400/20" },
   "tool.call_done": { label: "工具完成", color: "bg-slate-400/10 text-slate-400 border-slate-400/20" },
 };
 
-const sourceLabel: Record<string, string> = { user: "用户", agent: "Agent", reflect: "反思" };
+const sourceLabel: Record<string, string> = { user: "用户", agent: "智能体", reflect: "反思" };
 
 const typeLabel: Record<string, string> = {
   episodic: "情景", semantic: "语义", procedural: "程序", reflect: "反思",
@@ -72,7 +72,7 @@ const typeLabel: Record<string, string> = {
 
 type Tab = "memory" | "retrieve" | "events";
 const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: "memory", label: "Memory Explorer", icon: <Brain size={14} /> },
+  { key: "memory", label: "记忆 Explorer", icon: <Brain size={14} /> },
   { key: "retrieve", label: "Retrieval Inspector", icon: <Search size={14} /> },
   { key: "events", label: "Event Timeline", icon: <Activity size={14} /> },
 ];
@@ -85,15 +85,14 @@ function MemoryExplorer() {
 
   const { data: raw, isLoading } = useQuery({
     queryKey: ["debug-memory", query],
-    queryFn: () =>
-      fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/memory?q=${encodeURIComponent(query)}&limit=50`
-      ).then((r) => r.json()),
+    queryFn: () => api.memory.list({ q: query, limit: 50 }),
     refetchInterval: 15000,
   });
 
   // 防御：确保 memories 始终是数组（API 可能返回对象/null/undefined）
-  const memories: MemoryItem[] = Array.isArray(raw) ? raw : [];
+  // Memory.embedding_status is a broader string locally; cast to MemoryItem[]
+  // whose literal union ("vectorized" | "missing") drives the UI badges below.
+  const memories: MemoryItem[] = Array.isArray(raw) ? (raw as MemoryItem[]) : [];
 
   // 按 memory_type 过滤
   const filtered = memories.filter((m) =>
@@ -110,7 +109,7 @@ function MemoryExplorer() {
   return (
     <div className="flex flex-col gap-4">
       {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {[
           { label: "总记忆", value: stats.total, icon: <Brain size={12} /> },
           { label: "已向量化", value: stats.vectorized, icon: <Zap size={12} />, good: true },
@@ -216,10 +215,9 @@ function RetrievalInspector() {
     if (!query.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/debug/retrieve?q=${encodeURIComponent(query)}&top_k=${topK}`
+      const data = await apiFetch<RetrieveHit[]>(
+        `/debug/retrieve?q=${encodeURIComponent(query)}&top_k=${topK}`
       );
-      const data = await res.json();
       setResults(data);
     } catch { /* ignore */ }
     setLoading(false);
@@ -325,10 +323,7 @@ function RetrievalInspector() {
 function EventTimeline() {
   const { data: events = [], isLoading, refetch } = useQuery({
     queryKey: ["debug-events"],
-    queryFn: () =>
-      fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/debug/events?limit=100`
-      ).then((r) => r.json()),
+    queryFn: () => apiFetch<EventEntry[]>(`/debug/events?limit=100`),
     refetchInterval: 10000,
   });
 
@@ -396,7 +391,7 @@ export default function DebugConsolePage() {
       <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high">Debug Console</h1>
-          <p className="text-sm text-os-muted mt-1">Memory lifecycle observability & inspector</p>
+          <p className="text-sm text-os-muted mt-1">记忆 lifecycle 可观测性 & inspector</p>
         </div>
 
         {/* Tabs */}

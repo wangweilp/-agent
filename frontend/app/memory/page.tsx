@@ -208,7 +208,7 @@ export default function MemoryPage() {
           <div className="flex flex-col items-center justify-center py-24 text-os-muted">
             <Brain size={48} className="mb-4 opacity-30" />
             <p className="text-sm">没有找到记忆</p>
-            <p className="text-2xs mt-1">尝试调整搜索条件或开始与 Agent 对话以创建新记忆</p>
+            <p className="text-2xs mt-1">尝试调整搜索条件或开始与智能体对话以创建新记忆</p>
           </div>
         ) : (
           <>

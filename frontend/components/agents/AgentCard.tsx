@@ -82,7 +82,7 @@ export function AgentCard({ agent, busy, onRun, onToggle, onClick }: AgentCardPr
         <span className="os-badge bg-os-elevated text-os-subtle">v{agent.version}</span>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded-md border border-os-border bg-os-elevated/50 p-3">
           <p className="text-2xs text-os-muted">调用次数</p>
           <p className="mt-1 text-base font-semibold text-os-text-high">{agent.usage_count}</p>

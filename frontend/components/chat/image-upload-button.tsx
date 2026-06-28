@@ -3,6 +3,9 @@
 import { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Image as ImageIcon, Upload, X, Check, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "@/stores/ui-store";
+import { api } from "@/services/api";
 
 interface UploadItem {
   file: File;
@@ -21,6 +24,7 @@ interface Props {
 export function ImageUploadButton({ onUploaded, disabled }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleFiles = useCallback(async (files: FileList) => {
     const fileArray = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -58,20 +62,9 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
       });
 
       try {
-        const form = new FormData();
-        form.append("files", fileArray[i]);
-
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/upload`,
-          { method: "POST", body: form },
-        );
-
-        if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(msg || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await api.upload([fileArray[i]]) as {
+          items?: Array<{ task_count?: number; analysis?: { summary?: string } }>;
+        };
         const item = data.items?.[0];
         const taskCount = item?.task_count ?? 0;
         const summary = item?.analysis?.summary || "";
@@ -105,6 +98,7 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
     // 全部完成 → 注入聊天
     if (summaries.length > 0) {
       onUploaded(summaries.join("\n"));
+      toast.success("图片上传完成", `${summaries.length} 张图片已解析并注入对话`);
     }
   }, [onUploaded]);
 
@@ -116,7 +110,24 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
   const uploading = items.some((it) => it.status === "uploading");
 
   return (
-    <div className="relative flex items-center gap-1">
+    <div
+      className="relative flex items-center gap-1"
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!disabled && !uploading) setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (!disabled && !uploading && e.dataTransfer.files.length > 0) {
+          handleFiles(e.dataTransfer.files);
+        }
+      }}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -131,13 +142,25 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
       <button
         onClick={() => inputRef.current?.click()}
         disabled={disabled || uploading}
-        className="shrink-0 w-9 h-9 rounded-lg text-os-subtle hover:text-os-accent hover:bg-os-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center relative"
-        title="上传图片（支持多选）"
+        className={cn(
+          "shrink-0 w-9 h-9 rounded-lg transition-all flex items-center justify-center relative",
+          isDragging
+            ? "border-2 border-dashed border-os-accent/50 bg-os-accent/5 text-os-accent scale-110"
+            : "text-os-subtle hover:text-os-accent hover:bg-os-surface-hover disabled:opacity-30 disabled:cursor-not-allowed",
+        )}
+        title="上传图片（支持多选 / 拖拽）"
       >
         {uploading ? (
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          >
+            <Upload size={15} />
+          </motion.div>
+        ) : isDragging ? (
+          <motion.div
+            animate={{ y: [0, -3, 0] }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
           >
             <Upload size={15} />
           </motion.div>

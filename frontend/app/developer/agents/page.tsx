@@ -53,7 +53,7 @@ export default function DeveloperAgentsPage() {
       </div>
 
       {loading ? <div className="space-y-2">{[1,2,3].map(i=><div key={i} className="os-card p-4"><div className="shimmer-bg h-4 w-40 rounded bg-os-elevated"/></div>)}</div>
-        : subs.length === 0 ? <div className="os-card flex min-h-32 items-center justify-center p-4"><p className="text-sm text-os-subtle">暂无 Agent Submission</p></div>
+        : subs.length === 0 ? <div className="os-card flex min-h-32 items-center justify-center p-4"><p className="text-sm text-os-subtle">暂无智能体 Submission</p></div>
         : subs.map(s => (
           <div key={s.submission_id} className="os-card os-card-hover mb-2 p-3">
             <div className="flex items-center justify-between gap-3">

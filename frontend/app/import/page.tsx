@@ -23,12 +23,14 @@ import {
   File,
   Image,
   FileSpreadsheet,
+  Terminal,
 } from "lucide-react";
 import { api } from "@/services/api";
 import { PageTransition, StaggerItem } from "@/components/animations/page-transition";
 import { CardSkeleton } from "@/components/animations/skeleton";
 import type { ImportJobResponse } from "@/types/import";
 import { cn, formatNumber } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 // ── 常量 ──
 
@@ -267,7 +269,7 @@ export default function ImportPage() {
         </div>
 
         {/* ── Stats Cards (4-grid) ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className={layout.grid.fourMd}>
           <StaggerItem delay={0}>
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -449,19 +451,19 @@ export default function ImportPage() {
           </motion.div>
         </StaggerItem>
 
-        {/* ── Active Import Progress Panel ── */}
+        {/* ── Active Import Progress Panel — 流光管线 + 终端日志 ── */}
         {activeJobs.length > 0 && (
           <StaggerItem delay={0.15}>
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-4">
-                <Loader2 size={14} className="text-blue-400 animate-spin" />
+                <Loader2 size={14} className="text-os-accent-cyan animate-spin drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
                 <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
-                  进行中 ({activeJobs.length})
+                  管线运行中 ({activeJobs.length})
                 </h2>
               </div>
               <div className="space-y-4">
                 {activeJobs.map((job) => (
-                  <div key={job.job_id} className="os-card p-3 space-y-2">
+                  <div key={job.job_id} className="rounded-lg border border-os-border/50 bg-os-surface/40 p-3 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-os-text-high">{job.title}</span>
@@ -474,27 +476,102 @@ export default function ImportPage() {
                           {STATUS_CONFIG[job.status]?.label}
                         </span>
                       </div>
-                      <span className="text-2xs text-os-muted">
+                      <span className="text-2xs font-mono text-os-muted">
                         {job.processed_chunks} / {job.total_chunks} chunks
                       </span>
                     </div>
 
-                    {/* Progress bar */}
-                    <div className="w-full h-1.5 bg-os-elevated rounded-full overflow-hidden">
+                    {/* 流光进度条 — 赛博管线 */}
+                    <div className="relative w-full h-2 bg-os-elevated rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-blue-400 rounded-full"
+                        className="relative h-full rounded-full bg-gradient-to-r from-os-accent to-os-accent-cyan"
                         initial={{ width: 0 }}
                         animate={{ width: `${job.progress_pct}%` }}
                         transition={{ duration: 0.5, ease: "easeOut" }}
-                      />
+                      >
+                        {/* 流光高光层 */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse" />
+                      </motion.div>
+                      {/* 管线刻度线 */}
+                      <div className="absolute inset-0 flex justify-between pointer-events-none">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <div key={i} className="w-px h-full bg-os-border/30" />
+                        ))}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between text-2xs text-os-muted">
-                      <span>已用时间: {formatElapsed(job.started_at)}</span>
-                      <span>预计剩余: {estimateRemaining(job)}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock size={10} />
+                        已用: {formatElapsed(job.started_at)}
+                      </span>
+                      <span className="font-mono text-os-accent-cyan">
+                        {job.progress_pct}%
+                      </span>
+                      <span>剩余: {estimateRemaining(job)}</span>
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* ── 终端风格日志面板 ── */}
+              <div className="mt-4 rounded-xl border border-os-border/50 bg-[#000000] overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-os-border/30">
+                  <div className="flex items-center gap-1.5">
+                    <Terminal size={11} className="text-os-success" />
+                    <span className="font-mono text-2xs text-os-muted">pipeline.log</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-red-500/60" />
+                    <div className="w-2 h-2 rounded-full bg-amber-500/60" />
+                    <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+                  </div>
+                </div>
+                <div className="h-48 overflow-y-auto p-4 font-mono text-xs text-os-success space-y-0.5">
+                  {activeJobs.flatMap((job) => {
+                    const logs: { ts: string; level: "OK" | "INFO" | "WARN" | "ERR"; msg: string }[] = [];
+                    const now = new Date().toLocaleTimeString("en-US", { hour12: false });
+                    logs.push({ ts: now, level: "INFO", msg: `> Initializing pipeline for "${job.title}"` });
+                    if (job.processed_chunks > 0) {
+                      const step = Math.max(1, Math.floor(job.total_chunks / 5));
+                      for (let i = step; i <= job.processed_chunks; i += step) {
+                        logs.push({
+                          ts: now,
+                          level: "OK",
+                          msg: `> [OK] Chunk ${i}/${job.total_chunks} vectorized (${((i / job.total_chunks) * 100).toFixed(0)}%)`,
+                        });
+                      }
+                      if (job.processed_chunks < job.total_chunks) {
+                        logs.push({
+                          ts: now,
+                          level: "INFO",
+                          msg: `> [..] Chunk ${job.processed_chunks + 1} embedding in progress...`,
+                        });
+                      }
+                    }
+                    if (job.status === "completed") {
+                      logs.push({ ts: now, level: "OK", msg: `> [OK] Pipeline complete — ${job.memories_created} memories created` });
+                    }
+                    return logs.map((log, i) => (
+                      <div key={`${job.job_id}-${i}`} className="leading-5">
+                        <span className="text-os-muted">[{log.ts}]</span>{" "}
+                        <span className={cn(
+                          log.level === "OK" && "text-os-success",
+                          log.level === "INFO" && "text-os-accent-cyan",
+                          log.level === "WARN" && "text-amber-400",
+                          log.level === "ERR" && "text-red-400",
+                        )}>
+                          {log.msg}
+                        </span>
+                      </div>
+                    ));
+                  })}
+                  {/* 闪烁光标 */}
+                  <div className="leading-5">
+                    <span className="text-os-muted">$</span>{" "}
+                    <span className="inline-block w-1.5 h-3.5 bg-os-success animate-pulse align-middle" />
+                  </div>
+                </div>
               </div>
             </div>
           </StaggerItem>

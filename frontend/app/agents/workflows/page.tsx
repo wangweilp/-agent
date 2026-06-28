@@ -20,13 +20,14 @@ import {
 
 import { createWorkflow, executeWorkflow, listWorkflows } from "@/services/agents";
 import type { Workflow, WorkflowExecution, WorkflowNode } from "@/types/agents";
+import { layout } from "@/styles/layout";
 
 function nodeMeta(nodeType: WorkflowNode["node_type"]) {
   switch (nodeType) {
     case "agent":
       return {
         icon: Bot,
-        label: "Agent",
+        label: "智能体",
         className: "border-blue-400/30 bg-blue-400/10 text-blue-200",
       };
     case "human":
@@ -84,7 +85,7 @@ function WorkflowStats({ workflows }: { workflows: Workflow[] }) {
       {[
         { label: "工作流", value: stats.total, icon: WorkflowIcon },
         { label: "节点总数", value: stats.nodes, icon: GitBranch },
-        { label: "Agent 节点", value: stats.agentNodes, icon: Bot },
+        { label: "智能体节点", value: stats.agentNodes, icon: Bot },
         { label: "人工节点", value: stats.humanNodes, icon: UserRound },
       ].map(({ label, value, icon: Icon }) => (
         <div key={label} className="os-card p-4">
@@ -234,7 +235,7 @@ export default function WorkflowBuilderPage() {
     try {
       await createWorkflow({
         name: `知识检索演示 ${new Date().toLocaleTimeString("zh-CN", { hour12: false })}`,
-        description: "用于验证 Agent 编排可视化的演示工作流。",
+        description: "用于验证智能体编排可视化的演示工作流。",
         nodes: [
           {
             name: "开始",
@@ -311,7 +312,7 @@ export default function WorkflowBuilderPage() {
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索工作流、节点、Agent 或 ID"
+              placeholder="搜索工作流、节点、智能体或 ID"
               className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
             />
           </label>
@@ -370,7 +371,7 @@ export default function WorkflowBuilderPage() {
       <ExecutionToast execution={lastExecution} />
 
       {loading ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className={layout.grid.twoLg}>
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="os-card h-64 p-5">
               <div className="shimmer-bg h-5 w-44 rounded bg-os-elevated" />
@@ -383,7 +384,7 @@ export default function WorkflowBuilderPage() {
           ))}
         </section>
       ) : filteredWorkflows.length > 0 ? (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className={layout.grid.twoLg}>
           {filteredWorkflows.map((workflow) => (
             <article key={workflow.workflow_id} className="os-card os-card-hover p-5">
               <div className="mb-4 flex items-start justify-between gap-4">
@@ -504,7 +505,7 @@ export default function WorkflowBuilderPage() {
                     </div>
                     <div className="mt-2 space-y-1 text-xs leading-5 text-os-subtle">
                       <p>ID: {node.node_id}</p>
-                      {node.agent_id && <p>Agent: {node.agent_id}</p>}
+                      {node.agent_id && <p>智能体: {node.agent_id}</p>}
                       {node.description && <p>{node.description}</p>}
                       {node.next_nodes.length > 0 && <p>下一节点: {node.next_nodes.join(", ")}</p>}
                       {node.human_prompt && <p>人工提示: {node.human_prompt}</p>}

@@ -204,6 +204,39 @@ export interface RuntimeGovernanceSummary {
   };
 }
 
+// ═══════════════════ Phase 4 — Security Control Plane Dashboard ═══════════════════
+
+/** GET /admin/runtime/status — 安全控制面全局状态（模拟模式） */
+export interface RuntimeControlPlaneStatus {
+  status: string;              // "active"
+  mode: string;                // 硬编码 "simulation"
+  production_sandbox: string;  // "disabled"
+  default_policy: string;      // "deny_by_default"
+  boundary_statement: string;
+  last_checked_at: string;
+}
+
+/** GET /admin/runtime/incidents — 模拟安全事件流 */
+export interface RuntimeIncident {
+  incident_id: string;
+  timestamp: string;
+  agent_id: string;
+  severity: "critical" | "high" | "medium" | "low";
+  incident_type: string;
+  title: string;
+  description: string;
+  action_taken: string;        // blocked | throttled | allowed
+  status: string;              // resolved | investigating | open
+  policy_triggered: string;
+  metadata_only: boolean;
+}
+
+export interface RuntimeIncidentsResponse {
+  mode: string;
+  total: number;
+  incidents: RuntimeIncident[];
+}
+
 // ═══════════════════ Sandbox v2 (Step 1 — Core Contract) ═══════════════════
 
 export interface SandboxV2SubmitJobRequest {

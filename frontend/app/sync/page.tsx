@@ -36,11 +36,13 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart3,
+  Terminal,
 } from "lucide-react";
 import { api } from "@/services/api";
 import { PageTransition, StaggerItem } from "@/components/animations/page-transition";
 import { CardSkeleton } from "@/components/animations/skeleton";
 import { cn, formatNumber, formatDate } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 // ── 本地类型（types/sync.ts 尚未建立时的 fallback） ──
 
@@ -552,7 +554,7 @@ export default function SyncPage() {
         </div>
 
         {/* ── Stats Bar ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className={layout.grid.fourMd}>
           <StaggerItem delay={0}>
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -659,7 +661,7 @@ export default function SyncPage() {
             {activeTab === "connectors" && (
               <>
                 {connectorsLoading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className={layout.grid.threeLgMd}>
                     {Array.from({ length: 6 }).map((_, i) => (
                       <CardSkeleton key={i} />
                     ))}
@@ -671,32 +673,53 @@ export default function SyncPage() {
                     description="点击上方按钮添加你的第一个数据源连接器"
                   />
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className={layout.grid.threeLgMd}>
                     {connectors.map((c) => {
                       const Icon = getConnectorIcon(c.connector_type);
+                      const isActive = c.status === "active";
                       return (
                         <motion.div
                           key={c.connector_id}
                           initial={{ opacity: 0, y: 6 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="os-card p-4 space-y-3 os-card-hover group"
+                          className={cn(
+                            "group relative p-4 space-y-3 rounded-2xl backdrop-blur-md transition-all duration-300",
+                            isActive
+                              // 已连接: 边框亮起 + 插拔感
+                              ? "border border-os-accent/50 bg-os-surface/40 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_rgba(129,140,248,0.12)]"
+                              // 未连接: 虚线 + 暗淡
+                              : "border border-dashed border-os-border/50 bg-os-surface/20 hover:border-os-muted/50",
+                          )}
                         >
-                          {/* Header */}
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-md bg-os-elevated border border-os-border flex items-center justify-center">
-                                <Icon size={16} className="text-os-accent" />
+                          {/* 存活指示灯 — 仅 active 时显示 status-breathe */}
+                          {isActive && (
+                            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                              <div className="relative">
+                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-status-breathe" />
                               </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-medium text-os-text-high truncate max-w-[140px]">
-                                  {c.name}
-                                </p>
-                                <span className="text-2xs text-os-muted">
-                                  {getConnectorLabel(c.connector_type)}
-                                </span>
-                              </div>
+                              <span className="text-2xs font-medium text-emerald-400">LIVE</span>
                             </div>
-                            <StatusBadge status={c.status} />
+                          )}
+
+                          {/* Header */}
+                          <div className="flex items-start gap-2.5">
+                            <div className={cn(
+                              "w-9 h-9 rounded-lg flex items-center justify-center border transition-colors",
+                              isActive
+                                ? "bg-os-accent/10 border-os-accent/30 text-os-accent"
+                                : "bg-os-elevated border-os-border text-os-muted",
+                            )}>
+                              <Icon size={16} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-os-text-high truncate max-w-[140px]">
+                                {c.name}
+                              </p>
+                              <span className="text-2xs text-os-muted">
+                                {getConnectorLabel(c.connector_type)}
+                              </span>
+                            </div>
                           </div>
 
                           {/* Last sync */}
@@ -708,7 +731,7 @@ export default function SyncPage() {
                           </div>
 
                           {/* Actions */}
-                          <div className="flex items-center gap-1 pt-1 border-t border-os-border">
+                          <div className="flex items-center gap-1 pt-2 border-t border-os-border/50">
                             <button
                               onClick={() => {
                                 testConnectionMutation.mutate(c.connector_id);
@@ -738,7 +761,7 @@ export default function SyncPage() {
                               className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-muted hover:text-red-400 hover:bg-red-400/10 transition-colors ml-auto"
                             >
                               <Trash2 size={11} />
-                              删除
+                              卸载
                             </button>
                           </div>
                         </motion.div>
@@ -925,6 +948,91 @@ export default function SyncPage() {
                         </motion.div>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* ── 赛博管线状态指示 + 终端日志面板 ── */}
+                {(stats?.active_jobs ?? 0) > 0 && (
+                  <div className="mt-4 space-y-3">
+                    {/* 管线状态条 */}
+                    <div className="flex items-center gap-3 rounded-lg border border-os-accent-cyan/30 bg-os-accent-cyan/5 p-3">
+                      <div className="relative">
+                        <div className="w-2.5 h-2.5 rounded-full bg-os-accent-cyan animate-pulse" />
+                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-os-accent-cyan blur-[6px] animate-pulse" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-os-accent-cyan">
+                          同步管线运行中 · {stats?.active_jobs ?? 0} 个活跃任务
+                        </p>
+                        <p className="text-2xs text-os-muted">
+                          队列深度: {stats?.queue_depth ?? 0} · 过去 1h 执行: {stats?.last_hour_executions ?? 0} 次
+                        </p>
+                      </div>
+                      {/* 流光连接线 */}
+                      <div className="hidden sm:flex items-center gap-1">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <motion.div
+                            key={i}
+                            className="w-1.5 h-1.5 rounded-full bg-os-accent-cyan"
+                            animate={{ opacity: [0.3, 1, 0.3] }}
+                            transition={{
+                              duration: 1.2,
+                              repeat: Infinity,
+                              delay: i * 0.15,
+                              ease: "easeInOut",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 终端日志面板 */}
+                    <div className="rounded-xl border border-os-border/50 bg-[#000000] overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-os-border/30">
+                        <div className="flex items-center gap-1.5">
+                          <Terminal size={11} className="text-os-success" />
+                          <span className="font-mono text-2xs text-os-muted">sync-pipeline.log</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-red-500/60" />
+                          <div className="w-2 h-2 rounded-full bg-amber-500/60" />
+                          <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+                        </div>
+                      </div>
+                      <div className="h-48 overflow-y-auto p-4 font-mono text-xs text-os-success space-y-0.5">
+                        {executions.slice(0, 8).map((ex, i) => {
+                          const ts = new Date(ex.started_at).toLocaleTimeString("en-US", { hour12: false });
+                          const job = jobs.find((j) => j.job_id === ex.job_id);
+                          const name = ex.job_name ?? job?.name ?? ex.execution_id;
+                          const itemsTotal = (ex.items_new ?? 0) + (ex.items_updated ?? 0) + (ex.items_deleted ?? 0);
+                          return (
+                            <div key={ex.execution_id} className="leading-5">
+                              <span className="text-os-muted">[{ts}]</span>{" "}
+                              <span className={cn(
+                                ex.status === "completed" && "text-os-success",
+                                ex.status === "running" && "text-os-accent-cyan",
+                                ex.status === "failed" && "text-red-400",
+                              )}>
+                                {ex.status === "completed"
+                                  ? `> [OK] "${name}" synced — +${ex.items_new ?? 0} new / ~${ex.items_updated ?? 0} upd / -${ex.items_deleted ?? 0} del (${formatDuration(ex.duration_ms)})`
+                                  : ex.status === "running"
+                                    ? `> [..] "${name}" fetching items... (${itemsTotal} changes so far)`
+                                    : `> [ERR] "${name}" failed: ${parseJsonSafe(ex.error ?? "unknown")}`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {executions.length === 0 && (
+                          <div className="leading-5 text-os-muted">
+                            <span>$</span> 等待同步任务执行...
+                          </div>
+                        )}
+                        <div className="leading-5">
+                          <span className="text-os-muted">$</span>{" "}
+                          <span className="inline-block w-1.5 h-3.5 bg-os-success animate-pulse align-middle" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </>

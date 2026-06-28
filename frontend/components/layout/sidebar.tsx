@@ -35,7 +35,8 @@ import {
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 
 type NavItem = {
   href: string;
@@ -50,9 +51,18 @@ type NavSection = {
   items: NavItem[];
 };
 
-// ── 系统层级导航：Control Plane > Cognitive Plane > Observability Plane ──
+// ── 系统层级导航：Workspace > Control Plane > Cognitive Plane > Observability Plane ──
 // 知维 OS（Zhiwei OS）— AI Operating System
 const navSections: NavSection[] = [
+  {
+    id: "workspace",
+    label: "Workspace",
+    accent: "indigo",
+    items: [
+      // 工作台 (Workspace Hub)：登录后门面首页，极客风 Hero 视觉，与仪表盘物理隔离
+      { href: "/home", label: "工作台", icon: LayoutDashboard },
+    ],
+  },
   {
     id: "kernel",
     label: "Causal Kernel",
@@ -83,12 +93,13 @@ const navSections: NavSection[] = [
   },
   {
     id: "observability",
-    label: "Observability Plane",
+    label: "可观测性 Plane",
     accent: "indigo",
     items: [
+      // 仪表盘 (Dashboard)：纯数据图表监控中心，与工作台 (Workspace Hub) 物理隔离
       { href: "/dashboard", label: "仪表盘", icon: LayoutDashboard },
       { href: "/timeline", label: "时间轴", icon: Clock },
-      { href: "/dashboard-v2", label: "Observability", icon: Gauge },
+      { href: "/dashboard-v2", label: "可观测性", icon: Gauge },
       { href: "/debug", label: "Debug", icon: Bug },
     ],
   },
@@ -139,14 +150,38 @@ const activeAccentBg = {
   zinc: "bg-os-accent/10 text-os-accent",
 };
 
-export function Sidebar() {
+export function Sidebar({
+  mobileOpen = false,
+  onClose,
+}: {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  useFocusTrap(drawerRef, mobileOpen);
 
   return (
+    <>
+      {/* 移动端深色半透明遮罩 — 点击关闭侧边栏 */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={onClose}
+          aria-hidden
+        />
+      )}
     <motion.aside
-      animate={{ width: collapsed ? 64 : 240 }}
-      className="relative h-screen bg-os-base border-r border-os-border flex flex-col shrink-0 overflow-hidden"
+      ref={drawerRef}
+      animate={{ width: mobileOpen ? 280 : collapsed ? 64 : 240 }}
+      className={cn(
+        "fixed inset-y-0 left-0 z-50 h-screen bg-os-surface/80 backdrop-blur-md border-r border-os-border/50 flex flex-col shrink-0 overflow-hidden shadow-2xl md:shadow-none",
+        // 移动端滑入/滑出；桌面端回归 relative 内联布局
+        "transition-transform duration-300 ease-in-out md:transition-none",
+        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        "md:relative md:z-auto",
+      )}
       transition={{ duration: 0.2, ease: "easeInOut" }}
     >
       {/* Logo */}
@@ -196,11 +231,12 @@ export function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onClose}
                     className={cn(
-                      "flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-all duration-150 group",
+                      "flex items-center gap-3 h-9 px-2.5 rounded-md text-sm transition-colors duration-200 group relative",
                       isActive
-                        ? activeAccentBg[section.accent]
-                        : "text-os-text hover:text-os-text-high hover:bg-os-elevated",
+                        ? "bg-os-accent/10 text-os-accent border-l-2 border-os-accent"
+                        : "text-os-text hover:text-os-text-high hover:bg-os-elevated border-l-2 border-transparent",
                       collapsed && "justify-center px-0",
                     )}
                   >
@@ -255,5 +291,6 @@ export function Sidebar() {
         </div>
       </div>
     </motion.aside>
+    </>
   );
 }

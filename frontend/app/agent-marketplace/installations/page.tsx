@@ -211,7 +211,7 @@ export default function InstallationsPage() {
       {!loading && installations.length === 0 && !error && (
         <section className="os-card flex min-h-48 flex-col items-center justify-center gap-3 px-4 py-10 text-center">
           <Layers size={28} className="text-os-muted" />
-          <h2 className="text-base font-semibold text-os-text-high">暂无已安装 Agent</h2>
+          <h2 className="text-base font-semibold text-os-text-high">暂无已安装智能体</h2>
           <p className="text-sm text-os-subtle">
             前往{" "}
             <Link href="/agent-marketplace" className="text-os-accent hover:underline">

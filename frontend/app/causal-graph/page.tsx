@@ -28,11 +28,11 @@ import type {
 const SOURCE_CONFIG: Record<EventSource, {
   color: string; fill: string; stroke: string; label: string; layer: number;
 }> = {
-  runtime: { color: "#f43f5e", fill: "rgba(244,63,94,0.15)", stroke: "#f43f5e", label: "Runtime", layer: 0 },
-  governance: { color: "#f59e0b", fill: "rgba(245,158,11,0.15)", stroke: "#f59e0b", label: "Governance", layer: 1 },
-  agent: { color: "#22c55e", fill: "rgba(34,197,94,0.15)", stroke: "#22c55e", label: "Agent", layer: 2 },
-  memory: { color: "#3b82f6", fill: "rgba(59,130,246,0.15)", stroke: "#3b82f6", label: "Memory", layer: 3 },
-  observability: { color: "#64748b", fill: "rgba(100,116,139,0.10)", stroke: "#64748b", label: "Observability", layer: 4 },
+  runtime: { color: "#f43f5e", fill: "rgba(244,63,94,0.15)", stroke: "#f43f5e", label: "运行时", layer: 0 },
+  governance: { color: "#f59e0b", fill: "rgba(245,158,11,0.15)", stroke: "#f59e0b", label: "治理", layer: 1 },
+  agent: { color: "#22c55e", fill: "rgba(34,197,94,0.15)", stroke: "#22c55e", label: "智能体", layer: 2 },
+  memory: { color: "#3b82f6", fill: "rgba(59,130,246,0.15)", stroke: "#3b82f6", label: "记忆", layer: 3 },
+  observability: { color: "#64748b", fill: "rgba(100,116,139,0.10)", stroke: "#64748b", label: "可观测性", layer: 4 },
 };
 
 const SOURCE_ORDER: EventSource[] = ["runtime", "governance", "agent", "memory", "observability"];
@@ -112,11 +112,23 @@ function layoutGraph(
 // 主页面
 // ═══════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════
+// 渲染契约 — Trace 运行时状态机
+// GraphCanvas 仅允许在 "ready" 状态下挂载，彻底消灭 null-entry 渲染风险
+// ═══════════════════════════════════════════════════════════════
+
+type TraceRuntimeState =
+  | "hydrating" // 正在播种 / graph 未水合完成
+  | "ready"     // trace 有效且 nodes 已就绪，唯一允许渲染 GraphCanvas 的状态
+  | "empty"     // 无 trace
+  | "invalid";  // selectedTrace 已失效（不在 trace list 中）
+
 export default function CausalGraphPage() {
   const traces = useRecentTraces(30);
   const [selectedTrace, setSelectedTrace] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [canvasWidth, setCanvasWidth] = useState(900);
 
@@ -126,6 +138,38 @@ export default function CausalGraphPage() {
       setSelectedTrace(traces[0]);
     }
   }, [traces, selectedTrace]);
+
+  // Fallback A — trace list 为空时自动生成默认 trace，保证 Graph Engine 永不进入“空白不可交互”状态
+  const autoSeededRef = useRef(false);
+  useEffect(() => {
+    if (autoSeededRef.current) return;
+    if (traces.length === 0) {
+      autoSeededRef.current = true;
+      setIsSeeding(true);
+      const tid = simulateMultiCausalFlow();
+      setSelectedTrace(tid);
+      setSelectedNodeId(null);
+      setIsSeeding(false);
+    }
+  }, [traces]);
+
+  // 防 stale trace — selectedTrace 指向已不在 store 中的 trace 时清空
+  // 仅在 traces 已水合（非空）时判定，避免与 autoSeed 的同步发布产生竞态
+  useEffect(() => {
+    if (selectedTrace && traces.length > 0 && !traces.includes(selectedTrace)) {
+      setSelectedTrace(null);
+      setSelectedNodeId(null);
+    }
+  }, [traces, selectedTrace]);
+
+  // 统一的模拟入口：生成 trace 后直接选中，避免静默空白
+  const handleSimulate = () => {
+    setIsSeeding(true);
+    const tid = simulateMultiCausalFlow();
+    setSelectedTrace(tid);
+    setSelectedNodeId(null);
+    setIsSeeding(false);
+  };
 
   // 监听 canvas 宽度
   useEffect(() => {
@@ -141,6 +185,23 @@ export default function CausalGraphPage() {
 
   const graph = useCausalGraph(selectedTrace);
   const topImpact = useTopImpactNodes(selectedTrace, 5);
+
+  // ── 渲染契约（Render Gate）──
+  // traceState 是 GraphCanvas 挂载的唯一授权凭据；canRenderGraph 为真才允许进入渲染阶段
+  // hydrating 由 hook 的 hydrated lifecycle 凭据推导，而非用 nodes.length 反推，
+  // 避免「合法空图（trace 存在但无事件）」被误判为「正在水合」
+  const traceState: TraceRuntimeState = useMemo(() => {
+    if (isSeeding) return "hydrating";
+    if (!selectedTrace) return "empty";
+    // traces 为空说明仍在水合中，不判 invalid（避免与 autoSeed 竞态）
+    if (traces.length > 0 && !traces.includes(selectedTrace)) return "invalid";
+    if (!graph.hydrated) return "hydrating";
+    // 已水合但无节点 → 合法空图，归入 empty（非 hydrating）
+    if (graph.nodes.length === 0) return "empty";
+    return "ready";
+  }, [isSeeding, selectedTrace, traces, graph.hydrated, graph.nodes.length]);
+
+  const canRenderGraph = traceState === "ready";
 
   // 布局计算
   const { positioned, layerYs } = useMemo(
@@ -202,7 +263,7 @@ export default function CausalGraphPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => simulateMultiCausalFlow()}
+              onClick={handleSimulate}
               className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
             >
               <Zap size={11} />
@@ -225,7 +286,7 @@ export default function CausalGraphPage() {
             }}
             className="h-7 px-2 rounded-md border border-os-border bg-os-base text-xs text-os-text-high font-mono focus:outline-none focus:border-emerald-400/50"
           >
-            <option value="">— 选择 Trace —</option>
+            <option value="">{traces.length === 0 ? "— 无 Trace（自动生成中）—" : "— 选择 Trace —"}</option>
             {traces.map((t) => (
               <option key={t} value={t}>{t.slice(0, 24)}...</option>
             ))}
@@ -266,8 +327,12 @@ export default function CausalGraphPage() {
             className="flex-1 rounded-lg border border-os-border bg-os-surface overflow-hidden relative"
             style={{ minHeight: canvasHeight }}
           >
-            {graph.nodes.length === 0 ? (
-              <EmptyState hasTrace={!!selectedTrace} />
+            {!canRenderGraph ? (
+              <EmptyState
+                state={traceState}
+                hasTrace={!!selectedTrace}
+                onGenerate={handleSimulate}
+              />
             ) : (
               <GraphCanvas
                 positioned={positioned}
@@ -727,21 +792,76 @@ function TopImpactList({
   );
 }
 
-function EmptyState({ hasTrace }: { hasTrace: boolean }) {
+function EmptyState({
+  state,
+  hasTrace,
+  onGenerate,
+}: {
+  state: TraceRuntimeState;
+  hasTrace: boolean;
+  onGenerate: () => void;
+}) {
+  // 状态 hydrating — 播种中 / graph 未水合
+  if (state === "hydrating") {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <div className="text-center space-y-3">
+          <RefreshCw size={32} className="mx-auto text-emerald-400 animate-spin" />
+          <div className="space-y-1">
+            <p className="text-sm text-os-text font-medium">正在生成默认 Trace…</p>
+            <p className="text-2xs text-os-subtle">Causal Kernel 正在播种示例因果链</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 状态 invalid — selectedTrace 已失效，自动恢复中
+  if (state === "invalid") {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <div className="text-center space-y-3">
+          <AlertTriangle size={40} className="mx-auto text-amber-400" />
+          <div className="space-y-1">
+            <p className="text-sm text-os-text font-medium">Trace 已失效</p>
+            <p className="text-2xs text-os-subtle">所选 Trace 已从内核移除，正在自动切换到可用 Trace</p>
+          </div>
+          <button
+            onClick={onGenerate}
+            className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
+          >
+            <Zap size={11} />
+            生成新 Trace
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 状态 empty — 细分两种语义：
+  //   1. 无 trace（hasTrace=false）→ "No trace available" + Generate first trace
+  //   2. 合法空图（hasTrace=true，trace 存在但已水合且无事件）→ "该 Trace 暂无事件" + 模拟因果图
+  const title = hasTrace ? "该 Trace 暂无事件" : "No trace available";
+  const hint = hasTrace
+    ? "该 Trace 已水合但不含任何因果事件，请选择其他 Trace 或生成新数据"
+    : "尚未生成任何 Trace，点击下方按钮生成首个因果图";
+  const cta = hasTrace ? "模拟因果图" : "Generate first trace";
+
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="text-center space-y-3">
         <GitGraph size={40} className="mx-auto text-os-muted" />
         <div className="space-y-1">
-          <p className="text-sm text-os-text font-medium">
-            {hasTrace ? "该 Trace 暂无事件" : "未选择 Trace"}
-          </p>
-          <p className="text-2xs text-os-subtle">
-            {hasTrace
-              ? "请选择其他 Trace 或点击「模拟因果图」生成测试数据"
-              : "点击右上角「模拟因果图」生成多父因果图测试数据"}
-          </p>
+          <p className="text-sm text-os-text font-medium">{title}</p>
+          <p className="text-2xs text-os-subtle">{hint}</p>
         </div>
+        <button
+          onClick={onGenerate}
+          className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
+        >
+          <Zap size={11} />
+          {cta}
+        </button>
       </div>
     </div>
   );
@@ -889,4 +1009,6 @@ function simulateMultiCausalFlow() {
     },
     "system_event",
   );
+
+  return trace_id;
 }

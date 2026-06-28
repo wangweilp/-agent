@@ -17,6 +17,7 @@ import type {
   RetentionCohort,
   RealtimeMetrics,
 } from "@/types";
+import { layout } from "@/styles/layout";
 
 export default function AnalyticsPage() {
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
@@ -120,11 +121,11 @@ export default function AnalyticsPage() {
       )}
 
       {/* Charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={layout.grid.twoLgWide}>
         {memoryTrend && (
           <UsageTrendChart
             data={memoryTrend.trend}
-            title="Memory 使用趋势"
+            title="记忆使用趋势"
             dataKey="count"
             type="area"
           />
@@ -139,7 +140,7 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={layout.grid.twoLgWide}>
         {embeddingUsage && (
           <UsageTrendChart
             data={embeddingUsage.trend}
@@ -156,7 +157,7 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={layout.grid.twoLgWide}>
         {retention && (
           <RetentionChart
             cohort={retention.cohort}

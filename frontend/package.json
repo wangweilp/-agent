@@ -1,5 +1,5 @@
 {
-  "name": "agent-memory-os",
+  "name": "zhiwei-os",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -20,10 +20,10 @@
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.460.0",
     "next": "^15.0.0",
+    "prism-react-renderer": "^2.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^9.0.0",
-    "react-syntax-highlighter": "^15.6.0",
     "recharts": "^2.13.0",
     "tailwind-merge": "^2.5.0",
     "vis-data": "^8.0.3",
@@ -36,7 +36,6 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/react-syntax-highlighter": "^15.5.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.0",
     "eslint": "^9.0.0",

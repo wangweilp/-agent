@@ -23,6 +23,7 @@ import {
 import { useChatStore } from "@/stores/chat-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { api } from "@/services/api";
+import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/animations/page-transition";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ToolCallCard } from "@/components/chat/tool-call-card";
@@ -37,7 +38,7 @@ const quickActions = [
   { icon: FileText, label: "总结最近", prompt: "总结我最近的记忆和反思" },
   { icon: Lightbulb, label: "深度反思", prompt: "基于最近的记忆，帮我做一次深度反思" },
   { icon: BarChart3, label: "知识分析", prompt: "分析我的知识图谱中的关键主题" },
-  { icon: PenTool, label: "创意写作", prompt: "基于我的知识库，帮我写一篇关于 Agent 记忆系统的文章" },
+  { icon: PenTool, label: "创意写作", prompt: "基于我的知识库，帮我写一篇关于智能体记忆系统的文章" },
   { icon: Globe, label: "知识问答", prompt: "根据我的记忆，我最近关注哪些话题？" },
 ];
 
@@ -66,6 +67,22 @@ export default function ChatPage() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingText]);
+
+  // 全局 `/` 键 focus 输入框（焦点不在 input/textarea 时触发）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "/" && document.activeElement) {
+        const tag = document.activeElement.tagName.toLowerCase();
+        const isEditable = tag === "input" || tag === "textarea" || (document.activeElement as HTMLElement).isContentEditable;
+        if (!isEditable) {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim() || streaming) return;
@@ -151,7 +168,7 @@ export default function ChatPage() {
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 260, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              className="border-r border-os-border overflow-hidden shrink-0"
+              className="border-r border-os-border overflow-hidden shrink-0 hidden md:block"
             >
               <SessionSidebar />
             </motion.div>
@@ -174,9 +191,13 @@ export default function ChatPage() {
             <Sparkles size={14} className="text-os-accent" />
             <span className="text-xs text-os-text-high font-medium">对话</span>
             {agentPhase !== "idle" && (
-              <div className="flex items-center gap-1.5 ml-2">
-                <Loader2 size={11} className="text-os-accent animate-spin" />
-                <span className="text-2xs text-os-accent">
+              <div className="flex items-center gap-2 ml-2 px-2 py-0.5 rounded-lg border border-os-accent/20 bg-os-accent/5">
+                {/* 缓慢脉冲发光的智能体图标 */}
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-os-accent opacity-60 animate-ping" style={{ animationDuration: "2s" }} />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-os-accent shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
+                </span>
+                <span className="text-2xs text-os-accent animate-pulse" style={{ animationDuration: "2.5s" }}>
                   {agentPhase === "retrieving" && "检索记忆中..."}
                   {agentPhase === "thinking" && "思考中..."}
                   {agentPhase === "acting" && "执行工具中..."}
@@ -187,7 +208,7 @@ export default function ChatPage() {
             <div className="flex-1" />
             <div className="flex items-center gap-1.5">
               <Cpu size={11} className="text-emerald-400/60" />
-              <span className="text-2xs text-os-muted">Agent OS v0.1</span>
+              <span className="text-2xs text-os-muted">知维 OS v0.1</span>
             </div>
             <button
               onClick={() => setShowActivity(!showActivity)}
@@ -225,7 +246,7 @@ export default function ChatPage() {
                   </div>
 
                   {/* 能力卡片 */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     {capabilities.map((cap) => (
                       <div
                         key={cap.label}
@@ -286,7 +307,7 @@ export default function ChatPage() {
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-os-accent/15 to-transparent" />
 
             <div className="max-w-3xl mx-auto p-4">
-              <div className="os-panel-elevated rounded-xl p-1.5 flex items-end gap-2 shadow-os-glow">
+              <div className="os-panel-elevated rounded-2xl p-1.5 flex items-end gap-2 transition-all focus-within:border-os-accent/50 focus-within:shadow-[0_0_15px_rgba(129,140,248,0.15)]">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -303,10 +324,15 @@ export default function ChatPage() {
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() || streaming}
-                  className="shrink-0 w-9 h-9 rounded-lg bg-os-accent/15 text-os-accent hover:bg-os-accent/25 hover:shadow-os-glow disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:shadow-none transition-all flex items-center justify-center"
+                  className={cn(
+                    "shrink-0 w-9 h-9 rounded-xl transition-all flex items-center justify-center",
+                    input.trim() && !streaming
+                      ? "bg-os-accent/15 text-os-accent hover:bg-os-accent/25 hover:shadow-[0_0_12px_rgba(129,140,248,0.3)]"
+                      : "bg-os-elevated text-os-muted cursor-not-allowed",
+                  )}
                 >
                   {streaming ? (
-                    <Loader2 size={15} className="animate-spin" />
+                    <Loader2 size={15} className="animate-spin text-os-accent" />
                   ) : (
                     <Send size={15} />
                   )}
@@ -326,7 +352,7 @@ export default function ChatPage() {
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 300, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              className="border-l border-os-border overflow-hidden shrink-0"
+              className="border-l border-os-border overflow-hidden shrink-0 hidden md:block"
             >
               <ActivityPanel agentPhase={agentPhase} />
             </motion.div>

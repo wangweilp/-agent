@@ -17,7 +17,18 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
+const COLORS = ["#818CF8", "#34D399", "#FBBF24", "#F87171", "#A78BFA", "#22D3EE", "#FB923C"];
+
+const tooltipStyle = {
+  backgroundColor: "#18181B",
+  border: "1px solid #27272A",
+  borderRadius: "12px",
+  fontSize: "12px",
+  color: "#E4E4E7",
+  boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+};
+
+const tooltipItemStyle = { color: "#A1A1AA" };
 
 interface TrendItem {
   date: string;
@@ -39,31 +50,31 @@ export function UsageTrendChart({ data, title, dataKey = "count", type = "area" 
   );
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h3>
+    <div className="rounded-xl border border-os-border bg-os-surface p-4 shadow-os-sm">
+      <h3 className="mb-3 text-sm font-semibold text-os-text-high">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         {type === "area" ? (
           <AreaChart data={formattedData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
+            <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="date" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
             <Area
               type="monotone"
               dataKey={dataKey}
-              stroke="#3b82f6"
-              fill="#3b82f6"
-              fillOpacity={0.15}
+              stroke="#818CF8"
+              fill="#818CF8"
+              fillOpacity={0.1}
               strokeWidth={2}
             />
           </AreaChart>
         ) : (
           <BarChart data={formattedData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Bar dataKey={dataKey} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="date" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
+            <Bar dataKey={dataKey} fill="#818CF8" radius={[4, 4, 0, 0]} />
           </BarChart>
         )}
       </ResponsiveContainer>
@@ -87,8 +98,8 @@ export function ImportChannelChart({ channels, title }: ImportChannelChartProps)
   );
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h3>
+    <div className="rounded-xl border border-os-border bg-os-surface p-4 shadow-os-sm">
+      <h3 className="mb-3 text-sm font-semibold text-os-text-high">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         <PieChart>
           <Pie
@@ -105,8 +116,8 @@ export function ImportChannelChart({ channels, title }: ImportChannelChartProps)
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip />
-          <Legend />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#A1A1AA" }} />
         </PieChart>
       </ResponsiveContainer>
     </div>
@@ -134,15 +145,15 @@ export function RetentionChart({ cohort, title }: RetentionChartProps) {
   );
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-muted-foreground">{title}</h3>
+    <div className="rounded-xl border border-os-border bg-os-surface p-4 shadow-os-sm">
+      <h3 className="mb-3 text-sm font-semibold text-os-text-high">{title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} />
-          <Tooltip formatter={(value: number) => `${value}%`} />
-          <Bar dataKey="retention_rate" fill="#10b981" radius={[4, 4, 0, 0]} name="留存率 %" />
+          <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="month" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} domain={[0, 100]} />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} formatter={(value: number) => `${value}%`} />
+          <Bar dataKey="retention_rate" fill="#34D399" radius={[4, 4, 0, 0]} name="留存率 %" />
         </BarChart>
       </ResponsiveContainer>
     </div>

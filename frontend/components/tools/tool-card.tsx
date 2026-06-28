@@ -43,7 +43,7 @@ export function ToolCard({ tool }: { tool: ToolInfo }) {
 
       <p className="text-xs text-os-text leading-relaxed mb-4">{tool.description}</p>
 
-      <div className="grid grid-cols-3 gap-3 pt-3 border-t border-os-border">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-os-border">
         <div className="text-center">
           <p className="text-lg font-semibold text-os-text-high font-mono">{tool.call_count}</p>
           <p className="text-2xs text-os-muted">调用次数</p>

@@ -9,6 +9,7 @@ import { PageTransition, StaggerItem } from "@/components/animations/page-transi
 import { ToolCard } from "@/components/tools/tool-card";
 import { CardSkeleton } from "@/components/animations/skeleton";
 import type { ToolInfo } from "@/types";
+import { layout } from "@/styles/layout";
 
 // Static tool definitions for UI (backend /tools endpoint coming)
 const defaultTools: ToolInfo[] = [
@@ -110,7 +111,7 @@ export default function ToolsPage() {
         </div>
 
         {/* Tools Grid */}
-        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <motion.div layout className={layout.grid.twoMd}>
           <AnimatePresence mode="popLayout">
             {filtered.map((tool, i) => (
               <StaggerItem key={tool.name} delay={i * 0.05}>

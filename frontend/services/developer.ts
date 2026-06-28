@@ -1,6 +1,7 @@
 /** Open Platform Developer API Client — /developers 端点。 */
 
 import { getAccessToken } from "@/stores/auth-store";
+import { API_BASE_URL } from "./api";
 import type {
   ApiKeyListResponse,
   CreateApiKeyRequest,
@@ -16,7 +17,7 @@ import type {
   VerifyRequestResponse,
 } from "@/types/open-platform";
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API_BASE = API_BASE_URL;
 const DEV_API_BASE = `${API_BASE}/developers`;
 
 export class DeveloperApiError extends Error {

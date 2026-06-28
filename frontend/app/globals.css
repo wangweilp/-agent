@@ -13,18 +13,33 @@
   ::selection {
     @apply bg-os-accent/20 text-os-text-high;
   }
+  /* 全局溢出护城河 — 防止 pre/code 横向炸屏 */
+  pre, code {
+    overflow-x: auto;
+  }
+  /* 表格横向滚动（移动端友好，不破坏 desktop table-layout） */
+  table {
+    overflow-x: auto;
+  }
+  /* Cyberpunk 暗黑滚动条 — WebKit (Chrome / Edge / Safari) */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-os-muted rounded-full;
+    background: #3F3F46;
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-os-subtle;
+    background: #52525B;
+  }
+  /* Firefox 滚动条 — 与 WebKit 保持视觉一致 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3F3F46 transparent;
   }
 }
 

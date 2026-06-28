@@ -58,7 +58,7 @@ export default function ExecutionHistoryPage() {
       <p className="text-gray-500 mb-8">工作流执行历史与追踪</p>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {[
           { label: "总执行", value: stats.total },
           { label: "成功", value: stats.completed, color: "text-green-600" },
@@ -102,6 +102,7 @@ export default function ExecutionHistoryPage() {
         <div className="text-center py-12 text-gray-400">暂无执行记录，请先执行工作流</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -174,6 +175,7 @@ export default function ExecutionHistoryPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

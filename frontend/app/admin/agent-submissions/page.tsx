@@ -43,7 +43,7 @@ export default function AdminReviewQueuePage() {
           <Shield size={14} className="text-os-accent"/> 仅管理员
         </div>
         <h1 className="text-3xl font-semibold text-os-text-high">智能体提交审核</h1>
-        <p className="mt-2 max-w-xl text-sm text-os-subtle">审核开发者提交的 Agent Manifest，确保权限、安全声明和企业数据边界符合要求。</p>
+        <p className="mt-2 max-w-xl text-sm text-os-subtle">审核开发者提交的 智能体 Manifest，确保权限、安全声明和企业数据边界符合要求。</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {["仅管理员", "需要审核", "禁止自动发布", "禁止远程代码执行"].map(b => (
             <span key={b} className="inline-flex items-center gap-1.5 rounded-full border border-os-border/60 bg-os-elevated px-2.5 py-1 text-2xs text-os-subtle">{b}</span>

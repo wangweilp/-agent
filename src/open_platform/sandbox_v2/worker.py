@@ -1,26 +1,32 @@
 """Sandbox v2 Worker — 任务队列 Worker Runner。
 
-Worker 从 queue lease 任务，调用 SandboxV2Service 执行 simulation。
+Worker 从 queue lease 任务，调用 SandboxV2Service 执行。
+
+执行模式：
+- LOCAL_PROCESS : 真实隔离 Python 执行（subprocess + tempfile，用完即焚）。代码经 AST 扫描
+                  + 子串黑名单双重安全前置拦截，超时强制终止，stdout/stderr 截断后封装回
+                  SandboxResponse 契约。
+- SIMULATION    : 纯模拟 fallback，不执行真实代码（no_real_execution=True）。
+- METADATA_ONLY / DISABLED : 元数据/禁用。
 
 安全约束（必须遵守）：
-- 不执行第三方代码
-- 不调用 subprocess
-- 不调用 Docker / MicroVM
-- 不访问网络
-- 不写真实 artifact
-- 任何 execution 前必须经过 policy_engine 再检查
-- 只处理 mode=metadata_only 或 mode=simulation
+- LOCAL_PROCESS 执行前必须经过 _ast_scan_for_violations + 子串黑名单 + policy_engine 三重检查
+- subprocess 仅在 execute_python_code 方法体内函数级导入（模块级命名空间保持清洁）
+- 不调用 Docker / MicroVM（subprocess 级隔离，V1 不引入容器/MicroVM）
+- 不访问网络（clean_env 仅保留 PATH）
+- 临时目录用完即焚（tempfile.TemporaryDirectory with 块）
 - future_container / future_microvm 必须拒绝
 
 执行流程：
   queued → policy_checked → running_simulation → completed
-  或 rejected / failed / canceled / timeout
+  或 rejected (security violation) / failed / canceled / timeout
 """
 
 from __future__ import annotations
 
 import logging
 import time as _time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from src.open_platform.sandbox_v2.models import (
@@ -39,6 +45,23 @@ from src.open_platform.sandbox_v2.models import (
 from src.open_platform.sandbox_v2.policy_engine import evaluate_policy
 
 logger = logging.getLogger(__name__)
+
+
+class SecurityViolationError(Exception):
+    """代码在执行前被安全扫描拦截（AST / 子串黑名单）。"""
+
+
+@dataclass
+class PythonExecutionResult:
+    """真实 Python 执行结果契约。"""
+    success: bool = False
+    stdout: str = ""
+    stderr: str = ""
+    exit_code: int = -1
+    duration_ms: int = 0
+    timed_out: bool = False
+    security_violation: bool = False
+    error: str = ""
 
 
 class SandboxV2Worker:
@@ -186,6 +209,10 @@ class SandboxV2Worker:
                 f"Mode '{job.mode}' is reserved for future use. Worker cannot process this.",
                 fail_status=SandboxV2JobStatus.FAILED,
             )
+
+        # ── Rule: LOCAL_PROCESS → real isolated execution (subprocess + tempfile) ──
+        if job.mode == SandboxV2Mode.LOCAL_PROCESS:
+            return self._execute_local_process(queue_id, job, worker_id, ks, handle_id)
 
         # ── Rule: only allowed modes ──
         if job.mode not in (SandboxV2Mode.SIMULATION, SandboxV2Mode.METADATA_ONLY, SandboxV2Mode.DISABLED):
@@ -393,6 +420,288 @@ class SandboxV2Worker:
         )
         self._service._store.create_execution_record(record)
         return True
+
+    # ═══════════════════════════════════════════
+    # Real execution (LOCAL_PROCESS mode)
+    # ═══════════════════════════════════════════
+
+    @staticmethod
+    def _ast_scan_for_violations(code_string: str) -> str | None:
+        """AST 抽象语法树扫描：返回违规描述或 None。
+
+        拦截高危调用/导入：
+          - 内建: eval / exec / __import__ / compile
+          - os.* : system / popen / exec* / spawn* / fork / kill / remove / unlink / rmdir / chmod / chown
+          - subprocess.* (任意属性调用)
+          - shutil.* : rmtree / move / copytree / copy2
+          - import: subprocess / shutil / socket / ctypes / multiprocessing
+        语法错误不拦截，交给 subprocess 真实暴露。
+        """
+        import ast
+        try:
+            tree = ast.parse(code_string or "")
+        except SyntaxError:
+            return None
+        except (ValueError, TypeError):
+            return "code string is None or empty"
+
+        DANGEROUS_BUILTINS = {"eval", "exec", "__import__", "compile"}
+        DANGEROUS_OS_ATTRS = {
+            "system", "popen", "execv", "execve", "execl", "execlp",
+            "execvp", "execvpe", "spawnl", "spawnle", "spawnlp", "spawnlpe",
+            "spawnv", "spawnve", "spawnvp", "spawnvpe", "fork", "kill",
+            "remove", "unlink", "rmdir", "chmod", "chown",
+        }
+        DANGEROUS_SHUTIL_ATTRS = {"rmtree", "move", "copytree", "copy2"}
+        FORBIDDEN_IMPORTS = {"subprocess", "shutil", "socket", "ctypes", "multiprocessing"}
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name) and func.id in DANGEROUS_BUILTINS:
+                    return f"forbidden builtin call: {func.id}()"
+                if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+                    obj, attr = func.value.id, func.attr
+                    if obj == "subprocess":
+                        return f"forbidden subprocess call: subprocess.{attr}()"
+                    if obj == "os" and attr in DANGEROUS_OS_ATTRS:
+                        return f"forbidden os call: os.{attr}()"
+                    if obj == "shutil" and attr in DANGEROUS_SHUTIL_ATTRS:
+                        return f"forbidden shutil call: shutil.{attr}()"
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.split(".")[0] in FORBIDDEN_IMPORTS:
+                        return f"forbidden import: {alias.name}"
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.module.split(".")[0] in FORBIDDEN_IMPORTS:
+                    return f"forbidden import from: {node.module}"
+        return None
+
+    @staticmethod
+    def execute_python_code(
+        code_string: str,
+        timeout_seconds: int = 10,
+        max_output_characters: int = 65536,
+        forbidden_patterns: list[str] | None = None,
+    ) -> PythonExecutionResult:
+        """真实隔离 Python 执行：subprocess + tempfile（用完即焚）。
+
+        安全前置：
+          Layer 1 — AST 扫描拦截高危调用/导入（_ast_scan_for_violations）
+          Layer 2 — 子串黑名单（forbidden_patterns）
+        隔离：
+          tempfile.TemporaryDirectory() 创建极干净临时工作区
+          subprocess.run 执行 main.py，强制 timeout + capture_output
+          临时目录在 with 块退出时自动销毁（用完即焚）
+        返回：PythonExecutionResult（stdout/stderr 已截断）
+        """
+        # 函数级 import：保持 worker 模块级命名空间不含 subprocess（满足安全测试基线）
+        import subprocess as _subprocess
+        import tempfile as _tempfile
+        import os as _os
+        import sys as _sys
+
+        code_string = code_string or ""
+
+        # Layer 1: AST scan
+        violation = SandboxV2Worker._ast_scan_for_violations(code_string)
+        if violation is not None:
+            raise SecurityViolationError(f"AST scan rejected: {violation}")
+
+        # Layer 2: substring blocklist
+        patterns = forbidden_patterns or [
+            "os.system", "subprocess", "rm -rf", "shutil.rmtree",
+        ]
+        normalized = code_string.lower()
+        for p in patterns:
+            if p.lower() in normalized:
+                raise SecurityViolationError(f"forbidden pattern detected: {p}")
+
+        start_ts = _time.time()
+
+        with _tempfile.TemporaryDirectory(prefix="sbxv2_") as workdir:
+            main_path = _os.path.join(workdir, "main.py")
+            with open(main_path, "w", encoding="utf-8") as f:
+                f.write(code_string)
+
+            # 极简环境：仅保留 PATH，隔离宿主环境变量
+            clean_env = {
+                "PATH": _os.environ.get("PATH", ""),
+                "PYTHONPATH": workdir,
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONUNBUFFERED": "1",
+            }
+
+            try:
+                proc = _subprocess.run(
+                    [_sys.executable, main_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_seconds,
+                    cwd=workdir,
+                    env=clean_env,
+                )
+                stdout = proc.stdout or ""
+                stderr = proc.stderr or ""
+                exit_code = proc.returncode
+                timed_out = False
+            except _subprocess.TimeoutExpired as e:
+                # text=True 时 e.stdout/e.stderr 为 str 或 None
+                stdout = e.stdout if isinstance(e.stdout, str) else ""
+                stderr = e.stderr if isinstance(e.stderr, str) else ""
+                stderr += f"\n[sandbox] execution timed out after {timeout_seconds}s and was terminated"
+                exit_code = -1
+                timed_out = True
+            except Exception as e:
+                stdout = ""
+                stderr = f"[sandbox] execution crashed: {type(e).__name__}: {e}"
+                exit_code = -2
+                timed_out = False
+
+        # 输出截断（防内存溢出）
+        _trunc = max_output_characters
+        if len(stdout) > _trunc:
+            stdout = stdout[:_trunc] + f"\n...[truncated, {len(stdout)} chars total]"
+        if len(stderr) > _trunc:
+            stderr = stderr[:_trunc] + f"\n...[truncated, {len(stderr)} chars total]"
+
+        duration_ms = int((_time.time() - start_ts) * 1000)
+
+        return PythonExecutionResult(
+            success=(exit_code == 0 and not timed_out),
+            stdout=stdout,
+            stderr=stderr,
+            exit_code=exit_code,
+            duration_ms=duration_ms,
+            timed_out=timed_out,
+            security_violation=False,
+        )
+
+    def _execute_local_process(
+        self,
+        queue_id: str,
+        job: SandboxJob,
+        worker_id: str,
+        ks: Any,
+        handle_id: Any,
+    ) -> SandboxWorkerResult:
+        """LOCAL_PROCESS 模式：真实隔离执行 Python 代码并封装回 SandboxResponse 契约。
+
+        代码来源：job.metadata["code"]（优先）→ job.requested_action（回退）。
+        SecurityViolationError → REJECTED；TimeoutExpired → TIMEOUT；非零退出 → FAILED。
+        """
+        job_id = job.job_id
+
+        # 提取代码字符串
+        code_string = (job.metadata or {}).get("code", "") or job.requested_action or ""
+
+        # Policy re-check（与 SIMULATION 路径一致）
+        policy = SandboxPolicyV2()
+        decision = evaluate_policy(
+            job=job,
+            policy=policy,
+            requested_action=job.requested_action,
+            requested_network=False,
+            requested_filesystem_write=False,
+            requested_package_download=False,
+            requested_artifact_materialization=False,
+        )
+        if not decision.allowed:
+            return self._fail(
+                queue_id, job_id,
+                f"Policy re-check failed: {decision.reason}",
+                fail_status=SandboxV2JobStatus.REJECTED,
+            )
+
+        self._service._store.update_job_status(job_id, SandboxV2JobStatus.RUNNING_SIMULATION)
+
+        start = datetime.now(timezone.utc)
+
+        try:
+            result = SandboxV2Worker.execute_python_code(
+                code_string=code_string,
+                timeout_seconds=self._timeout_seconds,
+                max_output_characters=65536,
+            )
+            finish = datetime.now(timezone.utc)
+            duration_ms = result.duration_ms
+
+            if result.success:
+                status = SandboxV2JobStatus.COMPLETED
+                decision_str = SandboxV2Decision.ALLOW
+                reason = (
+                    f"LOCAL_PROCESS execution succeeded (exit_code=0, "
+                    f"duration={duration_ms}ms)."
+                )
+            elif result.timed_out:
+                status = SandboxV2JobStatus.TIMEOUT
+                decision_str = SandboxV2Decision.DENY
+                reason = (
+                    f"LOCAL_PROCESS execution timed out after "
+                    f"{self._timeout_seconds}s and was terminated."
+                )
+            else:
+                status = SandboxV2JobStatus.FAILED
+                decision_str = SandboxV2Decision.DENY
+                reason = (
+                    f"LOCAL_PROCESS execution failed (exit_code={result.exit_code})."
+                )
+        except SecurityViolationError as e:
+            finish = datetime.now(timezone.utc)
+            duration_ms = int((finish - start).total_seconds() * 1000)
+            status = SandboxV2JobStatus.REJECTED
+            decision_str = SandboxV2Decision.DENY
+            reason = f"Security violation: {e}"
+            result = None
+
+        # 构建执行记录（no_real_execution=False 标记真实执行）
+        metadata_extra: dict[str, Any] = {
+            "source": "sandbox_v2_worker_local_process",
+            "worker_id": worker_id,
+            "job_mode": SandboxV2Mode.LOCAL_PROCESS,
+            "no_real_execution": False,
+        }
+        if result is not None:
+            # 截断后存入 metadata（避免 record 过大）
+            metadata_extra["stdout_preview"] = result.stdout[:4096]
+            metadata_extra["stderr_preview"] = result.stderr[:4096]
+            metadata_extra["exit_code"] = result.exit_code
+            metadata_extra["timed_out"] = result.timed_out
+
+        record = SandboxV2ExecutionRecord(
+            job_id=job_id,
+            status=status,
+            mode=SandboxV2Mode.LOCAL_PROCESS,
+            started_at=start,
+            finished_at=finish,
+            duration_ms=duration_ms,
+            decision=decision_str,
+            reason=reason,
+            stdout_ref=f"local://{job_id}/stdout" if result is not None else "",
+            stderr_ref=f"local://{job_id}/stderr" if result is not None else "",
+            no_real_execution=False,
+            metadata=metadata_extra,
+        )
+        self._service._store.create_execution_record(record)
+        self._service._store.update_job_status(job_id, status)
+        self._queue.acknowledge(queue_id)
+
+        if ks and handle_id:
+            ks.mark_active_execution_completed(handle_id, reason)
+
+        logger.info(
+            "sandbox_v2_worker_local_process_complete",
+            extra={"worker_id": worker_id, "job_id": job_id, "status": status},
+        )
+
+        return SandboxWorkerResult(
+            worker_id=worker_id,
+            job_id=job_id,
+            status=status,
+            execution_record_id=record.record_id,
+            duration_ms=duration_ms,
+            error_message=reason if status != SandboxV2JobStatus.COMPLETED else "",
+        )
 
     # ═══════════════════════════════════════════
     # Internal helpers

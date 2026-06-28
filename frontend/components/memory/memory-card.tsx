@@ -5,7 +5,7 @@ import { Clock, Zap, Tag, Eye, Check } from "lucide-react";
 import { cn, formatDate, importanceColor, importanceBg } from "@/lib/utils";
 import type { Memory } from "@/types";
 
-const sourceLabel: Record<string, string> = { user: "用户", agent: "Agent", reflect: "反思" };
+const sourceLabel: Record<string, string> = { user: "用户", agent: "智能体", reflect: "反思" };
 const sourceStyle: Record<string, string> = {
   user: "bg-indigo-400/10 text-indigo-400",
   agent: "bg-emerald-400/10 text-emerald-400",

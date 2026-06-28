@@ -11,6 +11,7 @@ import { KpiCard } from "./kpi-card";
 import { QueryState, EmptyState } from "./query-state";
 import { formatPercent } from "./format";
 import { cn } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 const STALE = 5 * 60 * 1000; // 5min
 const RANGES = [
@@ -22,12 +23,15 @@ const RANGES = [
 const FUNNEL_COLORS = ["#818CF8", "#34D399", "#FBBF24", "#F87171", "#22D3EE", "#A78BFA"];
 
 const tooltipStyle = {
-  background: "#18181B",
+  backgroundColor: "#18181B",
   border: "1px solid #27272A",
-  borderRadius: "8px",
+  borderRadius: "12px",
   fontSize: "12px",
   color: "#E4E4E7",
+  boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
 };
+
+const tooltipItemStyle = { color: "#A1A1AA" };
 
 function RangeSwitcher({ value, onChange }: { value: number; onChange: (d: number) => void }) {
   return (
@@ -91,10 +95,10 @@ function FunnelChart({ stages }: { stages: { stage: string; count: number }[] })
     <div style={{ height: 220 }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#27272A" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 10, fill: "#52525B" }} axisLine={false} tickLine={false} allowDecimals={false} />
-          <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#A1A1AA" }} axisLine={false} tickLine={false} width={72} />
-          <Tooltip contentStyle={tooltipStyle} />
+          <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" horizontal={false} />
+          <XAxis type="number" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <YAxis type="category" dataKey="name" tick={{ fill: "#A1A1AA", fontSize: 12 }} axisLine={false} tickLine={false} width={72} />
+          <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
           <Bar dataKey="count" radius={[0, 4, 4, 0]}>
             {data.map((_, i) => (
               <Cell key={i} fill={FUNNEL_COLORS[i % FUNNEL_COLORS.length]} />
@@ -119,14 +123,14 @@ export function TabGrowth() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         <KpiCard icon={Users} label="激活率" value={formatPercent(data?.activation_rate ?? 0)} accent="emerald" sub={`${days} 天`} />
         <KpiCard icon={Users} label="DAU 峰值" value={String(Math.max(0, ...(data?.dau_series ?? []).map((p) => p.value))) || "0"} accent="indigo" sub={`${days} 天`} />
         <KpiCard icon={Users} label="MAU 末值" value={String(data?.mau_series?.at(-1)?.value ?? 0)} accent="violet" sub="最新" />
         <KpiCard icon={Filter} label="漏斗阶段" value={String(data?.funnel?.length ?? 0)} accent="cyan" sub="转化漏斗" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={layout.grid.threeLg}>
         <SectionCard title="DAU 趋势" icon={<Users size={14} />} action={rangeSwitcher}>
           <SeriesChart data={data?.dau_series} isLoading={isLoading} isError={isError} onRetry={() => refetch()} color="#818CF8" emptyText={`${days} 天内无 DAU 数据`} />
         </SectionCard>
@@ -138,7 +142,7 @@ export function TabGrowth() {
         </SectionCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={layout.grid.twoLg}>
         <SectionCard title="留存队列 (Cohort)" icon={<Layers size={14} />}>
           <QueryState isLoading={isLoading} isError={isError} onRetry={() => refetch()} skeleton={<div className="h-48 rounded bg-os-elevated shimmer-bg" />}>
             <CohortTable rows={data?.retention_cohort ?? []} />

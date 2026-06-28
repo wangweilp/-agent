@@ -15,7 +15,7 @@ const nextConfig = {
       { source: "/api/developer/:path*", destination: `${API_TARGET}/developers/:path*` },
       { source: "/api/marketplace/:path*", destination: `${API_TARGET}/agent-marketplace/:path*` },
       { source: "/api/imports/:path*", destination: `${API_TARGET}/imports/:path*` },
-      { source: "/api/import/:path*", destination: `${API_TARGET}/import/:path*` },
+      { source: "/api/import/:path*", destination: `${API_TARGET}/imports/:path*` },
     ];
   },
 };

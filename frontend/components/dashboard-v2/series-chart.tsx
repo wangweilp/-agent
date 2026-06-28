@@ -30,12 +30,15 @@ interface SeriesChartProps {
 const DEFAULT_COLOR = "#818CF8";
 
 const tooltipStyle = {
-  background: "#18181B",
+  backgroundColor: "#18181B",
   border: "1px solid #27272A",
-  borderRadius: "8px",
+  borderRadius: "12px",
   fontSize: "12px",
   color: "#E4E4E7",
+  boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
 };
+
+const tooltipItemStyle = { color: "#A1A1AA" };
 
 // MetricPoint[] 时间序列图 — 复用 Recharts，统一 loading/empty/error。
 export function SeriesChart({
@@ -63,9 +66,24 @@ export function SeriesChart({
       isEmpty={isEmpty}
       onRetry={onRetry}
       emptyText={emptyText}
-      skeleton={<div style={{ height }} className="w-full rounded-md bg-os-elevated shimmer-bg" />}
+      skeleton={
+        <div
+          style={{ height }}
+          className="w-full rounded-xl bg-os-elevated shimmer-bg relative overflow-hidden border border-os-border/30"
+        >
+          {/* 微弱网格背景 — 模拟图表坐标系 */}
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+              backgroundSize: "100% 25%, 16.66% 100%",
+            }}
+          />
+        </div>
+      }
     >
-      <div style={{ height }}>
+      <div style={{ height }} className="w-full overflow-x-auto">
         <ResponsiveContainer width="100%" height="100%">
           {type === "area" ? (
             <AreaChart data={formatted} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
@@ -75,22 +93,24 @@ export function SeriesChart({
                   <stop offset="100%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272A" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#52525B" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#52525B" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip
                 contentStyle={tooltipStyle}
+                itemStyle={tooltipItemStyle}
                 formatter={(v: number) => (valueFormatter ? valueFormatter(v) : v)}
               />
-              <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fill={`url(#grad-${color})`} />
+              <Area type="monotone" dataKey="value" stroke={color} strokeWidth={2} fillOpacity={0.1} fill={`url(#grad-${color})`} />
             </AreaChart>
           ) : (
             <LineChart data={formatted} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272A" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#52525B" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#52525B" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip
                 contentStyle={tooltipStyle}
+                itemStyle={tooltipItemStyle}
                 formatter={(v: number) => (valueFormatter ? valueFormatter(v) : v)}
               />
               <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} />

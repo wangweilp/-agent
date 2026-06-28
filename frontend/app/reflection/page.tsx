@@ -63,7 +63,7 @@ export default function ReflectionPage() {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <StaggerItem delay={0}>
             <div className="os-card p-4 flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-amber-400/10 flex items-center justify-center">

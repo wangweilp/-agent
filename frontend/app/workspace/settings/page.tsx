@@ -6,12 +6,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Users, UserPlus, Crown, Shield, Eye, User, Trash2,
   Loader2, AlertCircle, Check, X, ArrowLeft, Settings,
-  Activity, ClipboardList,
+  Activity, ClipboardList, AlertTriangle,
 } from "lucide-react";
 import { api } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { PageTransition, StaggerItem } from "@/components/animations/page-transition";
 import { Skeleton } from "@/components/animations/skeleton";
+import { DangerConfirmDialog } from "@/components/os/danger-confirm-dialog";
+import { toast } from "@/stores/ui-store";
 import { cn, formatDate } from "@/lib/utils";
 import type { WorkspaceMember, WorkspaceRole, ActivityEvent } from "@/types";
 
@@ -99,6 +101,41 @@ function SettingsContent() {
       queryClient.invalidateQueries({ queryKey: ["workspace-members", wsId] });
     },
   });
+
+  // ── 任务 C: Danger Zone — 批量移除非 owner 成员 ──
+  const [showRemoveAll, setShowRemoveAll] = useState(false);
+  const [removingAll, setRemovingAll] = useState(false);
+
+  const removableMembers = useMemo(() => {
+    if (!members) return [];
+    return members.filter((m) => m.role !== "owner");
+  }, [members]);
+
+  async function handleRemoveAllMembers() {
+    if (!removableMembers.length) {
+      setShowRemoveAll(false);
+      return;
+    }
+    setRemovingAll(true);
+    let successCount = 0;
+    let failCount = 0;
+    for (const m of removableMembers) {
+      try {
+        await api.workspace.removeMember(wsId, m.user_id);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["workspace-members", wsId] });
+    setRemovingAll(false);
+    setShowRemoveAll(false);
+    if (failCount === 0) {
+      toast.success(`已移除 ${successCount} 个成员`);
+    } else {
+      toast.warning("批量移除完成", `成功 ${successCount}，失败 ${failCount}`);
+    }
+  }
 
   // Activity event type label
   const eventTypeLabel: Record<string, string> = {
@@ -371,7 +408,53 @@ function SettingsContent() {
             </div>
           )}
         </div>
+
+        {/* ── 任务 C: Danger Zone ── */}
+        {canManage && (
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-os-danger/40 bg-os-danger/5 p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-os-danger" />
+                <h2 className="text-sm font-semibold text-os-danger">Danger Zone</h2>
+              </div>
+              <p className="mb-4 text-xs text-os-subtle">
+                以下操作不可逆。执行前请确认你理解其后果。
+              </p>
+
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-os-border/50 bg-os-surface/30 p-4">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-medium text-os-text-high">移除全部非拥有者成员</h3>
+                  <p className="mt-1 text-xs text-os-subtle">
+                    立即从工作区移除当前所有 <span className="font-mono text-os-danger">{removableMembers.length}</span> 个非拥有者成员。被移除的成员将立即失去访问权限。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRemoveAll(true)}
+                  disabled={removableMembers.length === 0}
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-os-danger px-3 text-xs font-medium text-os-danger transition-colors hover:bg-os-danger/10 disabled:cursor-not-allowed disabled:border-os-border disabled:text-os-muted"
+                >
+                  <Trash2 size={13} />
+                  移除全部
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Danger confirm modal — Remove All Members */}
+      <DangerConfirmDialog
+        open={showRemoveAll}
+        title="移除全部非拥有者成员"
+        description={`此操作将从工作区 "${currentWorkspace?.name || wsId}" 移除 ${removableMembers.length} 个非拥有者成员。被移除的成员将立即失去对该工作区的所有访问权限。此操作不可撤销。`}
+        confirmWord="REMOVE ALL"
+        confirmWordLabel="请输入下方确认词以移除全部成员"
+        actionLabel="移除全部成员"
+        onConfirm={handleRemoveAllMembers}
+        onClose={() => !removingAll && setShowRemoveAll(false)}
+        loading={removingAll}
+      />
     </PageTransition>
   );
 }

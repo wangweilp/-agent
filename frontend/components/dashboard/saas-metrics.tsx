@@ -16,6 +16,7 @@ import {
 import { api } from "@/services/api";
 import type { PlatformStats } from "@/types";
 import { cn, formatNumber } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 function formatCurrency(cents: number): string {
   return `¥${(cents / 100).toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -85,7 +86,7 @@ export function SaaSMetrics() {
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className={layout.grid.fiveLg}>
         {/* MRR */}
         <MetricCard
           icon={DollarSign}

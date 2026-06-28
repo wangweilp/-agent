@@ -9,6 +9,7 @@ import { SectionCard } from "./section-card";
 import { KpiCard } from "./kpi-card";
 import { formatPercent, formatLatency, formatCents } from "./format";
 import { cn } from "@/lib/utils";
+import { layout } from "@/styles/layout";
 
 const STALE = 5 * 60 * 1000;
 const RANGES = [
@@ -62,7 +63,7 @@ export function TabAgentPerformance() {
         <KpiCard icon={Coins} label="Token 成本" value={formatCents(data?.token_cost_cents ?? 0)} accent="cyan" sub={`${days} 天`} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={layout.grid.twoLg}>
         <SectionCard title="调用量趋势" icon={<Bot size={14} />}>
           <SeriesChart data={data?.call_volume_series} isLoading={isLoading} isError={isError} onRetry={() => refetch()} color="#818CF8" emptyText="无调用量数据" />
         </SectionCard>

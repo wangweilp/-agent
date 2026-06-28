@@ -97,7 +97,7 @@ export default function AdminReviewDetailPage() {
           <Info label="Tenant" value={sub.tenant_id} mono/>
           <Info label="Source" value={sub.source_type}/>
           <Info label="Package URL" value={sub.package_url || "-"}/>
-          <Info label="Mkp Agent ID" value={sub.marketplace_agent_id || "-"} mono/>
+          <Info label="Mkp 智能体 ID" value={sub.marketplace_agent_id || "-"} mono/>
           <Info label="提交时间" value={sub.submitted_at ? new Date(sub.submitted_at).toLocaleString("zh-CN") : "-"}/>
           <Info label="审核时间" value={sub.reviewed_at ? new Date(sub.reviewed_at).toLocaleString("zh-CN") : "-"}/>
           <Info label="审核人" value={sub.reviewed_by || "-"}/>
@@ -203,7 +203,7 @@ export default function AdminReviewDetailPage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs mb-3">
             <Info label="Name" value={sub.agent_manifest.name}/>
             <Info label="Version" value={sub.agent_manifest.version}/>
-            <Info label="Runtime" value={sub.agent_manifest.runtime_type}/>
+            <Info label="运行时" value={sub.agent_manifest.runtime_type}/>
             <Info label="Entrypoint" value={sub.agent_manifest.entrypoint || "-"}/>
           </div>
         )}

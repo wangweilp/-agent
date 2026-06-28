@@ -13,7 +13,7 @@ export function AgentUsageSummary({ usage, loading = false }: AgentUsageSummaryP
     return (
       <div className="os-card p-4">
         <div className="shimmer-bg h-4 w-24 rounded bg-os-elevated" />
-        <div className="mt-3 grid grid-cols-4 gap-3">
+        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="shimmer-bg h-16 rounded bg-os-elevated" />
           ))}
@@ -29,7 +29,7 @@ export function AgentUsageSummary({ usage, loading = false }: AgentUsageSummaryP
           <Activity size={16} className="text-os-accent" />
           用量概览
         </h3>
-        <p className="mt-2 text-xs text-os-subtle">暂无用量数据。安装并启用 Agent 后，用量会自动汇总。</p>
+        <p className="mt-2 text-xs text-os-subtle">暂无用量数据。安装并启用智能体后，用量会自动汇总。</p>
       </div>
     );
   }

@@ -535,7 +535,7 @@ export default function AccountPage() {
 
           {/* Referral stats */}
           {referralStats && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="bg-os-elevated rounded-lg p-3 text-center">
                 <p className="text-lg font-semibold text-os-text-high tabular-nums">
                   {referralStats.total_referrals}

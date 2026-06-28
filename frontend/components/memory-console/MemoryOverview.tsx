@@ -10,6 +10,7 @@ import {
 import { cn, formatNumber, formatDate, importanceColor } from "@/lib/utils";
 import { api } from "@/services/api";
 import type { DashboardSummary } from "@/types";
+import { layout } from "@/styles/layout";
 
 interface Props {
   summary?: DashboardSummary;
@@ -41,7 +42,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const SOURCE_LABELS: Record<string, string> = {
   user: "用户",
-  agent: "Agent",
+  agent: "智能体",
   reflect: "反思",
 };
 
@@ -159,14 +160,14 @@ export function MemoryOverview({ summary }: Props) {
       </div>
 
       {/* ── 全局统计 + 向量索引 ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={layout.grid.twoLg}>
         {/* 全局记忆统计 */}
         <div className="rounded-md border border-os-border bg-os-surface/30 p-4">
           <div className="flex items-center gap-2 mb-3">
             <Layers size={13} className="text-violet-400" />
             <h3 className="text-xs font-semibold text-os-text-high">全局记忆统计</h3>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className={layout.grid.fourMd}>
             <StatTile label="总记忆" value={summary?.total_memories ?? 0} icon={<Brain size={11} />} />
             <StatTile label="活跃" value={summary?.active_memories ?? 0} icon={<Activity size={11} />} accent="emerald" />
             <StatTile label="已归档" value={summary?.archived_memories ?? 0} icon={<Archive size={11} />} accent="amber" />

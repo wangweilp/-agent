@@ -12,6 +12,7 @@ Step 23-G MVP:
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,6 +23,98 @@ from src.core.usage import UsageEvent, UsageResource, UsageUnit
 from src.open_platform.runtime_governance_summary import build_runtime_governance_summary
 
 logger = logging.getLogger(__name__)
+
+
+def _now_iso() -> str:
+    """UTC ISO-8601 timestamp for mock payload fields."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+# ── Phase 4 mock incident telemetry ──────────────────────────────────────────
+# Curated simulated interception records for the security control plane
+# dashboard. Every entry is metadata-only: no real execution was attempted,
+# no real process was killed. The data exists to demonstrate fail-closed
+# posture on the governance UI.
+_MOCK_INCIDENTS: list[dict[str, Any]] = [
+    {
+        "incident_id": "sim_inc_001",
+        "timestamp": "2026-06-26T08:14:22Z",
+        "agent_id": "agent-meeting-minutes-v2",
+        "severity": "critical",
+        "incident_type": "filesystem_read_violation",
+        "title": "越权读取 /etc/shadow 尝试被拦截",
+        "description": "智能体尝试读取宿主机敏感文件 /etc/shadow，被 deny_by_default 策略立即拦截。",
+        "action_taken": "blocked",
+        "status": "resolved",
+        "policy_triggered": "deny_by_default",
+        "metadata_only": True,
+    },
+    {
+        "incident_id": "sim_inc_002",
+        "timestamp": "2026-06-26T09:32:07Z",
+        "agent_id": "agent-data-pipeline-etl",
+        "severity": "high",
+        "incident_type": "network_egress_violation",
+        "title": "未授权网络出口到 203.0.113.42:443",
+        "description": "智能体尝试向未在白名单的外部 IP 发起 HTTPS 连接，被网络出口策略拦截。",
+        "action_taken": "blocked",
+        "status": "resolved",
+        "policy_triggered": "network_egress_deny",
+        "metadata_only": True,
+    },
+    {
+        "incident_id": "sim_inc_003",
+        "timestamp": "2026-06-26T10:05:51Z",
+        "agent_id": "agent-code-review-bot",
+        "severity": "high",
+        "incident_type": "secrets_access_violation",
+        "title": "尝试访问环境变量 DATABASE_URL",
+        "description": "智能体请求读取环境变量中的数据库连接字符串，被密钥访问策略拦截。",
+        "action_taken": "blocked",
+        "status": "resolved",
+        "policy_triggered": "secrets_deny_all",
+        "metadata_only": True,
+    },
+    {
+        "incident_id": "sim_inc_004",
+        "timestamp": "2026-06-26T11:47:33Z",
+        "agent_id": "agent-meeting-minutes-v2",
+        "severity": "medium",
+        "incident_type": "subprocess_spawn_violation",
+        "title": "尝试 fork 子进程执行 /bin/bash",
+        "description": "智能体尝试通过 subprocess 启动 shell，被进程隔离策略拦截。当前为模拟模式，未实际执行。",
+        "action_taken": "blocked",
+        "status": "resolved",
+        "policy_triggered": "process_isolation_deny",
+        "metadata_only": True,
+    },
+    {
+        "incident_id": "sim_inc_005",
+        "timestamp": "2026-06-26T13:22:18Z",
+        "agent_id": "agent-data-pipeline-etl",
+        "severity": "critical",
+        "incident_type": "filesystem_write_violation",
+        "title": "尝试写入 /usr/local/bin 持久化路径",
+        "description": "智能体尝试向系统二进制目录写入文件，被文件系统写策略拦截。疑似持久化攻击行为。",
+        "action_taken": "blocked",
+        "status": "investigating",
+        "policy_triggered": "filesystem_write_deny",
+        "metadata_only": True,
+    },
+    {
+        "incident_id": "sim_inc_006",
+        "timestamp": "2026-06-26T14:58:02Z",
+        "agent_id": "agent-code-review-bot",
+        "severity": "medium",
+        "incident_type": "resource_limit_violation",
+        "title": "内存使用超过 512MB 上限",
+        "description": "智能体内存占用触发 OOM 阈值预警，被资源限制策略标记并隔离。",
+        "action_taken": "throttled",
+        "status": "resolved",
+        "policy_triggered": "resource_limit_512mb",
+        "metadata_only": True,
+    },
+]
 
 
 def _is_admin(payload: TokenPayload) -> bool:
@@ -297,6 +390,48 @@ def create_runtime_admin_router(
             sandbox_execution_store=sandbox_execution_store,
             production_sandbox_gate_store=production_sandbox_gate_store,
         )
+
+    # ═══════════════════════════════════════════
+    # Phase 4 — Security Control Plane Dashboard (mock / simulation-only)
+    # ═══════════════════════════════════════════
+
+    @router.get("/status")
+    async def get_runtime_status(
+        payload: TokenPayload = Depends(_require_admin),
+    ) -> dict[str, Any]:
+        """Security control plane status — metadata-only / simulation mode.
+
+        Hardcoded to ``simulation`` to make the boundary explicit on the
+        governance dashboard. No real sandboxing, no container isolation.
+        """
+        return {
+            "status": "active",
+            "mode": "simulation",
+            "production_sandbox": "disabled",
+            "default_policy": "deny_by_default",
+            "boundary_statement": (
+                "当前隔离层处于 Metadata 模拟模式。微虚拟机 (microVM) 与容器化底层"
+                "需要依赖 PostgreSQL 与分布式队列集群，已列入下一阶段工程演进路线。"
+            ),
+            "last_checked_at": _now_iso(),
+        }
+
+    @router.get("/incidents")
+    async def list_runtime_incidents(
+        payload: TokenPayload = Depends(_require_admin),
+    ) -> dict[str, Any]:
+        """Mock incident telemetry stream for the security dashboard.
+
+        Returns a curated set of simulated interception records (file read
+        violations, network egress breaches, etc.) to demonstrate the control
+        plane's fail-closed posture. All entries are metadata-only — no real
+        execution was blocked because no real execution was attempted.
+        """
+        return {
+            "mode": "simulation",
+            "total": len(_MOCK_INCIDENTS),
+            "incidents": _MOCK_INCIDENTS,
+        }
 
     # ═══════════════════════════════════════════
     # Step 21 — OIDC Validation Readiness (Runtime Admin)

@@ -19,6 +19,7 @@ import {
   killSandboxV2ContainerPlan,
   requestSandboxV2HandleCancel,
 } from "@/services/runtime-admin";
+import { layout } from "@/styles/layout";
 
 interface Props {
   governance?: RuntimeGovernanceSummary;
@@ -199,7 +200,7 @@ export function KillSwitchPanel({ governance }: Props) {
       </div>
 
       {/* ── Kill requests + records ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={layout.grid.twoLg}>
         <KillRequestList requests={killRequests} />
         <KillRecordList records={killRecords} />
       </div>
@@ -209,7 +210,7 @@ export function KillSwitchPanel({ governance }: Props) {
         <div className="os-card p-4">
           <div className="flex items-center gap-2 mb-2">
             <ShieldAlert size={12} className="text-os-muted" />
-            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">Governance Metadata</h4>
+            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">治理 Metadata</h4>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-2xs">
             <MetaItem label="Status" value={killModule.status} />

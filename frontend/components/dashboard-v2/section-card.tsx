@@ -21,10 +21,10 @@ export function SectionCard({
   children,
 }: SectionCardProps) {
   return (
-    <div className={cn("os-card p-4 h-full flex flex-col", className)}>
-      <div className="flex items-center gap-2 mb-3">
+    <div className={cn("os-card p-6 rounded-xl h-full flex flex-col hover:border-os-accent/50 transition-colors", className)}>
+      <div className="flex items-center gap-2.5 mb-5">
         {icon && <span className="text-os-accent">{icon}</span>}
-        <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
+        <h2 className="text-sm font-medium text-os-text-high uppercase tracking-wider">
           {title}
         </h2>
         {action && <div className="ml-auto">{action}</div>}

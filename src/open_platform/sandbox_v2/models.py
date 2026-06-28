@@ -41,10 +41,13 @@ class SandboxV2JobStatus(StrEnum):
 class SandboxV2Mode(StrEnum):
     """Sandbox v2 执行模式。
 
-    future_container 和 future_microvm 只是预留枚举，不实现真实执行。
+    LOCAL_PROCESS: 真实隔离执行（subprocess + tempfile，用完即焚）。
+    SIMULATION: 纯模拟，不执行真实代码（fallback）。
+    future_container / future_microvm: 预留枚举，不实现真实执行。
     """
     METADATA_ONLY = "metadata_only"
     SIMULATION = "simulation"
+    LOCAL_PROCESS = "local_process"
     DISABLED = "disabled"
     FUTURE_CONTAINER = "future_container"
     FUTURE_MICROVM = "future_microvm"
@@ -64,10 +67,11 @@ class SandboxV2Decision(StrEnum):
     FAIL_CLOSED = "fail_closed"
 
 
-# MVP 允许的 mode（只允许 metadata_only 和 simulation）
+# MVP 允许的 mode（metadata_only / simulation / local_process / disabled）
 MVP_ALLOWED_MODES: frozenset[str] = frozenset({
     SandboxV2Mode.METADATA_ONLY,
     SandboxV2Mode.SIMULATION,
+    SandboxV2Mode.LOCAL_PROCESS,
     SandboxV2Mode.DISABLED,
 })
 

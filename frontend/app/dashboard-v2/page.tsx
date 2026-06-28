@@ -25,8 +25,8 @@ type TabId = "overview" | "growth" | "agent" | "memory" | "cost" | "alerts";
 const TABS: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "growth", label: "Growth", icon: TrendingUp },
-  { id: "agent", label: "Agent Performance", icon: Bot },
-  { id: "memory", label: "Memory Health", icon: Brain },
+  { id: "agent", label: "智能体性能", icon: Bot },
+  { id: "memory", label: "记忆健康", icon: Brain },
   { id: "cost", label: "Cost Analytics", icon: Coins },
   { id: "alerts", label: "Alerts", icon: Bell },
 ];
@@ -59,15 +59,15 @@ export default function DashboardV2Page() {
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-5 max-w-[1440px] mx-auto">
+      <div className="p-4 md:p-6 space-y-5 max-w-[1440px] mx-auto">
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-os-text-high tracking-tight flex items-center gap-2">
               <Activity size={16} className="text-os-accent" />
-              Observability Console
+              可观测性 Console
             </h1>
-            <p className="text-xs text-os-subtle mt-0.5">Dashboard V2 — 用户增长 · Agent · Memory · 成本 · 告警</p>
+            <p className="text-xs text-os-subtle mt-0.5">Dashboard V2 — 用户增长 · 智能体 · 记忆 · 成本 · 告警</p>
           </div>
           <div className="flex items-center gap-2 text-2xs text-os-muted">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-breathe" />

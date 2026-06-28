@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { api } from "@/services/api";
+import { layout } from "@/styles/layout";
 
 export function ReflectionPanel() {
   // 拉取反思洞察列表
@@ -57,7 +58,7 @@ export function ReflectionPanel() {
       </div>
 
       {/* ── 统计磁贴 ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         <StatCard
           label="总洞察"
           value={stats.total}
@@ -85,7 +86,7 @@ export function ReflectionPanel() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={layout.grid.threeLg}>
         {/* ── 左侧：洞察列表（按主题分组） ── */}
         <div className="lg:col-span-2 space-y-3">
           <div className="rounded-md border border-os-border bg-os-surface/30 p-4">

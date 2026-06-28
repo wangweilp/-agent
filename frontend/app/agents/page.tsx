@@ -65,7 +65,7 @@ function LoadingGrid() {
             <div className="shimmer-bg h-3 w-5/6 rounded bg-os-elevated" />
             <div className="shimmer-bg h-3 w-3/5 rounded bg-os-elevated" />
           </div>
-          <div className="mt-6 grid grid-cols-3 gap-2">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="shimmer-bg h-14 rounded bg-os-elevated" />
             <div className="shimmer-bg h-14 rounded bg-os-elevated" />
             <div className="shimmer-bg h-14 rounded bg-os-elevated" />
@@ -193,7 +193,7 @@ export default function InternalAgentCenterPage() {
       </header>
 
       <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Bot} label="Agent 总数" value={stats.total} hint="当前可被编排或试运行的能力" />
+        <StatCard icon={Bot} label="智能体总数" value={stats.total} hint="当前可被编排或试运行的能力" />
         <StatCard
           icon={ShieldCheck}
           label="已启用"
@@ -205,7 +205,7 @@ export default function InternalAgentCenterPage() {
           icon={TrendingUp}
           label="平均成功率"
           value={`${(stats.avgSuccessRate * 100).toFixed(0)}%`}
-          hint="按当前列表 Agent 计算"
+          hint="按当前列表智能体计算"
         />
       </section>
 
@@ -290,7 +290,7 @@ export default function InternalAgentCenterPage() {
       ) : (
         <section className="os-card flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
           <Bot size={28} className="text-os-muted" />
-          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的 Agent</h2>
+          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的智能体</h2>
           <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">
             调整搜索词、状态或标签筛选后再试。
           </p>

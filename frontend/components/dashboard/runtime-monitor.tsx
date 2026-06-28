@@ -83,32 +83,32 @@ export function RuntimeMonitor() {
       </div>
 
       {/* Queue Stats Grid */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="os-card p-3 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Clock size={12} className="text-amber-400" />
-            <span className="text-2xs text-os-subtle">待处理</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="os-card p-4 rounded-xl text-center hover:border-os-accent/50 transition-colors">
+          <div className="flex items-center justify-center gap-1.5 mb-2">
+            <Clock size={13} className="text-amber-400" />
+            <span className="text-xs text-os-subtle">待处理</span>
           </div>
-          <p className="text-lg font-mono font-semibold text-amber-400">
+          <p className="text-xl font-mono font-semibold text-amber-400">
             {queue.pending}
           </p>
         </div>
-        <div className="os-card p-3 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <CheckCircle2 size={12} className="text-emerald-400" />
-            <span className="text-2xs text-os-subtle">已存储</span>
+        <div className="os-card p-4 rounded-xl text-center hover:border-os-accent/50 transition-colors">
+          <div className="flex items-center justify-center gap-1.5 mb-2">
+            <CheckCircle2 size={13} className="text-emerald-400" />
+            <span className="text-xs text-os-subtle">已存储</span>
           </div>
-          <p className="text-lg font-mono font-semibold text-emerald-400">
+          <p className="text-xl font-mono font-semibold text-emerald-400">
             {queue.total_stored}
           </p>
         </div>
-        <div className="os-card p-3 text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <XCircle size={12} className="text-red-400" />
-            <span className="text-2xs text-os-subtle">失败</span>
+        <div className="os-card p-4 rounded-xl text-center hover:border-os-accent/50 transition-colors">
+          <div className="flex items-center justify-center gap-1.5 mb-2">
+            <XCircle size={13} className="text-red-400" />
+            <span className="text-xs text-os-subtle">失败</span>
           </div>
           <p className={cn(
-            "text-lg font-mono font-semibold",
+            "text-xl font-mono font-semibold",
             queue.total_failed > 0 ? "text-red-400" : "text-os-subtle"
           )}>
             {queue.total_failed}
@@ -117,9 +117,9 @@ export function RuntimeMonitor() {
       </div>
 
       {/* DLQ Status */}
-      <div className="flex items-center justify-between text-2xs">
-        <div className="flex items-center gap-1.5 text-os-subtle">
-          <HardDrive size={11} />
+      <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center gap-2 text-os-subtle">
+          <HardDrive size={12} />
           Dead Letter Queue
         </div>
         <span className={cn(
@@ -132,29 +132,29 @@ export function RuntimeMonitor() {
 
       {/* Recent Tasks */}
       <div>
-        <div className="flex items-center gap-1.5 mb-2">
-          <Layers size={11} className="text-os-subtle" />
-          <span className="text-2xs text-os-subtle uppercase tracking-wider">最近任务</span>
+        <div className="flex items-center gap-2 mb-3">
+          <Layers size={12} className="text-os-subtle" />
+          <span className="text-xs text-os-subtle uppercase tracking-wider">最近任务</span>
         </div>
         <div className="space-y-1 max-h-48 overflow-y-auto scrollbar-thin">
           {recent_tasks.length === 0 ? (
-            <p className="text-2xs text-os-muted py-2 text-center">暂无任务记录</p>
+            <p className="text-xs text-os-muted py-3 text-center">暂无任务记录</p>
           ) : (
             recent_tasks.slice().reverse().map((task) => (
               <motion.div
                 key={task.task_id}
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-os-surface-hover transition-colors"
+                className="flex items-center gap-2.5 py-2 px-3 rounded-lg hover:bg-os-surface-hover transition-colors"
               >
                 <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusDot[task.status] || "bg-os-muted")} />
-                <span className="text-2xs text-os-text-high truncate flex-1">
+                <span className="text-xs text-os-text-high truncate flex-1">
                   {task.content_preview || "(无内容)"}
                 </span>
-                <span className={cn("text-2xs font-mono shrink-0", statusColor[task.status] || "text-os-muted")}>
+                <span className={cn("text-xs font-mono shrink-0", statusColor[task.status] || "text-os-muted")}>
                   {task.status}
                 </span>
-                <span className="text-2xs text-os-muted font-mono shrink-0 w-12 text-right">
+                <span className="text-xs text-os-muted font-mono shrink-0 w-14 text-right">
                   {formatMs(task.elapsed_ms)}
                 </span>
               </motion.div>

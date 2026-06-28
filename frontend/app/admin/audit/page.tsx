@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { layout } from "@/styles/layout";
 
 // 鈹€鈹€ Types 鈹€鈹€
 
@@ -270,7 +271,7 @@ export default function AuditCenterPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className={layout.grid.fourMd}>
         <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
           <div className="flex items-center gap-2 mb-1">
             <Clock size={12} className="text-os-accent" />

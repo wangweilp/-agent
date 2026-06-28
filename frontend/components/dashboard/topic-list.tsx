@@ -24,18 +24,18 @@ export function TopicList({ topics, isLoading }: TopicListProps) {
   const maxMention = topics[0]?.mention_count || 1;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {topics.map((topic, i) => (
         <motion.div
           key={topic.name}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.04 }}
-          className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-os-surface-hover transition-colors group"
+          className="flex items-center gap-3.5 py-2.5 px-3.5 rounded-lg hover:bg-os-surface-hover transition-colors group"
         >
           {/* Rank */}
           <span className={`
-            w-5 h-5 rounded text-2xs font-mono flex items-center justify-center shrink-0
+            w-6 h-6 rounded text-xs font-mono flex items-center justify-center shrink-0
             ${i === 0 ? "bg-amber-400/20 text-amber-400" :
               i === 1 ? "bg-zinc-400/20 text-zinc-400" :
               i === 2 ? "bg-amber-700/20 text-amber-700" :
@@ -46,9 +46,9 @@ export function TopicList({ topics, isLoading }: TopicListProps) {
 
           {/* Name */}
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-os-text-high truncate">{topic.name}</p>
+            <p className="text-sm text-os-text-high truncate">{topic.name}</p>
             {/* Mention bar */}
-            <div className="mt-1 h-0.5 w-full bg-os-surface rounded-full overflow-hidden">
+            <div className="mt-1.5 h-0.5 w-full bg-os-surface rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.round((topic.mention_count / maxMention) * 100)}%` }}
@@ -59,9 +59,9 @@ export function TopicList({ topics, isLoading }: TopicListProps) {
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-2 text-2xs shrink-0">
+          <div className="flex items-center gap-2.5 text-xs shrink-0">
             <span className="text-os-subtle flex items-center gap-0.5">
-              <Hash size={10} />
+              <Hash size={11} />
               {topic.mention_count}
             </span>
             <span className="text-os-muted">{topic.memory_count} 条</span>

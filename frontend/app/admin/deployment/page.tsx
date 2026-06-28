@@ -17,9 +17,14 @@ import {
   Container,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/services/api";
+import { apiFetch, API_BASE_URL } from "@/services/api";
+import { layout } from "@/styles/layout";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+// Display-only alias for anchor hrefs to backend docs/redoc/health endpoints.
+// All actual fetch calls use apiFetch() with relative paths — this constant is
+// NEVER used in fetch. Sourced from the unified API_BASE_URL to avoid duplicating
+// the hardcoded fallback URL across files.
+const BASE = API_BASE_URL;
 
 // ── Types ──
 
@@ -98,14 +103,9 @@ export default function DeploymentStatusPage() {
 
     // Check backend
     try {
-      const res = await fetch(`${BASE}/health`);
-      if (res.ok) {
-        const data = await res.json();
-        setBackendHealth(data);
-        setHealth((h) => ({ ...h, backend: "healthy" }));
-      } else {
-        setHealth((h) => ({ ...h, backend: "unhealthy" }));
-      }
+      const data = await apiFetch<BackendHealth>("/health");
+      setBackendHealth(data);
+      setHealth((h) => ({ ...h, backend: "healthy" }));
     } catch {
       setHealth((h) => ({ ...h, backend: "unhealthy" }));
       setError("Cannot reach backend. Is the server running?");
@@ -180,7 +180,7 @@ export default function DeploymentStatusPage() {
       )}
 
       {/* Health Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className={layout.grid.twoMd}>
         {services.map((svc) => (
           <div key={svc.name} className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-border/60 transition-colors">
             <div className="flex items-center justify-between mb-2">
@@ -336,7 +336,7 @@ export default function DeploymentStatusPage() {
         <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider mb-3">
           Deployment Guide
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className={layout.grid.threeMd}>
           <div className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-accent/30 transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <Terminal size={14} className="text-os-accent" />

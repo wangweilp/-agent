@@ -29,6 +29,7 @@ import type {
   WorkflowExecution,
   WorkflowNode,
 } from "@/types/agents";
+import { layout } from "@/styles/layout";
 
 const NODE_ICONS: Record<WorkflowNode["node_type"], typeof Bot> = {
   agent: Bot,
@@ -43,7 +44,7 @@ const NODE_ICONS: Record<WorkflowNode["node_type"], typeof Bot> = {
 };
 
 const NODE_LABELS: Record<WorkflowNode["node_type"], string> = {
-  agent: "Agent",
+  agent: "智能体",
   human: "人工",
   condition: "条件",
   parallel: "并行",
@@ -97,7 +98,7 @@ function NodeCard({ node }: { node: WorkflowNode }) {
         <p className="text-xs opacity-70 mt-1">{node.description}</p>
       )}
       {node.agent_id && (
-        <p className="text-xs opacity-50 mt-1">Agent: {node.agent_id}</p>
+        <p className="text-xs opacity-50 mt-1">智能体: {node.agent_id}</p>
       )}
       {node.next_nodes.length > 0 && (
         <p className="text-xs opacity-40 mt-2">
@@ -270,7 +271,7 @@ export default function WorkflowDetailPage() {
           <GitBranch className="w-5 h-5 text-purple-400" />
           工作流节点
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className={layout.grid.threeLgMd}>
           {nodes.map((node, i) => (
             <div key={node.node_id} className="relative">
               <NodeCard node={node} />
@@ -300,7 +301,7 @@ export default function WorkflowDetailPage() {
             暂无执行记录
           </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className={layout.grid.threeLgMd}>
             {executions.slice(-9).reverse().map((exec) => (
               <ExecutionCard key={exec.execution_id} execution={exec} />
             ))}

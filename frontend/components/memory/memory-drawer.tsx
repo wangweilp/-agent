@@ -18,7 +18,7 @@ const typeLabel: Record<string, string> = {
 };
 
 const sourceLabel: Record<string, string> = {
-  user: "用户", agent: "Agent", reflect: "反思",
+  user: "用户", agent: "智能体", reflect: "反思",
 };
 
 interface MemoryDrawerProps {

@@ -29,7 +29,7 @@ import type { MarketplaceAgent, MarketplaceAnalyticsSummary } from "@/types/mark
 type InstalledFilter = "all" | "installed" | "not_installed";
 
 const STATUS_BADGES = [
-  { label: "Internal Marketplace", hint: "企业内部 Agent 分发中心" },
+  { label: "Internal Marketplace", hint: "企业内部智能体分发中心" },
   { label: "Auth / RBAC Protected", hint: "租户级访问控制" },
   { label: "Tenant Installed", hint: "按工作区安装隔离" },
   { label: "Usage Metered", hint: "用量自动记录" },
@@ -37,26 +37,33 @@ const STATUS_BADGES = [
 
 function LoadingGrid() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="os-card h-[280px] overflow-hidden p-4">
-          <div className="shimmer-bg h-5 w-36 rounded bg-os-elevated" />
-          <div className="mt-4 space-y-2">
-            <div className="shimmer-bg h-3 w-full rounded bg-os-elevated" />
-            <div className="shimmer-bg h-3 w-5/6 rounded bg-os-elevated" />
+        <div
+          key={i}
+          className="h-[260px] overflow-hidden rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md"
+        >
+          <div className="flex items-start gap-3">
+            <div className="shimmer-bg h-11 w-11 rounded-xl bg-os-elevated" />
+            <div className="flex-1 space-y-2">
+              <div className="shimmer-bg h-4 w-28 rounded bg-os-elevated" />
+              <div className="shimmer-bg h-3 w-full rounded bg-os-elevated" />
+              <div className="shimmer-bg h-3 w-4/5 rounded bg-os-elevated" />
+            </div>
           </div>
           <div className="mt-4 flex gap-1.5">
             <div className="shimmer-bg h-5 w-14 rounded bg-os-elevated" />
             <div className="shimmer-bg h-5 w-12 rounded bg-os-elevated" />
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="shimmer-bg h-12 rounded bg-os-elevated" />
-            <div className="shimmer-bg h-12 rounded bg-os-elevated" />
-            <div className="shimmer-bg h-12 rounded bg-os-elevated" />
+          <div className="mt-auto flex gap-4 pt-6">
+            <div className="shimmer-bg h-3 w-10 rounded bg-os-elevated" />
+            <div className="shimmer-bg h-3 w-10 rounded bg-os-elevated" />
+            <div className="shimmer-bg h-3 w-16 rounded bg-os-elevated" />
           </div>
-          <div className="mt-auto flex gap-2 pt-4">
-            <div className="shimmer-bg h-9 flex-1 rounded bg-os-elevated" />
-            <div className="shimmer-bg h-9 flex-1 rounded bg-os-elevated" />
+          <div className="mt-3 h-px bg-os-border/50" />
+          <div className="mt-3 flex gap-2">
+            <div className="shimmer-bg h-9 flex-1 rounded-lg bg-os-elevated" />
+            <div className="shimmer-bg h-9 flex-1 rounded-lg bg-os-elevated" />
           </div>
         </div>
       ))}
@@ -198,9 +205,9 @@ export default function MarketplaceHomePage() {
             <Link href="/agents" className="text-os-accent hover:underline">
               /agents
             </Link>
-            {" "}用于执行 Agent，{" "}
+            {" "}用于执行智能体，{" "}
             <span className="text-os-accent">/agent-marketplace</span>
-            {" "}用于发现与安装 Agent。
+            {" "}用于发现与安装智能体。
           </p>
 
           {/* Status badges */}
@@ -242,7 +249,7 @@ export default function MarketplaceHomePage() {
         <div className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">可安装 Agent</p>
+              <p className="text-xs text-os-muted">可安装智能体</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{stats.total}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-os-accent">
@@ -254,7 +261,7 @@ export default function MarketplaceHomePage() {
         <div className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">免费 Agent</p>
+              <p className="text-xs text-os-muted">免费智能体</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{stats.freeCount}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-emerald-400">
@@ -266,14 +273,14 @@ export default function MarketplaceHomePage() {
         <div className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">部门 Agent</p>
+              <p className="text-xs text-os-muted">部门智能体</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{stats.withDept}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-violet-400">
               <Building2 size={18} />
             </div>
           </div>
-          <p className="mt-3 text-xs text-os-subtle">按部门定制的专属 Agent</p>
+          <p className="mt-3 text-xs text-os-subtle">按部门定制的专属智能体</p>
         </div>
       </section>
 
@@ -285,7 +292,7 @@ export default function MarketplaceHomePage() {
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">Agent 总数</p>
+              <p className="text-2xs text-os-muted">智能体总数</p>
               <p className="mt-0.5 text-sm font-semibold text-os-text-high">
                 {analytics.total_marketplace_agents}
               </p>
@@ -315,7 +322,7 @@ export default function MarketplaceHomePage() {
               </p>
             </div>
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">Agent 执行</p>
+              <p className="text-2xs text-os-muted">智能体执行</p>
               <p className="mt-0.5 text-sm font-semibold text-os-text-high">
                 {analytics.agent_runs}
               </p>
@@ -427,7 +434,7 @@ export default function MarketplaceHomePage() {
       {loading ? (
         <LoadingGrid />
       ) : filteredAgents.length > 0 ? (
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredAgents.map((agent) => (
             <MarketplaceAgentCard
               key={agent.marketplace_agent_id}
@@ -442,7 +449,7 @@ export default function MarketplaceHomePage() {
       ) : (
         <section className="os-card flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
           <ShoppingBag size={28} className="text-os-muted" />
-          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的 Agent</h2>
+          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的智能体</h2>
           <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">
             调整筛选条件或搜索词后再试。分类和部门过滤是精确匹配。
           </p>

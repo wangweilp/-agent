@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ComponentPropsWithoutRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   ArrowDownToLine,
   Bot,
+  Building2,
+  CheckCircle2,
   FileText,
   Layers,
   Loader2,
@@ -16,6 +19,7 @@ import {
   Shield,
   Star,
   Trash2,
+  User,
   Workflow,
 } from "lucide-react";
 
@@ -41,20 +45,137 @@ import type {
   MarketplaceUsageResponse,
   TenantAgentInstallation,
 } from "@/types/marketplace";
+import { cn } from "@/lib/utils";
+
+// ── 权限 Pill 元数据映射 ──
+function permissionMeta(permission: string): { icon: string; label: string } {
+  const p = permission.toLowerCase();
+  if (p.includes("web") || p.includes("network") || p.includes("internet") || p.includes("http") || p.includes("online")) {
+    return { icon: "🌐", label: "允许联网" };
+  }
+  if (p.includes("memory") || p.includes("storage") || p.includes("persist")) {
+    return { icon: "💾", label: "读写记忆" };
+  }
+  if (p.includes("tool") || p.includes("function") || p.includes("action")) {
+    return { icon: "🔧", label: "工具调用" };
+  }
+  if (p.includes("knowledge") || p.includes("search") || p.includes("retriev")) {
+    return { icon: "📚", label: "知识检索" };
+  }
+  if (p.includes("file") || p.includes("document") || p.includes("upload")) {
+    return { icon: "📁", label: "文件访问" };
+  }
+  if (p.includes("code") || p.includes("exec") || p.includes("sandbox") || p.includes("runtime")) {
+    return { icon: "⚙️", label: "代码执行" };
+  }
+  if (p.includes("email") || p.includes("mail") || p.includes("message")) {
+    return { icon: "✉️", label: "消息发送" };
+  }
+  if (p.includes("data") || p.includes("database") || p.includes("db")) {
+    return { icon: "🗄️", label: "数据访问" };
+  }
+  return { icon: "🔐", label: permission };
+}
+
+// ── 按分类提取径向渐变起始色 ──
+function categoryGradient(category: string): string {
+  const map: Record<string, string> = {
+    automation: "from-blue-500/20",
+    assistant: "from-cyan-500/20",
+    knowledge: "from-emerald-500/20",
+    training: "from-violet-500/20",
+    sales: "from-amber-500/20",
+    support: "from-rose-500/20",
+    engineering: "from-indigo-500/20",
+    hr: "from-pink-500/20",
+    analytics: "from-orange-500/20",
+  };
+  return map[category] || "from-os-accent/20";
+}
+
+// ── Markdown 组件映射（readme 风格） ──
+const readmeComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["components"] = {
+  code({ className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || "");
+    const value = String(children).replace(/\n$/, "");
+    const isBlock = !!match || value.includes("\n");
+    if (isBlock) {
+      return (
+        <pre className="my-3 overflow-auto rounded-lg border border-os-border bg-os-base p-3 text-2xs font-mono">
+          <code>{value}</code>
+        </pre>
+      );
+    }
+    return (
+      <code className="rounded bg-os-elevated px-1.5 py-0.5 text-2xs font-mono text-os-accent" {...props}>
+        {children}
+      </code>
+    );
+  },
+  p({ children }) {
+    return <p className="leading-6 mb-3 last:mb-0 text-sm text-os-text">{children}</p>;
+  },
+  ul({ children }) {
+    return <ul className="list-disc list-inside mb-3 space-y-1 last:mb-0 text-sm text-os-text">{children}</ul>;
+  },
+  ol({ children }) {
+    return <ol className="list-decimal list-inside mb-3 space-y-1 last:mb-0 text-sm text-os-text">{children}</ol>;
+  },
+  li({ children }) {
+    return <li className="leading-6 text-sm text-os-text">{children}</li>;
+  },
+  blockquote({ children }) {
+    return (
+      <blockquote className="border-l-2 border-os-accent/40 pl-3 text-os-subtle italic my-3 text-sm">
+        {children}
+      </blockquote>
+    );
+  },
+  h1({ children }) {
+    return <h1 className="text-lg font-semibold mb-2 mt-4 first:mt-0 text-os-text-high">{children}</h1>;
+  },
+  h2({ children }) {
+    return <h2 className="text-base font-semibold mb-2 mt-4 first:mt-0 text-os-text-high">{children}</h2>;
+  },
+  h3({ children }) {
+    return <h3 className="text-sm font-semibold mb-1.5 mt-3 first:mt-0 text-os-text-high">{children}</h3>;
+  },
+  a({ href, children }) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-os-accent hover:underline"
+      >
+        {children}
+      </a>
+    );
+  },
+  hr() {
+    return <hr className="border-os-border/50 my-4" />;
+  },
+  table({ children }) {
+    return (
+      <div className="overflow-x-auto my-3">
+        <table className="w-full text-xs border-collapse">{children}</table>
+      </div>
+    );
+  },
+};
 
 function LoadingDetail() {
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       <div className="shimmer-bg mb-4 h-5 w-32 rounded bg-os-elevated" />
-      <div className="os-card p-6">
-        <div className="shimmer-bg h-6 w-48 rounded bg-os-elevated" />
-        <div className="mt-4 space-y-2">
-          <div className="shimmer-bg h-3 w-full rounded bg-os-elevated" />
-          <div className="shimmer-bg h-3 w-3/4 rounded bg-os-elevated" />
-        </div>
-        <div className="mt-6 flex gap-2">
-          <div className="shimmer-bg h-6 w-16 rounded bg-os-elevated" />
-          <div className="shimmer-bg h-6 w-12 rounded bg-os-elevated" />
+      <div className="h-44 rounded-2xl border border-os-border/50 bg-os-surface/40 p-6 backdrop-blur-md">
+        <div className="flex items-start gap-4">
+          <div className="shimmer-bg h-14 w-14 rounded-2xl bg-os-elevated" />
+          <div className="flex-1 space-y-2">
+            <div className="shimmer-bg h-6 w-48 rounded bg-os-elevated" />
+            <div className="shimmer-bg h-3 w-full rounded bg-os-elevated" />
+            <div className="shimmer-bg h-3 w-3/4 rounded bg-os-elevated" />
+          </div>
         </div>
       </div>
     </main>
@@ -199,14 +320,14 @@ export default function MarketplaceAgentDetailPage() {
   if (loading) return <LoadingDetail />;
   if (!agent) {
     return (
-      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
-        <div className="os-card flex min-h-64 flex-col items-center justify-center gap-3 text-center">
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+        <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-os-border/50 bg-os-surface/40 p-6 text-center backdrop-blur-md">
           <Bot size={32} className="text-os-muted" />
-          <h2 className="text-base font-semibold text-os-text-high">Agent 不存在</h2>
-          <p className="text-sm text-os-subtle">请检查 Marketplace Agent ID 是否正确。</p>
+          <h2 className="text-base font-semibold text-os-text-high">智能体不存在</h2>
+          <p className="text-sm text-os-subtle">请检查 Marketplace 智能体 ID 是否正确。</p>
           <Link
             href="/agent-marketplace"
-            className="inline-flex items-center gap-2 rounded-md border border-os-border px-3 py-1.5 text-xs text-os-subtle hover:text-os-text-high"
+            className="inline-flex items-center gap-2 rounded-lg border border-os-border px-3 py-1.5 text-xs text-os-subtle transition-colors hover:text-os-text-high"
           >
             <ArrowLeft size={14} />
             返回 Marketplace
@@ -216,261 +337,403 @@ export default function MarketplaceAgentDetailPage() {
     );
   }
 
+  const readme = agent.long_description || agent.description || "暂无详细介绍。";
+  const requiredPerms = permissions?.required || agent.required_permissions;
+
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
       {/* Back link */}
       <Link
         href="/agent-marketplace"
-        className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"
+        className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle transition-colors hover:text-os-text-high"
       >
         <ArrowLeft size={14} />
         返回 Marketplace
       </Link>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
+        <div className="mb-4 rounded-lg border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
           {error}
         </div>
       )}
 
-      {/* Agent Info */}
-      <section className="os-card p-6">
-        <div className="flex items-start justify-between gap-4">
+      {/* ── Hero Banner ── */}
+      <section
+        className={cn(
+          "relative overflow-hidden rounded-2xl border border-os-border/50 p-6 mb-6",
+          "bg-gradient-to-br to-os-surface/40 backdrop-blur-md",
+          categoryGradient(agent.category),
+        )}
+      >
+        {/* Blurred grid background */}
+        <div className="absolute inset-0 bg-grid-subtle opacity-30 pointer-events-none" />
+        {/* Radial glow */}
+        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-os-accent/8 blur-3xl pointer-events-none" />
+
+        <div className="relative flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-os-accent/30 bg-os-accent/15 text-os-accent">
-              <Bot size={22} />
+            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-os-accent/30 bg-os-accent/15 text-os-accent">
+              <Bot size={26} />
+              <div className="pointer-events-none absolute inset-0 rounded-2xl bg-os-accent/15 blur-lg -z-10" />
             </div>
-            <div>
-              <h1 className="text-xl font-semibold text-os-text-high">{agent.display_name}</h1>
-              <p className="mt-1 text-sm text-os-subtle">{agent.description}</p>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-tight text-os-text-high">
+                {agent.display_name}
+              </h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-os-subtle">
+                {agent.description}
+              </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <span className="os-badge bg-os-elevated text-os-subtle">{agent.category}</span>
+                <span className="os-badge bg-os-elevated/80 text-os-subtle">{agent.category}</span>
                 {agent.department && (
-                  <span className="os-badge bg-os-elevated text-os-subtle">{agent.department}</span>
+                  <span className="os-badge bg-os-elevated/80 text-os-subtle">{agent.department}</span>
                 )}
                 <AgentPricingBadge model={agent.pricing_model} />
-                <span className="os-badge bg-os-elevated text-os-subtle">v{agent.version}</span>
-                <span className="os-badge bg-os-elevated text-os-subtle">{agent.publisher_name}</span>
+                <span className="os-badge bg-os-elevated/80 text-os-subtle">v{agent.version}</span>
               </div>
             </div>
           </div>
 
           <span
-            className={`os-badge shrink-0 ${
+            className={cn(
+              "os-badge shrink-0",
               agent.status === "active"
                 ? "bg-emerald-400/10 text-emerald-300"
                 : agent.status === "beta"
                   ? "bg-amber-400/10 text-amber-300"
-                  : "bg-zinc-500/10 text-os-muted"
-            }`}
+                  : "bg-zinc-500/10 text-os-muted",
+            )}
           >
             {agent.status}
           </span>
         </div>
-
-        {agent.long_description && (
-          <div className="mt-6 rounded-md border border-os-border bg-os-elevated/30 p-4">
-            <h3 className="flex items-center gap-2 text-xs font-semibold text-os-subtle">
-              <FileText size={13} />
-              详细介绍
-            </h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-os-text-high">
-              {agent.long_description}
-            </p>
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Metric label="安装次数" value={String(agent.install_count)} />
-          <Metric label="评分" value={agent.rating.toFixed(1)} icon={<Star size={13} className="text-amber-400" />} />
-          <Metric label="能力数量" value={String(agent.capabilities.length)} />
-          <Metric label="权限需求" value={String(agent.required_permissions.length)} icon={<Shield size={13} className="text-os-accent" />} />
-        </div>
       </section>
 
-      {/* Capabilities */}
-      <section className="os-card mt-4 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-os-text-high">
-          <Layers size={16} className="text-os-accent" />
-          能力
-        </h3>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {agent.capabilities.map((cap) => (
-            <span key={cap} className="rounded bg-os-elevated px-2.5 py-1 text-xs text-os-text-high">
-              {cap}
-            </span>
-          ))}
-        </div>
+      {/* ── Two-column layout: readme + sticky sidebar ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column (2/3) — Readme + Capabilities + Installation management */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Readme (Markdown) */}
+          <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-6 backdrop-blur-md">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-os-text-high">
+              <FileText size={15} className="text-os-accent" />
+              详细介绍
+            </h3>
+            <ReactMarkdown components={readmeComponents}>{readme}</ReactMarkdown>
+          </section>
 
-        {agent.supported_workflows.length > 0 && (
-          <>
-            <h4 className="mt-4 flex items-center gap-2 text-xs font-semibold text-os-subtle">
-              <Workflow size={13} />
-              支持的工作流
-            </h4>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {agent.supported_workflows.map((wf) => (
-                <span key={wf} className="rounded bg-violet-400/10 px-2.5 py-1 text-xs text-violet-300">
-                  {wf}
+          {/* Capabilities */}
+          <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-6 backdrop-blur-md">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-os-text-high">
+              <Layers size={15} className="text-os-accent" />
+              能力矩阵
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {agent.capabilities.map((cap) => (
+                <span
+                  key={cap}
+                  className="rounded-lg border border-os-border bg-os-elevated/60 px-2.5 py-1 text-xs text-os-text-high"
+                >
+                  {cap}
                 </span>
               ))}
             </div>
-          </>
-        )}
-      </section>
 
-      {/* Permissions */}
-      <div className="mt-4">
-        <AgentPermissionPanel
-          required={permissions?.required || agent.required_permissions}
-          granted={permissions?.granted || []}
-          missing={permissions?.missing || agent.required_permissions}
-        />
-      </div>
-
-      {/* Usage (MVP) */}
-      {isInstalled && <div className="mt-4"><AgentUsageSummary usage={usage} /></div>}
-
-      {/* Installation Status */}
-      <section className="os-card mt-4 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-os-text-high">
-          <ArrowDownToLine size={16} className="text-os-accent" />
-          安装状态
-        </h3>
-
-        {isInstalled && installation ? (
-          <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <InfoItem label="安装 ID" value={installation.installation_id} mono />
-              <InfoItem label="状态" value={installation.status} />
-              <InfoItem
-                label="启用"
-                value={installation.enabled ? "是" : "否"}
-                color={installation.enabled ? "text-emerald-300" : "text-red-300"}
-              />
-              <InfoItem label="锁定版本" value={installation.version_pinned || "跟随最新"} />
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-              <InfoItem label="安装人" value={installation.installed_by} />
-              <InfoItem label="安装时间" value={installation.installed_at ? new Date(installation.installed_at).toLocaleString("zh-CN") : "-"} />
-            </div>
-
-            {/* Config */}
-            {Object.keys(installation.config).length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer text-xs font-medium text-os-subtle hover:text-os-text-high">
-                  配置 ({Object.keys(installation.config).length} 项)
-                </summary>
-                <pre className="mt-2 overflow-auto rounded bg-os-elevated p-3 text-2xs text-os-subtle">
-                  {JSON.stringify(installation.config, null, 2)}
-                </pre>
-              </details>
-            )}
-
-            {/* Granted permissions */}
-            {installation.permissions_granted.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-os-subtle">已授权权限</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {installation.permissions_granted.map((p) => (
-                    <span key={p} className="rounded bg-emerald-400/10 px-2 py-0.5 text-2xs text-emerald-300">
-                      {p}
+            {agent.supported_workflows.length > 0 && (
+              <>
+                <h4 className="mt-4 flex items-center gap-2 text-xs font-semibold text-os-subtle">
+                  <Workflow size={13} />
+                  支持的工作流
+                </h4>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {agent.supported_workflows.map((wf) => (
+                    <span
+                      key={wf}
+                      className="rounded-lg bg-violet-400/10 px-2.5 py-1 text-xs text-violet-300"
+                    >
+                      {wf}
                     </span>
                   ))}
                 </div>
-              </div>
+              </>
             )}
+          </section>
 
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleToggle}
-                disabled={toggling}
-                className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                  installation.enabled
-                    ? "bg-red-400/10 text-red-300 hover:bg-red-400/15"
-                    : "bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15"
-                }`}
-              >
-                {toggling ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : installation.enabled ? (
-                  <PowerOff size={14} />
-                ) : (
-                  <Power size={14} />
-                )}
-                {installation.enabled ? "停用" : "启用"}
-              </button>
+          {/* Permissions detail (AgentPermissionPanel) */}
+          <AgentPermissionPanel
+            required={permissions?.required || agent.required_permissions}
+            granted={permissions?.granted || []}
+            missing={permissions?.missing || agent.required_permissions}
+          />
 
-              <button
-                type="button"
-                onClick={() => setShowConfigDialog(true)}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:border-os-accent/40 hover:text-os-text-high"
-              >
-                <Settings size={14} />
-                配置
-              </button>
+          {/* Usage (if installed) */}
+          {isInstalled && <AgentUsageSummary usage={usage} />}
 
-              <Link
-                href={`/agent-marketplace/installations`}
-                className="inline-flex h-9 items-center gap-2 rounded-md border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:text-os-text-high"
-              >
-                <Layers size={14} />
-                管理安装
-              </Link>
+          {/* Installation management (if installed) */}
+          {isInstalled && installation && (
+            <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-6 backdrop-blur-md">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-os-text-high">
+                <Settings size={15} className="text-os-accent" />
+                安装管理
+              </h3>
 
-              {showConfirmUninstall ? (
-                <div className="inline-flex items-center gap-2 rounded-md border border-red-400/20 bg-red-400/5 px-3 py-2">
-                  <span className="text-xs text-red-300">确认卸载？</span>
-                  <button
-                    type="button"
-                    onClick={handleUninstall}
-                    disabled={uninstalling}
-                    className="rounded bg-red-400/20 px-2 py-0.5 text-xs text-red-200 hover:bg-red-400/30 disabled:opacity-50"
-                  >
-                    {uninstalling ? "卸载中..." : "确认"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmUninstall(false)}
-                    className="rounded bg-os-elevated px-2 py-0.5 text-xs text-os-subtle hover:text-os-text-high"
-                  >
-                    取消
-                  </button>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <InfoItem label="安装 ID" value={installation.installation_id} mono />
+                <InfoItem label="状态" value={installation.status} />
+                <InfoItem
+                  label="启用"
+                  value={installation.enabled ? "是" : "否"}
+                  color={installation.enabled ? "text-emerald-300" : "text-red-300"}
+                />
+                <InfoItem label="锁定版本" value={installation.version_pinned || "跟随最新"} />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-2">
+                <InfoItem label="安装人" value={installation.installed_by} />
+                <InfoItem
+                  label="安装时间"
+                  value={
+                    installation.installed_at
+                      ? new Date(installation.installed_at).toLocaleString("zh-CN")
+                      : "-"
+                  }
+                />
+              </div>
+
+              {/* Config */}
+              {Object.keys(installation.config).length > 0 && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs font-medium text-os-subtle hover:text-os-text-high">
+                    配置 ({Object.keys(installation.config).length} 项)
+                  </summary>
+                  <pre className="mt-2 overflow-auto rounded-lg bg-os-elevated p-3 text-2xs text-os-subtle">
+                    {JSON.stringify(installation.config, null, 2)}
+                  </pre>
+                </details>
+              )}
+
+              {/* Granted permissions */}
+              {installation.permissions_granted.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-os-subtle">已授权权限</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {installation.permissions_granted.map((p) => (
+                      <span
+                        key={p}
+                        className="rounded bg-emerald-400/10 px-2 py-0.5 text-2xs text-emerald-300"
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              ) : (
+              )}
+
+              {/* Actions */}
+              <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowConfirmUninstall(true)}
-                  className="inline-flex h-9 items-center gap-2 rounded-md border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:border-red-400/30 hover:text-red-300"
+                  onClick={handleToggle}
+                  disabled={toggling}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    installation.enabled
+                      ? "bg-red-400/10 text-red-300 hover:bg-red-400/15"
+                      : "bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15",
+                  )}
                 >
-                  <Trash2 size={14} />
-                  卸载
+                  {toggling ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : installation.enabled ? (
+                    <PowerOff size={14} />
+                  ) : (
+                    <Power size={14} />
+                  )}
+                  {installation.enabled ? "停用" : "启用"}
                 </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-4">
-            <p className="text-sm text-os-subtle">此 Agent 尚未安装到当前工作区。</p>
-            <button
-              type="button"
-              onClick={handleInstall}
-              disabled={installing}
-              className="mt-3 inline-flex h-9 items-center gap-2 rounded-md bg-os-accent px-4 text-xs font-medium text-white transition-colors hover:bg-os-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {installing ? (
-                <Loader2 size={14} className="animate-spin" />
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfigDialog(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:border-os-accent/40 hover:text-os-text-high"
+                >
+                  <Settings size={14} />
+                  配置
+                </button>
+
+                <Link
+                  href="/agent-marketplace/installations"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:text-os-text-high"
+                >
+                  <Layers size={14} />
+                  管理安装
+                </Link>
+
+                {showConfirmUninstall ? (
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-400/5 px-3 py-2">
+                    <span className="text-xs text-red-300">确认卸载？</span>
+                    <button
+                      type="button"
+                      onClick={handleUninstall}
+                      disabled={uninstalling}
+                      className="rounded bg-red-400/20 px-2 py-0.5 text-xs text-red-200 hover:bg-red-400/30 disabled:opacity-50"
+                    >
+                      {uninstalling ? "卸载中..." : "确认"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmUninstall(false)}
+                      className="rounded bg-os-elevated px-2 py-0.5 text-xs text-os-subtle hover:text-os-text-high"
+                    >
+                      取消
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmUninstall(true)}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:border-red-400/30 hover:text-red-300"
+                  >
+                    <Trash2 size={14} />
+                    卸载
+                  </button>
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Right column (1/3) — Sticky sidebar */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-24 space-y-4">
+            {/* Install button card */}
+            <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
+              {isInstalled && installation ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-os-success">
+                    <CheckCircle2 size={16} />
+                    <span className="text-sm font-semibold">已安装</span>
+                  </div>
+                  <p className="text-2xs text-os-subtle">
+                    状态: {installation.enabled ? "运行中" : "已停用"}
+                  </p>
+                  <Link
+                    href="/agent-marketplace/installations"
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-os-success/30 bg-os-success/10 px-3 text-xs font-medium text-os-success transition-colors hover:bg-os-success/15"
+                  >
+                    <Layers size={14} />
+                    管理安装
+                  </Link>
+                </div>
               ) : (
-                <ArrowDownToLine size={14} />
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleInstall}
+                    disabled={installing}
+                    className={cn(
+                      "inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-all duration-200",
+                      installing
+                        ? "border border-os-accent text-os-accent bg-transparent cursor-wait"
+                        : "bg-os-elevated text-os-text hover:bg-os-accent/20 hover:text-os-accent shadow-os-glow",
+                    )}
+                  >
+                    {installing ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <ArrowDownToLine size={15} />
+                    )}
+                    {installing ? "注入内核中..." : "注入内核"}
+                  </button>
+                  <p className="text-center text-2xs text-os-subtle">
+                    安装到当前工作区，立即开始使用
+                  </p>
+                </div>
               )}
-              {installing ? "安装中..." : "安装 Agent"}
-            </button>
+            </section>
+
+            {/* Quick stats */}
+            <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
+              <h4 className="text-2xs font-semibold uppercase tracking-wider text-os-muted">概览</h4>
+              <div className="mt-3 space-y-2.5">
+                <StatRow
+                  icon={<ArrowDownToLine size={13} />}
+                  label="安装次数"
+                  value={String(agent.install_count)}
+                />
+                <StatRow
+                  icon={<Star size={13} className="text-amber-400" />}
+                  label="评分"
+                  value={agent.rating.toFixed(1)}
+                />
+                <StatRow
+                  icon={<Layers size={13} className="text-os-accent" />}
+                  label="能力数"
+                  value={String(agent.capabilities.length)}
+                />
+                <StatRow
+                  icon={<Shield size={13} className="text-os-accent" />}
+                  label="权限需求"
+                  value={String(agent.required_permissions.length)}
+                />
+              </div>
+            </section>
+
+            {/* Permissions pills with icons */}
+            {requiredPerms.length > 0 && (
+              <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
+                <h4 className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-os-muted">
+                  <Shield size={12} />
+                  权限要求
+                </h4>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {requiredPerms.map((perm) => {
+                    const meta = permissionMeta(perm);
+                    return (
+                      <span
+                        key={perm}
+                        className="inline-flex items-center gap-1 rounded-lg border border-os-border bg-os-elevated/60 px-2 py-1 text-2xs text-os-text"
+                        title={perm}
+                      >
+                        <span className="text-xs">{meta.icon}</span>
+                        {meta.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Author / Version metadata */}
+            <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
+              <h4 className="text-2xs font-semibold uppercase tracking-wider text-os-muted">元数据</h4>
+              <div className="mt-3 space-y-2.5">
+                <MetaRow
+                  icon={<User size={13} />}
+                  label="作者"
+                  value={agent.publisher_name}
+                />
+                <MetaRow
+                  icon={<Building2 size={13} />}
+                  label="类型"
+                  value={agent.publisher_type}
+                />
+                <MetaRow
+                  icon={<Layers size={13} />}
+                  label="版本"
+                  value={`v${agent.version}`}
+                />
+                {agent.department && (
+                  <MetaRow
+                    icon={<Building2 size={13} />}
+                    label="部门"
+                    value={agent.department}
+                  />
+                )}
+              </div>
+            </section>
           </div>
-        )}
-      </section>
+        </div>
+      </div>
 
       {/* Config Dialog */}
       {installation && (
@@ -487,22 +750,42 @@ export default function MarketplaceAgentDetailPage() {
   );
 }
 
-function Metric({
+function StatRow({
+  icon,
   label,
   value,
-  icon,
 }: {
+  icon: React.ReactNode;
   label: string;
   value: string;
-  icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-os-border bg-os-elevated/30 px-3 py-2 text-center">
-      <p className="text-2xs text-os-muted">{label}</p>
-      <p className="mt-1 flex items-center justify-center gap-1 text-sm font-semibold text-os-text-high">
+    <div className="flex items-center justify-between">
+      <span className="inline-flex items-center gap-2 text-xs text-os-subtle">
         {icon}
-        {value}
-      </p>
+        {label}
+      </span>
+      <span className="text-xs font-semibold text-os-text-high">{value}</span>
+    </div>
+  );
+}
+
+function MetaRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="inline-flex shrink-0 items-center gap-2 text-xs text-os-subtle">
+        {icon}
+        {label}
+      </span>
+      <span className="truncate text-xs font-medium text-os-text-high">{value}</span>
     </div>
   );
 }

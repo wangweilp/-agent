@@ -32,7 +32,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-os-accent animate-pulse" />
           )}
         </div>
-        <span className="text-xs font-medium text-os-text-high">Agent 活动</span>
+        <span className="text-xs font-medium text-os-text-high">智能体活动</span>
         <div className="flex-1" />
         <div className={`
           flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs
@@ -72,7 +72,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
                 {status === "thinking" && "深度思考中"}
                 {status === "acting" && "执行工具"}
                 {status === "reflecting" && "自我反思"}
-                {status === "idle" && "Agent 就绪"}
+                {status === "idle" && "智能体就绪"}
               </p>
               <p className="text-2xs text-os-muted mt-0.5">
                 {isIdle ? "等待您的指令，随时可以开始对话" : "正在处理您的请求..."}
@@ -217,7 +217,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
             <div className="space-y-1.5">
               {[
                 { icon: CircleDot, text: "输入问题开始对话" },
-                { icon: CircleDot, text: "Agent 自动检索相关记忆" },
+                { icon: CircleDot, text: "智能体自动检索相关记忆" },
                 { icon: CircleDot, text: "支持图片上传与 OCR" },
                 { icon: CircleDot, text: "工具调用实时可见" },
               ].map((item, i) => (
