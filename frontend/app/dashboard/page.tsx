@@ -2,23 +2,20 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import {
-  Brain,
-  Layers,
-  Archive,
-  GitMerge,
-  Lightbulb,
-  TrendingUp,
-  Tag,
-  Cpu,
   Activity,
+  Archive,
   BarChart3,
+  Brain,
+  Cpu,
+  GitMerge,
+  Layers,
+  Lightbulb,
+  Tag,
+  TrendingUp,
 } from "lucide-react";
 import { api } from "@/services/api";
 import { PageTransition, StaggerItem } from "@/components/animations/page-transition";
-import { CardSkeleton } from "@/components/animations/skeleton";
-import { StatusCard } from "@/components/dashboard/status-card";
 import { TraceTimeline } from "@/components/dashboard/trace-timeline";
 import { MemoryChart } from "@/components/dashboard/memory-chart";
 import { RuntimeMonitor } from "@/components/dashboard/runtime-monitor";
@@ -27,10 +24,18 @@ import { RecentMemories } from "@/components/dashboard/recent-memories";
 import { RecentReflections } from "@/components/dashboard/recent-reflections";
 import { EntityList } from "@/components/dashboard/entity-list";
 import { SaaSMetrics } from "@/components/dashboard/saas-metrics";
+import {
+  InfoBanner,
+  MetricCard,
+  OsBadge,
+  OsCard,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusBadge,
+} from "@/components/ui/os";
 import { cn, formatNumber } from "@/lib/utils";
 import { layout } from "@/styles/layout";
-
-// ── 辅助函数 ──
 
 interface ChartDataPoint {
   label: string;
@@ -40,12 +45,6 @@ interface ChartDataPoint {
   reflect: number;
 }
 
-/**
- * 将记忆列表按日期聚合成图表数据。
- * days=7  → 最近 7 天，每天一条柱
- * days=30 → 最近 30 天，每 3 天聚合一条
- * days=90 → 最近 90 天，每 7 天聚合一条
- */
 function aggregateByDay(
   memories: { timestamp: string; memory_type: string }[],
   days: number,
@@ -57,31 +56,33 @@ function aggregateByDay(
   if (days >= 60) bucketSize = 7;
   else if (days >= 14) bucketSize = 3;
 
-  // 生成空桶
   for (let i = days - 1; i >= 0; i -= bucketSize) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const key = bucketSize >= 7
-      ? d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
-      : d.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+    const key =
+      bucketSize >= 7
+        ? d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
+        : d.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
     buckets.set(key, { episodic: 0, semantic: 0, reflect: 0 });
   }
 
-  // 填充数据
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - days);
   for (const mem of memories) {
     const t = new Date(mem.timestamp);
     if (t < cutoff) continue;
+
     const d = new Date(t);
     if (bucketSize >= 7) {
-      d.setDate(d.getDate() - d.getDay()); // 对齐到周
+      d.setDate(d.getDate() - d.getDay());
     } else if (bucketSize >= 3) {
       d.setDate(d.getDate() - (d.getDate() % bucketSize));
     }
-    const key = bucketSize >= 7
-      ? d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
-      : d.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+
+    const key =
+      bucketSize >= 7
+        ? d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" })
+        : d.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
     const bucket = buckets.get(key);
     if (bucket) {
       if (mem.memory_type === "semantic") bucket.semantic++;
@@ -97,10 +98,7 @@ function aggregateByDay(
   }));
 }
 
-// ── 页面组件 ──
-
 export default function DashboardPage() {
-  // 数据查询
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["dashboard-summary"],
     queryFn: () => api.dashboard.summary(),
@@ -143,238 +141,205 @@ export default function DashboardPage() {
     refetchInterval: 5000,
   });
 
-  // 图表数据：从 recentMemories 按天聚合（30 天窗口）
   const chartData = useMemo(() => {
     if (!recentMemories || recentMemories.length === 0) return [];
     return aggregateByDay(recentMemories, 30);
   }, [recentMemories]);
 
+  const totalQueue = (summary?.queue_depth || 0) + (summary?.dlq_count || 0);
+
   return (
     <PageTransition>
-      <div className={`${layout.pageDashboard} space-y-5 max-w-[1440px] mx-auto`}>
-        {/* ── Page header ── */}
-        <div className={layout.flexBetween}>
-          <div>
-            <h1 className="text-lg font-semibold text-os-text-high tracking-tight">记忆仪表盘</h1>
-            <p className="text-xs text-os-subtle mt-0.5">你的第二大脑 — 记忆全景</p>
-          </div>
-          <div className="flex items-center gap-2 text-2xs text-os-muted">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-breathe" />
-            实时监控中
-          </div>
-        </div>
+      <PageShell>
+        <PageHeader
+          icon={BarChart3}
+          title="记忆仪表盘"
+          subtitle="面向工作区的记忆增长、知识主题、运行状态与 trace 流水线总览。"
+          actions={
+            <>
+              <StatusBadge status={summary?.dlq_count ? "warning" : "ready"}>
+                {summary?.dlq_count ? "需要关注" : "实时监控中"}
+              </StatusBadge>
+              <OsBadge variant="muted">15s refresh</OsBadge>
+            </>
+          }
+        />
 
-        {/* ── SaaS Metrics ── */}
         <SaaSMetrics />
 
-        {/* ── Memory Stats Cards (5 格) ── */}
         <div className={layout.grid.five}>
           <StaggerItem delay={0}>
-            <StatusCard
+            <MetricCard
               icon={Brain}
               label="总记忆"
               value={summaryLoading ? "..." : formatNumber(summary?.total_memories || 0)}
-              accent="indigo"
+              detail="episodic / semantic / reflect"
+              accent="primary"
             />
           </StaggerItem>
           <StaggerItem delay={0.03}>
-            <StatusCard
+            <MetricCard
               icon={Layers}
               label="活跃记忆"
               value={summaryLoading ? "..." : formatNumber(summary?.active_memories || 0)}
-              accent="emerald"
+              detail="可被检索与召回"
+              accent="success"
             />
           </StaggerItem>
           <StaggerItem delay={0.06}>
-            <StatusCard
+            <MetricCard
               icon={Archive}
               label="已归档"
               value={summaryLoading ? "..." : formatNumber(summary?.archived_memories || 0)}
-              accent="amber"
+              detail="低频但保留上下文"
+              accent="warning"
             />
           </StaggerItem>
           <StaggerItem delay={0.09}>
-            <StatusCard
+            <MetricCard
               icon={GitMerge}
               label="已合并"
               value={summaryLoading ? "..." : formatNumber(summary?.merged_memories || 0)}
-              accent="violet"
+              detail="去重与语义聚合"
+              accent="info"
             />
           </StaggerItem>
           <StaggerItem delay={0.12}>
-            <StatusCard
+            <MetricCard
               icon={Lightbulb}
               label="反思"
               value={summaryLoading ? "..." : formatNumber(summary?.reflect_count || 0)}
-              accent="amber"
+              detail="自动沉淀的洞察"
+              accent="warning"
             />
           </StaggerItem>
         </div>
 
-        {/* ── Memory Growth + Top Topics ── */}
+        <InfoBanner icon={Cpu} variant={totalQueue > 5 ? "warning" : "info"}>
+          当前队列深度 {summary?.queue_depth || 0}，DLQ {summary?.dlq_count || 0}。运行时面板会同步展示 worker、任务耗时与最近写入状态。
+        </InfoBanner>
+
         <div className={layout.grid.threeLg}>
-          {/* Growth Chart (2/3) */}
-          <div className="lg:col-span-2">
-            <StaggerItem delay={0.15}>
-              <div className="os-card p-4 h-full">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp size={14} className="text-os-accent" />
-                  <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
-                    记忆增长 (30天)
-                  </h2>
-                  {!recentLoading && (
-                    <span className="text-2xs text-os-muted ml-auto">
-                      {summary?.episodic_count || 0} 情景 · {summary?.semantic_count || 0} 语义 · {summary?.reflect_count || 0} 反思
-                    </span>
+          <OsCard className="lg:col-span-2" padding="md">
+            <SectionHeader
+              icon={TrendingUp}
+              title="记忆增长"
+              subtitle="最近 30 天按记忆类型聚合，保持固定图表高度，避免空数据时布局塌陷。"
+              actions={
+                !recentLoading && (
+                  <OsBadge variant="muted">
+                    {summary?.episodic_count || 0} 情景 / {summary?.semantic_count || 0} 语义 / {summary?.reflect_count || 0} 反思
+                  </OsBadge>
+                )
+              }
+              className="mb-4"
+            />
+            <MemoryChart data={chartData} isLoading={recentLoading} />
+          </OsCard>
+
+          <OsCard padding="md">
+            <SectionHeader
+              icon={Tag}
+              title="热门主题"
+              subtitle="按提及次数排序，使用 rank 与微型进度条呈现。"
+              actions={<OsBadge variant="muted">{topics?.length || 0} 个</OsBadge>}
+              className="mb-4"
+            />
+            <TopicList topics={topics} isLoading={topicsLoading} />
+          </OsCard>
+        </div>
+
+        <div className={layout.grid.twoLg}>
+          <OsCard padding="md">
+            <SectionHeader
+              icon={Brain}
+              title="最近记忆"
+              subtitle="保留时间线结构，降低颜色饱和度并强化内容扫描。"
+              actions={<OsBadge variant="muted">{recentMemories?.slice(0, 15).length || 0} 条</OsBadge>}
+              className="mb-4"
+            />
+            <RecentMemories memories={recentMemories?.slice(0, 15)} isLoading={recentLoading} />
+          </OsCard>
+
+          <OsCard padding="md">
+            <SectionHeader
+              icon={Lightbulb}
+              title="最近反思"
+              subtitle="展示高价值 insight，而不是松散文本堆叠。"
+              actions={<OsBadge variant="muted">{reflections?.length || 0} 条</OsBadge>}
+              className="mb-4"
+            />
+            <RecentReflections reflections={reflections} isLoading={reflectionsLoading} />
+          </OsCard>
+        </div>
+
+        <div className={layout.grid.threeLg}>
+          <OsCard className="lg:col-span-2" padding="md">
+            <SectionHeader
+              icon={Tag}
+              title="实体图谱摘要"
+              subtitle="从记忆流抽取的实体标签，按提及强度控制尺寸与层级。"
+              actions={<OsBadge variant="muted">{entities?.length || 0} 个</OsBadge>}
+              className="mb-4"
+            />
+            <EntityList entities={entities} isLoading={entitiesLoading} />
+          </OsCard>
+
+          <OsCard padding="md">
+            <SectionHeader icon={Activity} title="系统健康" subtitle="写入 worker、队列与本周统计。" className="mb-4" />
+            <div className="space-y-4">
+              {summary && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-os-border bg-os-surface-tinted p-3">
+                    <span className="text-xs text-os-muted">队列待处理</span>
+                    <p className={cn("mt-1 font-mono text-xl font-semibold", summary.queue_depth > 5 ? "text-os-warning" : "text-os-success")}>
+                      {summary.queue_depth}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-os-border bg-os-surface-tinted p-3">
+                    <span className="text-xs text-os-muted">DLQ 积压</span>
+                    <p className={cn("mt-1 font-mono text-xl font-semibold", summary.dlq_count > 0 ? "text-os-danger" : "text-os-muted")}>
+                      {summary.dlq_count}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <RuntimeMonitor />
+
+              {weeklyReport && (
+                <div className="rounded-2xl border border-os-border bg-white p-4">
+                  <p className="text-sm leading-6 text-os-text">{weeklyReport.message}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-os-muted">
+                    <OsBadge variant="success">本周 +{weeklyReport.stats.week_new_memories} 条</OsBadge>
+                    <OsBadge variant="warning">反思 {weeklyReport.stats.week_reflections} 条</OsBadge>
+                  </div>
+                  {weeklyReport.stats.week_top_entities.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {weeklyReport.stats.week_top_entities.map((name) => (
+                        <OsBadge key={name} variant="muted">
+                          #{name}
+                        </OsBadge>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <MemoryChart data={chartData} isLoading={recentLoading} />
-                {/* Legend */}
-                <div className="flex items-center gap-4 mt-2 text-2xs">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-indigo-400" /> 情景</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-400" /> 语义</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400" /> 反思</span>
-                </div>
-              </div>
-            </StaggerItem>
-          </div>
-
-          {/* Top Topics (1/3) */}
-          <StaggerItem delay={0.2}>
-            <div className="os-card p-4 h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <Tag size={14} className="text-os-accent" />
-                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">热门主题</h2>
-                <span className="text-2xs text-os-muted ml-auto">
-                  {topics?.length || 0} 个
-                </span>
-              </div>
-              <TopicList topics={topics} isLoading={topicsLoading} />
+              )}
             </div>
-          </StaggerItem>
+          </OsCard>
         </div>
 
-        {/* ── Recent Memories + Recent Reflections ── */}
-        <div className={layout.grid.twoLg}>
-          {/* Recent Memories */}
-          <StaggerItem delay={0.25}>
-            <div className="os-card p-4 h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <Brain size={14} className="text-os-accent" />
-                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">最近记忆</h2>
-                <span className="text-2xs text-os-muted ml-auto">
-                  {recentMemories?.slice(0, 15).length || 0} 条
-                </span>
-              </div>
-              <RecentMemories
-                memories={recentMemories?.slice(0, 15)}
-                isLoading={recentLoading}
-              />
-            </div>
-          </StaggerItem>
-
-          {/* Recent Reflections */}
-          <StaggerItem delay={0.3}>
-            <div className="os-card p-4 h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <Lightbulb size={14} className="text-os-accent" />
-                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">最近反思</h2>
-                <span className="text-2xs text-os-muted ml-auto">
-                  {reflections?.length || 0} 条
-                </span>
-              </div>
-              <RecentReflections reflections={reflections} isLoading={reflectionsLoading} />
-            </div>
-          </StaggerItem>
-        </div>
-
-        {/* ── Top Entities + System Health ── */}
-        <div className={layout.grid.threeLg}>
-          {/* Top Entities */}
-          <div className="lg:col-span-2">
-          <StaggerItem delay={0.35}>
-            <div className="os-card p-4 h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <Tag size={14} className="text-os-accent" />
-                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">实体图谱</h2>
-                <span className="text-2xs text-os-muted ml-auto">
-                  {entities?.length || 0} 个
-                </span>
-              </div>
-              <EntityList entities={entities} isLoading={entitiesLoading} />
-            </div>
-          </StaggerItem>
-          </div>
-
-          {/* System Health */}
-          <StaggerItem delay={0.4}>
-            <div className="os-card p-4 h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <Activity size={14} className="text-os-accent" />
-                <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">系统健康</h2>
-              </div>
-              <div className="space-y-4">
-                {/* Queue indicators */}
-                {summary && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="os-card p-2 text-center">
-                      <span className="text-2xs text-os-subtle">队列待处理</span>
-                      <p className={cn("text-sm font-mono font-semibold", summary.queue_depth > 5 ? "text-amber-400" : "text-emerald-400")}>
-                        {summary.queue_depth}
-                      </p>
-                    </div>
-                    <div className="os-card p-2 text-center">
-                      <span className="text-2xs text-os-subtle">DLQ 积压</span>
-                      <p className={cn("text-sm font-mono font-semibold", summary.dlq_count > 0 ? "text-red-400" : "text-os-subtle")}>
-                        {summary.dlq_count}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Runtime Monitor */}
-                <RuntimeMonitor />
-
-                {/* Weekly Report Status */}
-                {weeklyReport && (
-                  <div className="border border-os-border/30 rounded-lg p-3 text-center">
-                    <p className="text-2xs text-os-muted mb-1">
-                      {weeklyReport.message}
-                    </p>
-                    <div className="flex items-center justify-center gap-3 text-2xs text-os-subtle">
-                      <span>本周 +{weeklyReport.stats.week_new_memories} 条</span>
-                      <span>反思 {weeklyReport.stats.week_reflections} 条</span>
-                    </div>
-                    {weeklyReport.stats.week_top_entities.length > 0 && (
-                      <div className="flex items-center justify-center gap-1.5 mt-1.5 flex-wrap">
-                        {weeklyReport.stats.week_top_entities.map((name) => (
-                          <span key={name} className="text-2xs px-1.5 py-0.5 rounded bg-os-surface text-indigo-400/70">
-                            #{name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </StaggerItem>
-        </div>
-
-        {/* ── Trace Timeline ── */}
-        <StaggerItem delay={0.45}>
-          <div className="os-card p-4">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 size={14} className="text-os-accent" />
-              <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">实时 Trace</h2>
-              <span className="text-2xs text-os-muted ml-auto">
-                {traces?.length || 0} 条记录
-              </span>
-            </div>
-            <TraceTimeline traces={traces || []} />
-          </div>
-        </StaggerItem>
-      </div>
+        <OsCard padding="md">
+          <SectionHeader
+            icon={BarChart3}
+            title="实时 Trace"
+            subtitle="最近的推理、工具调用、记忆读写与反思执行瀑布流。"
+            actions={<OsBadge variant="muted">{traces?.length || 0} 条记录</OsBadge>}
+            className="mb-4"
+          />
+          <TraceTimeline traces={traces || []} />
+        </OsCard>
+      </PageShell>
     </PageTransition>
   );
 }

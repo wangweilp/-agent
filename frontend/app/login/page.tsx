@@ -104,7 +104,7 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-os-surface via-[#000000] to-[#000000]">
+    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-os-base to-os-base">
       {/* 网格背景层 */}
       <div className="absolute inset-0 bg-grid-subtle opacity-40 pointer-events-none" />
 
@@ -157,7 +157,7 @@ export default function LoginPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="backdrop-blur-2xl bg-os-surface/40 border border-os-border/50 shadow-2xl rounded-2xl p-6"
+          className="backdrop-blur-2xl bg-os-surface/40 border border-os-border/50 shadow-os-lg rounded-2xl p-6"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name (register only) */}

@@ -85,8 +85,8 @@ export function AgentConfigDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-lg rounded-lg border border-os-border bg-os-base shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 px-4">
+      <div className="w-full max-w-lg rounded-lg border border-os-border bg-os-base shadow-os-lg">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-os-border px-5 py-3">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-os-text-high">

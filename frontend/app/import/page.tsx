@@ -515,7 +515,7 @@ export default function ImportPage() {
               </div>
 
               {/* ── 终端风格日志面板 ── */}
-              <div className="mt-4 rounded-xl border border-os-border/50 bg-[#000000] overflow-hidden">
+              <div className="mt-4 rounded-xl border border-os-border/50 bg-slate-50 overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-os-border/30">
                   <div className="flex items-center gap-1.5">
                     <Terminal size={11} className="text-os-success" />
@@ -697,7 +697,7 @@ export default function ImportPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 backdrop-blur-[2px]"
               onClick={() => setDeleteConfirmId(null)}
             >
               <motion.div

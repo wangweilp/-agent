@@ -20,7 +20,7 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
   };
 
   return (
-    <div className="group relative my-3 rounded-xl border border-os-border bg-[#0a0a0b] overflow-hidden">
+    <div className="group relative my-3 overflow-hidden rounded-xl border border-os-border bg-slate-50">
       {/* Header: 语言标签 + Copy 按钮 */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-os-border/50 bg-os-elevated/40">
         <span className="text-2xs text-os-muted font-mono">{language || "text"}</span>
@@ -42,7 +42,7 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
         </button>
       </div>
       <Highlight
-        theme={themes.vsDark}
+        theme={themes.github}
         code={value}
         language={(language || "text") as never}
       >

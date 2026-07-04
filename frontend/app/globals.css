@@ -3,120 +3,188 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --page: #f7f8fb;
+    --page-elevated: #fafbfc;
+    --background: #f7f8fb;
+    --background-elevated: #fafbfc;
+    --surface: #ffffff;
+    --surface-muted: #f3f5f8;
+    --surface-hover: #f6f7fa;
+    --surface-subtle: #f8fafc;
+    --foreground: #111318;
+    --foreground-secondary: #303846;
+    --muted-foreground: #667085;
+    --faint-foreground: #98a2b3;
+    --border-subtle: rgba(17, 19, 24, 0.065);
+    --border: rgba(17, 19, 24, 0.10);
+    --border-strong: rgba(17, 19, 24, 0.16);
+    --primary: #5a5ce2;
+    --primary-hover: #4f50cc;
+    --primary-soft: rgba(90, 92, 226, 0.08);
+    --status-success: #18a77b;
+    --status-success-soft: rgba(24, 167, 123, 0.09);
+    --status-warning: #b7791f;
+    --status-warning-soft: rgba(183, 121, 31, 0.10);
+    --status-danger: #c92a2a;
+    --status-danger-soft: rgba(201, 42, 42, 0.08);
+    --status-info: #3178c6;
+    --status-info-soft: rgba(49, 120, 198, 0.09);
+    --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.035);
+    --shadow-2: 0 1px 2px rgba(16, 24, 40, 0.035), 0 12px 30px rgba(16, 24, 40, 0.025);
+    --shadow-3: 0 2px 8px rgba(16, 24, 40, 0.04), 0 18px 44px rgba(16, 24, 40, 0.055);
+    --shadow-brand: 0 10px 24px rgba(90, 92, 226, 0.16);
+    --shadow-focus: 0 0 0 3px rgba(90, 92, 226, 0.18);
+  }
+
   * {
     @apply border-os-border;
   }
+
+  html,
   body {
-    @apply bg-os-base text-os-text antialiased;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply bg-os-page text-os-text antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
   }
+
   ::selection {
-    @apply bg-os-accent/20 text-os-text-high;
+    @apply bg-os-primary/20 text-os-text-high;
   }
-  /* 全局溢出护城河 — 防止 pre/code 横向炸屏 */
-  pre, code {
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  pre,
+  code {
     overflow-x: auto;
   }
-  /* 表格横向滚动（移动端友好，不破坏 desktop table-layout） */
+
   table {
-    overflow-x: auto;
+    min-width: 0;
   }
-  /* Cyberpunk 暗黑滚动条 — WebKit (Chrome / Edge / Safari) */
+
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
+
   ::-webkit-scrollbar-track {
     background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
-    background: #3F3F46;
-    border-radius: 4px;
+    background: #d0d5dd;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
   }
+
   ::-webkit-scrollbar-thumb:hover {
-    background: #52525B;
+    background: #98a2b3;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
-  /* Firefox 滚动条 — 与 WebKit 保持视觉一致 */
+
   * {
     scrollbar-width: thin;
-    scrollbar-color: #3F3F46 transparent;
+    scrollbar-color: #d0d5dd transparent;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-os-surface/60 backdrop-blur-xl border border-white/[0.04] shadow-os-sm;
+    @apply border border-os-border bg-white/90 shadow-os-card backdrop-blur-md;
   }
+
   .glass-elevated {
-    @apply bg-os-elevated/70 backdrop-blur-xl border border-white/[0.06] shadow-os-md;
+    @apply border border-os-border-subtle bg-white/95 shadow-os-elevated backdrop-blur-md;
   }
+
   .os-card {
-    @apply bg-os-surface border border-os-border rounded-os shadow-os-sm;
+    @apply rounded-2xl border border-os-border bg-white shadow-os-card;
   }
+
   .os-card-hover {
-    @apply transition-all duration-200 hover:border-os-muted hover:shadow-os-md;
+    @apply transition-[border-color,box-shadow,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-os-primary/25 hover:shadow-os-elevated;
   }
+
+  .os-panel {
+    @apply rounded-2xl border border-os-border bg-white shadow-os-card;
+  }
+
+  .os-panel-elevated {
+    @apply rounded-2xl border border-os-border-subtle bg-white shadow-os-elevated;
+  }
+
   .os-divider {
     @apply border-t border-os-border;
   }
+
   .os-badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 text-2xs font-medium rounded-full;
+    @apply inline-flex items-center gap-1 rounded-full border border-os-border bg-white px-2.5 py-0.5 text-[11px] font-medium leading-5 text-os-subtle;
   }
+
+  .os-control {
+    @apply h-9 rounded-xl border border-os-border bg-white px-3 text-sm text-os-text-high outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-os-muted focus:border-os-primary/35 focus:ring-2 focus:ring-os-primary/15;
+  }
+
+  .os-empty {
+    @apply flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-os-border bg-os-surface-tinted px-6 py-10 text-center;
+  }
+
   .text-gradient {
-    @apply bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-os-text-high to-os-text bg-clip-text text-transparent;
   }
 
-  /* ── 新增：科技感面板 ── */
-  .os-panel {
-    @apply bg-os-surface/80 backdrop-blur-sm border border-os-border/70 rounded-os shadow-os-sm;
-  }
-  .os-panel-elevated {
-    @apply bg-os-elevated/90 backdrop-blur-md border border-white/[0.05] rounded-os shadow-os-md;
-  }
-
-  /* ── 新增：发光边框容器 ── */
   .os-glow-border {
     @apply relative;
   }
+
   .os-glow-border::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, rgba(129,140,248,0.15), transparent 40%, transparent 60%, rgba(129,140,248,0.08));
+    background: linear-gradient(135deg, rgba(90, 92, 226, 0.12), transparent 42%, rgba(49, 120, 198, 0.08));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
   }
 
-  /* ── 新增：扫描线动画 ── */
   .scanline {
     @apply relative overflow-hidden;
   }
+
   .scanline::after {
     content: "";
     position: absolute;
-    top: -100%;
-    left: 0;
-    width: 100%;
+    inset: -120% 0 auto;
     height: 100%;
-    background: linear-gradient(180deg, transparent 0%, rgba(129,140,248,0.02) 50%, transparent 100%);
-    animation: scan 6s linear infinite;
+    background: linear-gradient(180deg, transparent 0%, rgba(90, 92, 226, 0.025) 50%, transparent 100%);
+    animation: scan 8s linear infinite;
     pointer-events: none;
   }
 
-  /* ── 新增：脉冲环 ── */
   .pulse-ring {
     @apply relative;
   }
+
   .pulse-ring::before {
     content: "";
     position: absolute;
     inset: -4px;
+    border: 1px solid rgba(90, 92, 226, 0.16);
     border-radius: inherit;
-    border: 1px solid rgba(129,140,248,0.3);
     animation: pulseRing 2s ease-out infinite;
     pointer-events: none;
   }
@@ -124,51 +192,60 @@
 
 @layer utilities {
   .shimmer-bg {
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(90, 92, 226, 0.05) 50%, transparent 100%);
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
   }
 
-  /* ── 新增：网格背景纹理 ── */
   .bg-grid-subtle {
     background-image:
-      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      linear-gradient(rgba(17, 19, 24, 0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(17, 19, 24, 0.018) 1px, transparent 1px);
     background-size: 40px 40px;
   }
 
-  /* ── 新增：噪点纹理 ── */
   .bg-noise {
     position: relative;
   }
+
   .bg-noise::before {
     content: "";
     position: absolute;
     inset: 0;
-    opacity: 0.012;
+    opacity: 0.018;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-size: 128px 128px;
     pointer-events: none;
   }
 
-  /* ── 新增：顶部渐变光晕 ── */
   .bg-glow-top {
     background:
-      radial-gradient(ellipse 600px 300px at 50% 0%, rgba(129,140,248,0.04), transparent 70%),
-      radial-gradient(ellipse 400px 200px at 80% 0%, rgba(99,102,241,0.03), transparent 60%);
+      radial-gradient(ellipse 560px 260px at 50% 0%, rgba(255, 255, 255, 0.72), transparent 70%),
+      radial-gradient(ellipse 360px 180px at 82% 0%, rgba(49, 120, 198, 0.03), transparent 60%);
   }
 
-  /* ── 新增：底部光晕 ── */
-  .bg-glow-bottom {
-    background:
-      radial-gradient(ellipse 500px 200px at 50% 100%, rgba(129,140,248,0.03), transparent 70%);
+  .runtime-flow {
+    stroke-dasharray: 10 16;
+    animation: runtimeFlow 5.8s linear infinite;
+  }
+
+  .runtime-flow-slow {
+    stroke-dasharray: 8 18;
+    animation: runtimeFlow 7.2s linear infinite;
+  }
+
+  .runtime-status-pulse {
+    animation: statusBreathe 2.6s ease-in-out infinite;
   }
 }
 
-/* ── 动画关键帧 ── */
 @keyframes scan {
-  0% { top: -100%; }
-  100% { top: 200%; }
+  0% {
+    top: -120%;
+  }
+  100% {
+    top: 220%;
+  }
 }
 
 @keyframes pulseRing {
@@ -179,5 +256,33 @@
   100% {
     opacity: 0;
     transform: scale(1.3);
+  }
+}
+
+@keyframes runtimeFlow {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -52;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .runtime-flow,
+  .runtime-flow-slow,
+  .runtime-status-pulse,
+  .scanline::after,
+  .pulse-ring::before {
+    animation: none !important;
   }
 }

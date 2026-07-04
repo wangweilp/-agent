@@ -122,7 +122,7 @@ export default function AgentDetailPage() {
       {/* 面包屑 */}
       <Link
         href="/agents"
-        className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white mb-6 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-os-subtle hover:text-os-accent mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         返回 Agent 中心
@@ -135,17 +135,17 @@ export default function AgentDetailPage() {
             <Bot className="w-7 h-7 text-blue-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">{agent.name}</h1>
-            <p className="text-gray-400 max-w-lg">{agent.description}</p>
+            <h1 className="text-3xl font-bold text-os-text-high mb-1">{agent.name}</h1>
+            <p className="text-os-subtle max-w-lg">{agent.description}</p>
             <div className="flex items-center gap-3 mt-3">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-os-elevated text-os-text border border-os-border">
                 v{agent.version}
               </span>
               <span
                 className={`text-xs px-2.5 py-1 rounded-full border ${
                   agent.enabled
                     ? "bg-green-500/20 text-green-300 border-green-500/30"
-                    : "bg-gray-800 text-gray-400 border-gray-700"
+                    : "bg-os-elevated text-os-subtle border-os-border"
                 }`}
               >
                 {agent.enabled ? "已启用" : "已停用"}
@@ -153,7 +153,7 @@ export default function AgentDetailPage() {
               {agent.tags?.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700"
+                  className="text-xs px-2 py-1 rounded-full bg-os-elevated text-os-subtle border border-os-border"
                 >
                   {tag}
                 </span>
@@ -209,14 +209,14 @@ export default function AgentDetailPage() {
             icon: Zap,
             label: "状态",
             value: agent.status || "idle",
-            color: agent.status === "done" ? "text-green-400" : "text-gray-400",
+            color: agent.status === "done" ? "text-green-400" : "text-os-subtle",
           },
         ].map(({ icon: Icon, label, value, color }) => (
           <div
             key={label}
-            className="p-4 rounded-xl bg-gray-900/60 border border-gray-800"
+            className="p-4 rounded-xl bg-os-surface border border-os-border"
           >
-            <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+            <div className="flex items-center gap-2 text-os-muted text-xs mb-2">
               <Icon className="w-3.5 h-3.5" />
               {label}
             </div>
@@ -226,8 +226,8 @@ export default function AgentDetailPage() {
       </div>
 
       {/* 执行测试 */}
-      <div className="rounded-xl bg-gray-900/40 border border-gray-800 p-6 mb-8">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+      <div className="rounded-xl bg-os-surface border border-os-border shadow-os-sm p-6 mb-8">
+        <h2 className="text-lg font-semibold text-os-text-high mb-4 flex items-center gap-2">
           <Play className="w-5 h-5 text-blue-400" />
           手动执行
         </h2>
@@ -237,12 +237,12 @@ export default function AgentDetailPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="输入查询或任务描述..."
-            className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-lg bg-os-elevated border border-os-border text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
           />
           <button
             onClick={handleRun}
             disabled={running || !agent.enabled}
-            className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-6 py-2.5 rounded-lg bg-os-accent text-white font-medium hover:bg-os-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {running ? (
               <>
@@ -259,7 +259,7 @@ export default function AgentDetailPage() {
         </div>
 
         {runResult && (
-          <div className="mt-6 p-4 rounded-lg bg-gray-800/60 border border-gray-700">
+          <div className="mt-6 p-4 rounded-lg bg-os-elevated border border-os-border">
             <div className="flex items-center gap-2 mb-3">
               {runResult.success ? (
                 <CheckCircle2 className="w-5 h-5 text-green-400" />
@@ -271,7 +271,7 @@ export default function AgentDetailPage() {
               >
                 {runResult.success ? "执行成功" : "执行失败"}
               </span>
-              <span className="text-gray-500 text-sm">
+              <span className="text-os-muted text-sm">
                 {runResult.duration_ms > 0
                   ? `耗时 ${runResult.duration_ms.toFixed(0)}ms`
                   : ""}
@@ -284,10 +284,10 @@ export default function AgentDetailPage() {
 
             {runResult.plan.length > 0 && (
               <details className="mb-3">
-                <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+                <summary className="text-sm text-os-subtle cursor-pointer hover:text-os-text">
                   执行计划 ({runResult.plan.length} 步)
                 </summary>
-                <ol className="mt-2 pl-5 text-sm text-gray-500 list-decimal space-y-1">
+                <ol className="mt-2 pl-5 text-sm text-os-muted list-decimal space-y-1">
                   {runResult.plan.map((step, i) => (
                     <li key={i}>{step}</li>
                   ))}
@@ -297,14 +297,14 @@ export default function AgentDetailPage() {
 
             {runResult.output && (
               <div className="mt-2">
-                <p className="text-xs text-gray-500 mb-1">输出</p>
-                <pre className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-900/60 rounded-lg p-3 max-h-64 overflow-y-auto">
+                <p className="text-xs text-os-muted mb-1">输出</p>
+                <pre className="text-sm text-os-text whitespace-pre-wrap bg-os-surface rounded-lg p-3 max-h-64 overflow-y-auto">
                   {runResult.output}
                 </pre>
               </div>
             )}
 
-            <div className="flex gap-4 mt-3 text-xs text-gray-500">
+            <div className="flex gap-4 mt-3 text-xs text-os-muted">
               <span>🔧 工具调用: {runResult.tool_calls_count}</span>
               <span>🧠 记忆调用: {runResult.memory_calls_count}</span>
               <span>🕸️ 图谱调用: {runResult.kg_calls_count}</span>
@@ -314,17 +314,17 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Agent 配置 */}
-      <div className="rounded-xl bg-gray-900/40 border border-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Settings className="w-5 h-5 text-gray-400" />
+      <div className="rounded-xl bg-os-surface border border-os-border shadow-os-sm p-6">
+        <h2 className="text-lg font-semibold text-os-text-high mb-4 flex items-center gap-2">
+          <Settings className="w-5 h-5 text-os-subtle" />
           配置信息
         </h2>
         {agent.config && Object.keys(agent.config).length > 0 ? (
-          <pre className="text-sm text-gray-300 bg-gray-900/60 rounded-lg p-4 overflow-x-auto">
+          <pre className="text-sm text-os-text bg-os-surface rounded-lg p-4 overflow-x-auto">
             {JSON.stringify(agent.config, null, 2)}
           </pre>
         ) : (
-          <p className="text-gray-500 text-sm">暂无可配置项</p>
+          <p className="text-os-muted text-sm">暂无可配置项</p>
         )}
       </div>
     </div>

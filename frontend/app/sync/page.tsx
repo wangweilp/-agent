@@ -987,7 +987,7 @@ export default function SyncPage() {
                     </div>
 
                     {/* 终端日志面板 */}
-                    <div className="rounded-xl border border-os-border/50 bg-[#000000] overflow-hidden">
+                    <div className="rounded-xl border border-os-border/50 bg-slate-50 overflow-hidden">
                       <div className="flex items-center justify-between px-3 py-2 border-b border-os-border/30">
                         <div className="flex items-center gap-1.5">
                           <Terminal size={11} className="text-os-success" />
@@ -1047,7 +1047,7 @@ export default function SyncPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/60 backdrop-blur-sm overflow-y-auto"
+              className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-slate-950/20 backdrop-blur-sm overflow-y-auto"
               onClick={() => setConnectorModal(false)}
             >
               <motion.div
@@ -1236,7 +1236,7 @@ export default function SyncPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-black/60 backdrop-blur-sm overflow-y-auto"
+              className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] bg-slate-950/20 backdrop-blur-sm overflow-y-auto"
               onClick={() => setJobModal(false)}
             >
               <motion.div
@@ -1391,7 +1391,7 @@ export default function SyncPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 backdrop-blur-sm"
               onClick={() => setDeleteConfirm(null)}
             >
               <motion.div

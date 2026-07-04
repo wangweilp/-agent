@@ -247,8 +247,8 @@ export default function AlertsPage() {
 
       {/* Create Rule Modal */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-xl border">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-os-md border">
             <h3 className="text-lg font-bold mb-4">创建告警规则</h3>
             <div className="space-y-3">
               <div>

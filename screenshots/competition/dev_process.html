@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>TRAE - 开发过程</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#1e1e2e; color:#cdd6f4; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+/* Title bar */
+.titlebar { height:30px; background:#181825; display:flex; align-items:center; padding:0 12px; font-size:12px; border-bottom:1px solid #313244; }
+.traffic-lights { display:flex; gap:6px; margin-right:16px; }
+.dot { width:11px; height:11px; border-radius:50%; }
+.dot.red { background:#f38ba8; }
+.dot.yellow { background:#f9e2af; }
+.dot.green { background:#a6e3a1; }
+.title { flex:1; text-align:center; color:#6c7086; font-size:12px; }
+/* Main layout */
+.body-row { flex:1; display:flex; overflow:hidden; }
+/* Activity bar */
+.activity-bar { width:42px; background:#181825; display:flex; flex-direction:column; align-items:center; padding:8px 0; gap:4px; border-right:1px solid #313244; }
+.act-icon { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:6px; font-size:18px; color:#6c7086; cursor:pointer; }
+.act-icon.active { color:#89b4fa; background:#313244; }
+.act-icon:hover { color:#cdd6f4; }
+/* Sidebar (explorer) */
+.sidebar-explorer { width:240px; background:#181825; border-right:1px solid #313244; display:flex; flex-direction:column; font-size:13px; }
+.sidebar-header { padding:8px 12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#6c7086; font-weight:600; }
+.file-tree { padding:0 8px; flex:1; overflow-y:auto; }
+.folder { padding:3px 8px; cursor:pointer; display:flex; align-items:center; gap:4px; color:#cdd6f4; }
+.folder::before { content:"📁"; font-size:12px; }
+.file { padding:3px 8px 3px 24px; cursor:pointer; display:flex; align-items:center; gap:4px; color:#a6adc8; border-radius:4px; }
+.file:hover { background:#313244; }
+.file.active { background:#313244; color:#cdd6f4; }
+.file.ts::before { content:"TS"; font-size:9px; font-weight:700; background:#3178c6; color:#fff; padding:1px 3px; border-radius:2px; }
+.file.tsx::before { content:"TSX"; font-size:8px; font-weight:700; background:#20a0e0; color:#fff; padding:1px 3px; border-radius:2px; }
+.file.py::before { content:"PY"; font-size:8px; font-weight:700; background:#3776ab; color:#ffd43b; padding:1px 3px; border-radius:2px; }
+.file.json::before { content:"{}"; font-size:10px; color:#f9e2af; }
+.file.md::before { content:"MD"; font-size:8px; font-weight:700; background:#519aba; color:#fff; padding:1px 3px; border-radius:2px; }
+/* Editor area */
+.editor-area { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.tabs { height:35px; background:#181825; display:flex; align-items:flex-end; border-bottom:1px solid #313244; padding:0 8px; gap:2px; overflow-x:auto; }
+.tab { height:32px; padding:0 14px; display:flex; align-items:center; gap:8px; background:#1e1e2e; border-radius:6px 6px 0 0; font-size:13px; color:#a6adc8; border:1px solid transparent; white-space:nowrap; cursor:pointer; }
+.tab.active { background:#1e1e2e; color:#cdd6f4; border-color:#313244 #313244 #1e1e2e; }
+.tab-icon { font-size:11px; font-weight:700; background:#20a0e0; color:#fff; padding:1px 3px; border-radius:2px; font-size:9px; }
+.tab-icon.py { background:#3776ab; color:#ffd43b; }
+.code-editor { flex:1; display:flex; overflow:auto; font-family:'Cascadia Code','Fira Code',Consolas,monospace; font-size:13px; line-height:1.6; }
+.line-numbers { padding:12px 0; text-align:right; color:#45475a; user-select:none; min-width:50px; padding-right:12px; }
+.line-numbers div { padding:0 12px; }
+.code-content { padding:12px 16px; flex:1; }
+.kw { color:#cba6f7; }
+.fn { color:#89b4fa; }
+.str { color:#a6e3a1; }
+.cm { color:#6c7086; font-style:italic; }
+.num { color:#fab387; }
+.type { color:#89dceb; }
+.var { color:#f5c2e7; }
+.op { color:#89dceb; }
+.punct { color:#cdd6f4; }
+.decorator { color:#f9e2af; }
+.comment-block { background:#1e1e2e; color:#6c7086; }
+/* Terminal */
+.terminal-panel { height:240px; background:#11111b; border-top:1px solid #313244; display:flex; flex-direction:column; }
+.term-tabs { height:30px; background:#181825; display:flex; align-items:center; padding:0 12px; gap:4px; }
+.term-tab { padding:4px 12px; font-size:12px; color:#6c7086; cursor:pointer; border-radius:4px; }
+.term-tab.active { color:#a6e3a1; background:#313244; }
+.term-content { flex:1; padding:8px 16px; font-family:'Cascadia Code',Consolas,monospace; font-size:12px; line-height:1.6; overflow-y:auto; color:#cdd6f4; }
+.term-prompt { color:#a6e3a1; }
+.term-pass { color:#a6e3a1; font-weight:700; }
+.term-info { color:#89b4fa; }
+.term-warn { color:#f9e2af; }
+.term-dim { color:#6c7086; }
+/* Status bar */
+.statusbar { height:24px; background:#89b4fa; color:#1e1e2e; display:flex; align-items:center; padding:0 12px; font-size:11px; font-weight:600; gap:16px; }
+.statusbar .right { margin-left:auto; display:flex; gap:12px; }
+</style>
+</head>
+<body>
+<div class="titlebar">
+  <div class="traffic-lights">
+    <div class="dot red"></div>
+    <div class="dot yellow"></div>
+    <div class="dot green"></div>
+  </div>
+  <div class="title">useDrawerRuntime.ts — zhiwei-os — Visual Studio Code / TRAE</div>
+</div>
+<div class="body-row">
+  <div class="activity-bar">
+    <div class="act-icon active">📄</div>
+    <div class="act-icon">🔍</div>
+    <div class="act-icon">🔀</div>
+    <div class="act-icon">🐛</div>
+    <div class="act-icon">⚡</div>
+  </div>
+  <div class="sidebar-explorer">
+    <div class="sidebar-header">资源管理器</div>
+    <div class="file-tree">
+      <div class="folder">frontend</div>
+      <div class="folder" style="padding-left:16px;">components</div>
+      <div class="folder" style="padding-left:32px;">layout</div>
+      <div class="file tsx" style="padding-left:48px;">Sidebar.tsx</div>
+      <div class="file tsx active" style="padding-left:48px;">app-layout.tsx</div>
+      <div class="folder" style="padding-left:16px;">hooks</div>
+      <div class="file ts active" style="padding-left:32px;">useDrawerRuntime.ts</div>
+      <div class="file ts" style="padding-left:32px;">useFocusTrap.ts</div>
+      <div class="file ts" style="padding-left:32px;">use-causal-graph.ts</div>
+      <div class="folder" style="padding-left:16px;">lib</div>
+      <div class="folder" style="padding-left:32px;">kernel</div>
+      <div class="folder" style="padding-left:32px;">decision-runtime</div>
+      <div class="folder">src</div>
+      <div class="folder" style="padding-left:16px;">core</div>
+      <div class="file py" style="padding-left:32px;">agent.py</div>
+      <div class="file py" style="padding-left:32px;">memory.py</div>
+      <div class="folder" style="padding-left:16px;">adapters</div>
+      <div class="file py" style="padding-left:32px;">sqlite_store.py</div>
+      <div class="folder" style="padding-left:16px;">open_platform</div>
+      <div class="folder">tests</div>
+      <div class="file json">package.json</div>
+      <div class="file md">README.md</div>
+      <div class="file py">main.py</div>
+    </div>
+  </div>
+  <div class="editor-area">
+    <div class="tabs">
+      <div class="tab"><span class="tab-icon">TSX</span> app-layout.tsx</div>
+      <div class="tab active"><span class="tab-icon">TS</span> useDrawerRuntime.ts ×</div>
+      <div class="tab"><span class="tab-icon">TS</span> useFocusTrap.ts</div>
+      <div class="tab"><span class="tab-icon py">PY</span> sqlite_store.py</div>
+    </div>
+    <div class="code-editor">
+      <div class="line-numbers">
+        <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+        <div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div>
+        <div>21</div><div>22</div><div>23</div><div>24</div>
+      </div>
+      <div class="code-content">
+<span class="kw">import</span> <span class="punct">{</span> <span class="var">useEffect</span> <span class="punct">}</span> <span class="kw">from</span> <span class="str">'react'</span><span class="punct">;</span><br><br>
+<span class="cm">/**</span><br>
+<span class="cm"> * Drawer Runtime Hook — Phase 22</span><br>
+<span class="cm"> * ESC 键关闭 + body 滚动锁定</span><br>
+<span class="cm"> */</span><br>
+<span class="kw">export function</span> <span class="fn">useDrawerRuntime</span><span class="punct">(</span><br>
+&nbsp;&nbsp;<span class="var">isOpen</span><span class="punct">:</span> <span class="type">boolean</span><span class="punct">,</span><br>
+&nbsp;&nbsp;<span class="var">onClose</span><span class="punct">:</span> <span class="punct">()</span> <span class="op">=></span> <span class="type">void</span><br>
+<span class="punct">)</span> <span class="punct">{</span><br>
+&nbsp;&nbsp;<span class="fn">useEffect</span><span class="punct">(()</span> <span class="op">=></span> <span class="punct">{</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> <span class="punct">(!</span><span class="var">isOpen</span><span class="punct">)</span> <span class="kw">return</span><span class="punct">;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> <span class="var">prevOverflow</span> <span class="op">=</span> <span class="var">document</span><span class="punct">.</span><span class="var">body</span><span class="punct">.</span><span class="var">style</span><span class="punct">.</span><span class="var">overflow</span><span class="punct">;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">document</span><span class="punct">.</span><span class="var">body</span><span class="punct">.</span><span class="var">style</span><span class="punct">.</span><span class="var">overflow</span> <span class="op">=</span> <span class="str">'hidden'</span><span class="punct">;</span><br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> <span class="fn">handleKeyDown</span> <span class="op">=</span> <span class="punct">(</span><span class="var">e</span><span class="punct">:</span> <span class="type">KeyboardEvent</span><span class="punct">)</span> <span class="op">=></span> <span class="punct">{</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> <span class="punct">(</span><span class="var">e</span><span class="punct">.</span><span class="var">key</span> <span class="op">===</span> <span class="str">'Escape'</span><span class="punct">)</span> <span class="fn">onClose</span><span class="punct">();</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="punct">};</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">document</span><span class="punct">.</span><span class="fn">addEventListener</span><span class="punct">(</span><span class="str">'keydown'</span><span class="punct">,</span> <span class="var">handleKeyDown</span><span class="punct">);</span><br><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="punct">()</span> <span class="op">=></span> <span class="punct">{</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">document</span><span class="punct">.</span><span class="var">body</span><span class="punct">.</span><span class="var">style</span><span class="punct">.</span><span class="var">overflow</span> <span class="op">=</span> <span class="var">prevOverflow</span><span class="punct">;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="var">document</span><span class="punct">.</span><span class="fn">removeEventListener</span><span class="punct">(</span><span class="str">'keydown'</span><span class="punct">,</span> <span class="var">handleKeyDown</span><span class="punct">);</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="punct">};</span><br>
+&nbsp;&nbsp;<span class="punct">},</span> <span class="punct">[</span><span class="var">isOpen</span><span class="punct">,</span> <span class="var">onClose</span><span class="punct">]);</span><br>
+<span class="punct">}</span><br>
+      </div>
+    </div>
+    <div class="terminal-panel">
+      <div class="term-tabs">
+        <div class="term-tab active">终端 - pytest</div>
+        <div class="term-tab">终端 - tsc</div>
+        <div class="term-tab">终端 - dev server</div>
+      </div>
+      <div class="term-content">
+        <div><span class="term-prompt">PS D:\dma\day2></span> python -m pytest tests/test_adapters/ tests/test_core/ tests/test_tools/ tests/test_api/test_memory_search.py -v --tb=short</div>
+        <div class="term-dim">============================= test session starts ==============================</div>
+        <div>tests/test_adapters/test_sqlite_store.py::TestSQLiteStore::test_store_and_retrieve <span class="term-pass">PASSED</span></div>
+        <div>tests/test_core/test_agent.py::TestCognitiveAgent::test_tool_calling_flow <span class="term-pass">PASSED</span></div>
+        <div>tests/test_tools/test_remember.py::TestImportanceCalculation::test_capped_at_10 <span class="term-pass">PASSED</span></div>
+        <div>tests/test_api/test_memory_search.py::TestMemorySearch::test_keyword_search_returns_results <span class="term-pass">PASSED</span></div>
+        <div>tests/test_api/test_memory_search.py::TestMemorySearch::test_semantic_search_flag <span class="term-pass">PASSED</span></div>
+        <div>tests/test_api/test_memory_search.py::TestMemoryMerge::test_merges_secondary_into_primary <span class="term-pass">PASSED</span></div>
+        <div>...</div>
+        <div class="term-dim">======================== <span class="term-pass">203 passed</span>, 1 warning in 22.18s ========================</div>
+        <br>
+        <div><span class="term-prompt">PS D:\dma\day2\frontend></span> npx tsc --noEmit</div>
+        <div class="term-pass">✓ TypeScript 编译 0 errors</div>
+        <br>
+        <div class="term-info">  Next.js 15.5.18</div>
+        <div class="term-info">  - Local:   http://localhost:3000</div>
+        <div class="term-info">  - Ready in 7.2s</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="statusbar">
+  <span>⚡ TRAE</span>
+  <span>main*</span>
+  <span>0 errors</span>
+  <span>203 tests passed</span>
+  <div class="right">
+    <span>TypeScript React</span>
+    <span>UTF-8</span>
+    <span>LF</span>
+  </div>
+</div>
+</body>
+</html>

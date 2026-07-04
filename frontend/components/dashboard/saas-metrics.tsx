@@ -1,69 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  DollarSign,
-  Users,
-  TrendingUp,
-  TrendingDown,
   Activity,
   CreditCard,
+  DollarSign,
+  TrendingDown,
+  TrendingUp,
   UserCheck,
+  Users,
   UserX,
 } from "lucide-react";
 import { api } from "@/services/api";
+import { MetricCard, OsBadge, SectionHeader } from "@/components/ui/os";
 import type { PlatformStats } from "@/types";
-import { cn, formatNumber } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { layout } from "@/styles/layout";
 
 function formatCurrency(cents: number): string {
-  return `¥${(cents / 100).toLocaleString("zh-CN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `¥${(cents / 100).toLocaleString("zh-CN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
-}
-
-interface MetricCardProps {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent?: "emerald" | "blue" | "purple" | "amber" | "red" | "default";
-  isLoading?: boolean;
-}
-
-function MetricCard({ icon: Icon, label, value, sub, accent = "default", isLoading }: MetricCardProps) {
-  const accentColors: Record<string, string> = {
-    emerald: "text-emerald-400 bg-emerald-400/10",
-    blue: "text-blue-400 bg-blue-400/10",
-    purple: "text-purple-400 bg-purple-400/10",
-    amber: "text-amber-400 bg-amber-400/10",
-    red: "text-red-400 bg-red-400/10",
-    default: "text-os-accent bg-os-accent/10",
-  };
-  const color = accentColors[accent] || accentColors.default;
-
-  return (
-    <div className="os-card p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("w-7 h-7 rounded-md flex items-center justify-center", color.split(" ")[1], color.split(" ")[0])}>
-          <Icon size={14} />
-        </div>
-        <span className="text-xs text-os-subtle">{label}</span>
-      </div>
-      {isLoading ? (
-        <div className="h-7 w-20 bg-os-surface animate-pulse rounded" />
-      ) : (
-        <>
-          <p className="text-xl font-semibold text-os-text-high">{value}</p>
-          {sub && <p className="text-2xs text-os-muted mt-0.5">{sub}</p>}
-        </>
-      )}
-    </div>
-  );
 }
 
 export function SaaSMetrics() {
@@ -74,99 +37,87 @@ export function SaaSMetrics() {
   });
 
   return (
-    <motion.div
+    <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.22 }}
+      className="space-y-3"
     >
-      <div className="flex items-center gap-2 mb-4">
-        <DollarSign size={14} className="text-os-accent" />
-        <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
-          SaaS 指标
-        </h2>
-      </div>
+      <SectionHeader
+        icon={DollarSign}
+        title="SaaS 指标"
+        subtitle="营收、租户与留存指标使用与记忆指标一致的密度和状态色。"
+        actions={<OsBadge variant="muted">30s refresh</OsBadge>}
+      />
 
       <div className={layout.grid.fiveLg}>
-        {/* MRR */}
         <MetricCard
           icon={DollarSign}
           label="MRR"
-          value={stats ? formatCurrency(stats.mrr_cents) : "..."}
-          accent="emerald"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatCurrency(stats.mrr_cents) : "..."}
+          detail="月经常性收入"
+          accent="success"
         />
-
-        {/* ARR */}
         <MetricCard
           icon={TrendingUp}
           label="ARR"
-          value={stats ? formatCurrency(stats.arr_cents) : "..."}
-          accent="blue"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatCurrency(stats.arr_cents) : "..."}
+          detail="年化收入"
+          accent="info"
         />
-
-        {/* Total Tenants */}
         <MetricCard
           icon={Users}
           label="总租户"
-          value={stats ? formatNumber(stats.total_tenants) : "..."}
-          sub={stats ? `活跃 ${stats.active_tenants} · 付费 ${stats.paying_tenants}` : undefined}
-          accent="purple"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatNumber(stats.total_tenants) : "..."}
+          detail={stats ? `活跃 ${stats.active_tenants} / 付费 ${stats.paying_tenants}` : "等待平台统计"}
+          accent="primary"
         />
-
-        {/* Conversion */}
         <MetricCard
           icon={UserCheck}
           label="转化率"
-          value={stats ? formatPercent(stats.conversion_rate) : "..."}
-          sub={stats ? `试用 ${stats.trial_tenants} 个` : undefined}
-          accent="amber"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatPercent(stats.conversion_rate) : "..."}
+          detail={stats ? `试用 ${stats.trial_tenants} 个` : "等待试用数据"}
+          accent="warning"
         />
-
-        {/* Churn */}
         <MetricCard
           icon={UserX}
           label="月流失率"
-          value={stats ? formatPercent(stats.churn_rate) : "..."}
-          sub={stats ? `留存 ${formatPercent(stats.retention_rate)}` : undefined}
-          accent="red"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatPercent(stats.churn_rate) : "..."}
+          detail={stats ? `留存 ${formatPercent(stats.retention_rate)}` : "等待留存数据"}
+          accent={stats && stats.churn_rate > 0.05 ? "danger" : "muted"}
         />
       </div>
 
-      {/* Secondary Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           icon={CreditCard}
           label="ARPU"
-          value={stats ? formatCurrency(stats.avg_revenue_per_user) : "..."}
-          accent="default"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatCurrency(stats.avg_revenue_per_user) : "..."}
+          detail="平均客户收入"
+          accent="muted"
         />
         <MetricCard
           icon={Activity}
           label="总收入"
-          value={stats ? formatCurrency(stats.total_revenue_cents) : "..."}
-          accent="default"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatCurrency(stats.total_revenue_cents) : "..."}
+          detail="累计确认收入"
+          accent="muted"
         />
         <MetricCard
           icon={TrendingUp}
           label="月留存率"
-          value={stats ? formatPercent(stats.retention_rate) : "..."}
-          accent="default"
-          isLoading={isLoading}
+          value={stats && !isLoading ? formatPercent(stats.retention_rate) : "..."}
+          detail="活跃租户留存"
+          accent="success"
         />
         <MetricCard
           icon={TrendingDown}
           label="付费用户"
-          value={stats ? stats.paying_tenants : "..."}
-          accent="default"
-          isLoading={isLoading}
+          value={stats && !isLoading ? stats.paying_tenants : "..."}
+          detail="当前付费租户"
+          accent="muted"
         />
       </div>
-    </motion.div>
+    </motion.section>
   );
 }

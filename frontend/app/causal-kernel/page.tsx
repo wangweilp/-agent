@@ -1,39 +1,100 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  BrainCircuit, Activity, GitBranch, Play, Pause, Zap,
-  Radio, Clock, ChevronRight, ChevronDown, RefreshCw,
-  Cpu, Layers, AlertTriangle, ShieldAlert,
+  Activity,
+  AlertTriangle,
+  BrainCircuit,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Cpu,
+  GitBranch,
+  Layers,
+  Play,
+  Radio,
+  RefreshCw,
+  ShieldAlert,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { PageTransition } from "@/components/animations/page-transition";
+import {
+  EmptyState,
+  InfoBanner,
+  MetricCard,
+  OsButton,
+  OsCard,
+  PageHeader,
+  PageShell,
+  StatusBadge,
+  Toolbar,
+  chipStyles,
+} from "@/components/ui/os";
 import { cn, formatDate } from "@/lib/utils";
-import {
-  causalKernel, createRootEvent, createChildEvent, newTraceId,
-} from "@/lib/event-bus/causal-kernel";
-import {
-  useEventStream, useEventReplay, useCausalChain,
-  useKernelStats, useRecentTraces,
-} from "@/hooks/use-event-stream";
-import type {
-  SystemEvent, EventSource, EventSeverity, CauseType,
-} from "@/types/event-bus";
+import { causalKernel, createChildEvent, createRootEvent, newTraceId } from "@/lib/event-bus/causal-kernel";
+import { useCausalChain, useEventReplay, useEventStream, useKernelStats, useRecentTraces } from "@/hooks/use-event-stream";
+import type { CausalChainNode, CauseType, EventSeverity, EventSource, SystemEvent } from "@/types/event-bus";
 import { layout } from "@/styles/layout";
+import { tabStyles } from "@/styles/components";
 
-// ── 事件来源样式映射 ──
-const SOURCE_STYLE: Record<EventSource, { color: string; bg: string; border: string; label: string }> = {
-  runtime: { color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/25", label: "运行时" },
-  memory: { color: "text-violet-400", bg: "bg-violet-400/10", border: "border-violet-400/25", label: "记忆" },
-  governance: { color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/25", label: "治理" },
-  agent: { color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/25", label: "智能体" },
-  observability: { color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/25", label: "可观测性" },
+type SourceStyle = {
+  label: string;
+  dot: string;
+  text: string;
+  badge: string;
+  metricAccent: "primary" | "success" | "warning" | "danger" | "info" | "muted";
+  icon: LucideIcon;
 };
 
-const SEVERITY_STYLE: Record<EventSeverity, { color: string; dot: string }> = {
-  info: { color: "text-os-subtle", dot: "bg-os-muted" },
-  warn: { color: "text-amber-400", dot: "bg-amber-400" },
-  critical: { color: "text-rose-400", dot: "bg-rose-400" },
+const SOURCE_STYLE: Record<EventSource, SourceStyle> = {
+  runtime: {
+    label: "运行时",
+    dot: "bg-os-danger",
+    text: "text-os-danger",
+    badge: "border-os-danger/20 bg-os-danger-soft text-os-danger",
+    metricAccent: "danger",
+    icon: ShieldAlert,
+  },
+  memory: {
+    label: "记忆",
+    dot: "bg-os-primary",
+    text: "text-os-primary",
+    badge: "border-os-primary/20 bg-os-primary-soft text-os-primary",
+    metricAccent: "primary",
+    icon: BrainCircuit,
+  },
+  governance: {
+    label: "治理",
+    dot: "bg-os-warning",
+    text: "text-os-warning",
+    badge: "border-os-warning/20 bg-os-warning-soft text-os-warning",
+    metricAccent: "warning",
+    icon: AlertTriangle,
+  },
+  agent: {
+    label: "智能体",
+    dot: "bg-os-info",
+    text: "text-os-info",
+    badge: "border-os-info/20 bg-os-info-soft text-os-info",
+    metricAccent: "info",
+    icon: Cpu,
+  },
+  observability: {
+    label: "可观测性",
+    dot: "bg-os-success",
+    text: "text-os-success",
+    badge: "border-os-success/20 bg-os-success-soft text-os-success",
+    metricAccent: "success",
+    icon: Activity,
+  },
+};
+
+const SEVERITY_STYLE: Record<EventSeverity, { dot: string; text: string; label: string }> = {
+  info: { dot: "bg-os-muted", text: "text-os-muted", label: "info" },
+  warn: { dot: "bg-os-warning", text: "text-os-warning", label: "warn" },
+  critical: { dot: "bg-os-danger", text: "text-os-danger", label: "critical" },
 };
 
 const CAUSE_LABELS: Record<CauseType, string> = {
@@ -46,7 +107,7 @@ const CAUSE_LABELS: Record<CauseType, string> = {
 
 type TabId = "stream" | "replay" | "causal";
 
-const TABS: { id: TabId; label: string; icon: typeof Radio; hint: string }[] = [
+const TABS: { id: TabId; label: string; icon: LucideIcon; hint: string }[] = [
   { id: "stream", label: "Live Stream", icon: Radio, hint: "实时事件流" },
   { id: "replay", label: "Trace Replay", icon: Play, hint: "链路回放" },
   { id: "causal", label: "Causal Chain", icon: GitBranch, hint: "因果链树" },
@@ -64,119 +125,101 @@ export default function CausalKernelPage() {
 
   const renderTab = (id: TabId) => {
     switch (id) {
-      case "stream": return <LiveStreamTab />;
-      case "replay": return <ReplayTab />;
-      case "causal": return <CausalChainTab />;
+      case "stream":
+        return <LiveStreamTab />;
+      case "replay":
+        return <ReplayTab />;
+      case "causal":
+        return <CausalChainTab />;
     }
   };
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-5 max-w-[1440px] mx-auto">
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold text-os-text-high tracking-tight flex items-center gap-2">
-              <BrainCircuit size={16} className="text-emerald-400" />
-              Zhiwei OS Causal Kernel
-            </h1>
-            <p className="text-xs text-os-subtle mt-0.5">
-              知维 OS 因果内核 — 事件驱动内核层 · 因果关系追踪 · Trace 回放 · 跨模块事件统一
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-os-border bg-os-surface">
-              <div className="relative">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-breathe" />
-              </div>
-              <span className="text-2xs text-os-subtle font-mono">
-                {stats.storedEvents} events · {stats.traceCount} traces
-              </span>
-            </div>
-            <button
-              onClick={() => simulateEventFlow()}
-              className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
-            >
-              <Zap size={11} />
-              模拟事件流
-            </button>
-          </div>
-        </div>
+      <PageShell>
+        <PageHeader
+          icon={BrainCircuit}
+          title="Zhiwei OS Causal Kernel"
+          subtitle="事件驱动内核层：因果关系追踪、Trace 回放与跨模块事件统一。"
+          actions={
+            <>
+              <StatusBadge status="ready">
+                {stats.storedEvents} events | {stats.traceCount} traces
+              </StatusBadge>
+              <OsButton onClick={simulateEventFlow} size="sm" variant="soft">
+                <Zap size={13} />
+                模拟事件流
+              </OsButton>
+            </>
+          }
+        />
 
-        {/* ── 内核统计磁贴 ── */}
         <div className={layout.grid.five}>
-          <StatTile label="运行时" value={stats.bySource.runtime} icon={<ShieldAlert size={12} />} accent="rose" />
-          <StatTile label="记忆" value={stats.bySource.memory} icon={<BrainCircuit size={12} />} accent="violet" />
-          <StatTile label="治理" value={stats.bySource.governance} icon={<AlertTriangle size={12} />} accent="amber" />
-          <StatTile label="智能体" value={stats.bySource.agent} icon={<Cpu size={12} />} accent="cyan" />
-          <StatTile label="可观测性" value={stats.bySource.observability} icon={<Activity size={12} />} accent="emerald" />
+          {(Object.keys(SOURCE_STYLE) as EventSource[]).map((source) => {
+            const cfg = SOURCE_STYLE[source];
+            return (
+              <MetricCard
+                key={source}
+                label={cfg.label}
+                value={stats.bySource[source]}
+                icon={cfg.icon}
+                accent={cfg.metricAccent}
+                detail="event source"
+              />
+            );
+          })}
         </div>
 
-        {/* ── 边界声明 ── */}
-        <div className="rounded-md border border-emerald-400/20 bg-emerald-400/[0.03] px-3 py-2">
-          <p className="text-2xs leading-5 text-emerald-200/80">
-            <span className="font-medium text-emerald-300">因果内核 · </span>
-            Event Bus ≠ 日志系统 ≠ 消息队列。每个事件携带 parent_event_id + cause_type 构建因果链，trace_id 支持完整回放。UI 订阅事件流实现事件驱动 UI。
-          </p>
-        </div>
+        <InfoBanner variant="info" title="因果内核边界">
+          Event Bus 不等同于日志系统或普通消息队列。每个事件携带 parent_event_id 与 cause_type，形成可回放、可解释的因果链。
+        </InfoBanner>
 
-        {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 border-b border-os-border overflow-x-auto">
+        <Toolbar className="overflow-x-auto">
           {TABS.map((tab) => {
             const isActive = active === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => select(tab.id)}
-                className={cn(
-                  "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap",
-                  isActive ? "text-os-text-high" : "text-os-subtle hover:text-os-text",
-                )}
+                className={tabStyles({ active: isActive })}
+                title={tab.hint}
+                type="button"
               >
-                <tab.icon size={13} />
+                <tab.icon size={14} />
                 <span>{tab.label}</span>
                 {isActive && (
-                  <motion.div
-                    layoutId="causal-tab"
-                    className="absolute left-0 right-0 -bottom-px h-0.5 bg-emerald-400"
-                    transition={{ duration: 0.2 }}
+                  <motion.span
+                    layoutId="causal-kernel-tab"
+                    className="absolute inset-x-3 -bottom-[7px] h-0.5 rounded-full bg-os-success"
+                    transition={{ duration: 0.18 }}
                   />
                 )}
               </button>
             );
           })}
-        </div>
+        </Toolbar>
 
-        {/* ── Tab panels ── */}
         {TABS.map((tab) => (
-          <div key={tab.id} className={cn(active === tab.id ? "block" : "hidden")}>
+          <section key={tab.id} className={cn(active === tab.id ? "block" : "hidden")}>
             {visited.has(tab.id) && renderTab(tab.id)}
-          </div>
+          </section>
         ))}
-      </div>
+      </PageShell>
     </PageTransition>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Tab 1: Live Stream — 实时事件流
-// ═══════════════════════════════════════════════════════════════
-
 function LiveStreamTab() {
   const [filterSource, setFilterSource] = useState<EventSource | "all">("all");
   const { events, total, clear } = useEventStream(
-    useMemo(() => ({
-      source: filterSource === "all" ? undefined : filterSource,
-    }), [filterSource]),
+    useMemo(() => ({ source: filterSource === "all" ? undefined : filterSource }), [filterSource]),
     100,
   );
 
   return (
-    <div className="space-y-3">
-      {/* 过滤器 */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-2xs text-os-muted mr-1">来源:</span>
+    <div className="space-y-4">
+      <Toolbar>
+        <span className="mr-1 text-xs font-medium text-os-muted">来源</span>
         <FilterChip active={filterSource === "all"} onClick={() => setFilterSource("all")} label="全部" />
         {(Object.keys(SOURCE_STYLE) as EventSource[]).map((src) => (
           <FilterChip
@@ -184,30 +227,32 @@ function LiveStreamTab() {
             active={filterSource === src}
             onClick={() => setFilterSource(src)}
             label={SOURCE_STYLE[src].label}
-            color={SOURCE_STYLE[src].color}
           />
         ))}
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-2xs text-os-muted font-mono">{total} received</span>
-          <button
-            onClick={clear}
-            className="text-2xs text-os-muted hover:text-os-text px-2 py-0.5 rounded hover:bg-os-elevated transition-colors"
-          >
+          <span className="font-mono text-xs text-os-muted">{total} received</span>
+          <OsButton onClick={clear} size="sm" variant="ghost">
             清空
-          </button>
+          </OsButton>
         </div>
-      </div>
+      </Toolbar>
 
-      {/* 事件流 */}
-      <div className="rounded-md border border-os-border bg-os-surface/30 overflow-hidden">
+      <OsCard padding="none" className="overflow-hidden">
         {events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-2xs text-os-muted">
-            <Radio size={24} className="mb-2 opacity-50" />
-            <p>等待事件流入...</p>
-            <p className="mt-1">点击右上角"模拟事件流"生成示例事件</p>
-          </div>
+          <EmptyState
+            icon={Radio}
+            title="等待事件流入"
+            description="点击右上角“模拟事件流”生成一条完整的观测、决策、治理、运行时与记忆写入链路。"
+            action={
+              <OsButton onClick={simulateEventFlow} size="sm" variant="soft">
+                <Zap size={13} />
+                生成示例事件
+              </OsButton>
+            }
+            className="m-4"
+          />
         ) : (
-          <ul className="divide-y divide-os-border/50 max-h-[600px] overflow-y-auto">
+          <ul className="max-h-[620px] divide-y divide-os-border overflow-y-auto">
             <AnimatePresence initial={false}>
               {events.map((event) => (
                 <EventRow key={event.event_id} event={event} />
@@ -215,14 +260,10 @@ function LiveStreamTab() {
             </AnimatePresence>
           </ul>
         )}
-      </div>
+      </OsCard>
     </div>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════
-// Tab 2: Trace Replay — 链路回放
-// ═══════════════════════════════════════════════════════════════
 
 function ReplayTab() {
   const traces = useRecentTraces(20);
@@ -230,204 +271,152 @@ function ReplayTab() {
   const { events, isLoading } = useEventReplay(selectedTrace);
 
   return (
-    <div className={layout.grid.twelve}>
-      {/* 左侧：Trace 列表 */}
-      <div className="col-span-12 lg:col-span-3 space-y-2">
-        <div className="text-2xs font-medium text-os-subtle uppercase tracking-wider flex items-center gap-1.5">
-          <Layers size={11} className="text-emerald-400/70" />
-          Trace 列表
-        </div>
-        <div className="rounded-md border border-os-border bg-os-surface/50 max-h-[600px] overflow-y-auto">
-          {traces.length === 0 ? (
-            <div className="p-4 text-center text-2xs text-os-muted">暂无 trace</div>
-          ) : (
-            <ul className="divide-y divide-os-border/50">
-              {traces.map((tid) => (
-                <li key={tid}>
-                  <button
-                    onClick={() => setSelectedTrace(tid)}
-                    className={cn(
-                      "w-full text-left px-3 py-2 transition-colors",
-                      selectedTrace === tid
-                        ? "bg-emerald-400/5 border-l-2 border-emerald-400"
-                        : "hover:bg-os-elevated/50 border-l-2 border-transparent",
-                    )}
-                  >
-                    <span className="text-2xs font-mono text-os-subtle truncate block">{tid}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      <OsCard padding="none" className="overflow-hidden">
+        <PanelTitle icon={Layers} title="Trace 列表" count={traces.length} />
+        {traces.length === 0 ? (
+          <EmptyState icon={Layers} title="暂无 Trace" description="生成示例事件后，这里会出现可回放链路。" className="m-4" />
+        ) : (
+          <div className="max-h-[620px] divide-y divide-os-border overflow-y-auto">
+            {traces.map((tid) => (
+              <button
+                key={tid}
+                onClick={() => setSelectedTrace(tid)}
+                className={cn(
+                  "flex w-full items-center gap-2 px-4 py-3 text-left transition-colors duration-150",
+                  selectedTrace === tid ? "bg-os-primary-soft text-os-primary" : "hover:bg-os-surface-hover",
+                )}
+                type="button"
+              >
+                <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                <span className="min-w-0 flex-1 truncate font-mono text-xs">{tid}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </OsCard>
 
-      {/* 右侧：回放事件链 */}
-      <div className="col-span-12 lg:col-span-9 space-y-2">
-        <div className="text-2xs font-medium text-os-subtle uppercase tracking-wider flex items-center gap-1.5">
-          <Play size={11} className="text-emerald-400/70" />
-          回放链路
-          {selectedTrace && (
-            <span className="text-os-muted font-mono ml-2 truncate">{selectedTrace}</span>
-          )}
-        </div>
-        <div className="rounded-md border border-os-border bg-os-surface/30 overflow-hidden">
-          {!selectedTrace ? (
-            <div className="flex flex-col items-center justify-center py-12 text-2xs text-os-muted">
-              <Play size={24} className="mb-2 opacity-50" />
-              <p>选择一个 trace 进行回放</p>
-            </div>
-          ) : isLoading ? (
-            <div className="flex items-center justify-center py-12 text-2xs text-os-muted gap-2">
-              <RefreshCw size={14} className="animate-spin" /> 加载中...
-            </div>
-          ) : events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-2xs text-os-muted">
-              <Clock size={24} className="mb-2 opacity-50" />
-              <p>该 trace 无事件</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-os-border/50">
-              {events.map((event, idx) => (
-                <ReplayEventRow key={event.event_id} event={event} index={idx} />
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+      <OsCard padding="none" className="overflow-hidden">
+        <PanelTitle icon={Play} title="回放链路" detail={selectedTrace ?? undefined} count={events.length} />
+        {!selectedTrace ? (
+          <EmptyState icon={Play} title="选择一个 Trace" description="左侧选择 Trace 后可查看按时间排序的事件链。" className="m-4" />
+        ) : isLoading ? (
+          <EmptyState icon={RefreshCw} title="加载中" description="正在从因果内核读取 Trace 事件。" className="m-4" />
+        ) : events.length === 0 ? (
+          <EmptyState icon={Clock} title="该 Trace 暂无事件" description="Trace 存在但当前没有可回放事件。" className="m-4" />
+        ) : (
+          <ul className="divide-y divide-os-border">
+            {events.map((event, idx) => (
+              <ReplayEventRow key={event.event_id} event={event} index={idx} />
+            ))}
+          </ul>
+        )}
+      </OsCard>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Tab 3: Causal Chain — 因果链树
-// ═══════════════════════════════════════════════════════════════
-
 function CausalChainTab() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const stats = useKernelStats();
   const chain = useCausalChain(selectedEventId);
 
-  // 获取所有根事件（无父事件）
   const rootEvents = useMemo(() => {
-    return causalKernel
-      .getRecentEvents(200)
-      .filter((e) => e.causal.parent_event_id === null);
-  }, [useKernelStats()]);
+    return causalKernel.getRecentEvents(200).filter((e) => e.causal.parent_event_id === null);
+  }, [stats.storedEvents]);
 
   return (
-    <div className={layout.grid.twelve}>
-      {/* 左侧：根事件列表 */}
-      <div className="col-span-12 lg:col-span-4 space-y-2">
-        <div className="text-2xs font-medium text-os-subtle uppercase tracking-wider flex items-center gap-1.5">
-          <GitBranch size={11} className="text-emerald-400/70" />
-          根事件（因果链起点）
-        </div>
-        <div className="rounded-md border border-os-border bg-os-surface/50 max-h-[600px] overflow-y-auto">
-          {rootEvents.length === 0 ? (
-            <div className="p-4 text-center text-2xs text-os-muted">暂无根事件</div>
-          ) : (
-            <ul className="divide-y divide-os-border/50">
-              {rootEvents.map((event) => {
-                const style = SOURCE_STYLE[event.source];
-                const isSelected = selectedEventId === event.event_id;
-                return (
-                  <li key={event.event_id}>
-                    <button
-                      onClick={() => setSelectedEventId(event.event_id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 transition-colors",
-                        isSelected
-                          ? "bg-emerald-400/5 border-l-2 border-emerald-400"
-                          : "hover:bg-os-elevated/50 border-l-2 border-transparent",
-                      )}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={cn("text-2xs px-1.5 py-0.5 rounded font-mono", style.bg, style.color)}>
-                          {style.label}
-                        </span>
-                        <span className="text-2xs font-mono text-os-muted truncate">{event.type}</span>
-                      </div>
-                      <div className="text-2xs text-os-muted font-mono truncate">{event.event_id.slice(0, 16)}</div>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
+      <OsCard padding="none" className="overflow-hidden">
+        <PanelTitle icon={GitBranch} title="根事件" count={rootEvents.length} />
+        {rootEvents.length === 0 ? (
+          <EmptyState icon={GitBranch} title="暂无根事件" description="根事件是因果链的起点，生成示例后可查看。" className="m-4" />
+        ) : (
+          <div className="max-h-[620px] divide-y divide-os-border overflow-y-auto">
+            {rootEvents.map((event) => {
+              const style = SOURCE_STYLE[event.source];
+              const selected = selectedEventId === event.event_id;
+              return (
+                <button
+                  key={event.event_id}
+                  onClick={() => setSelectedEventId(event.event_id)}
+                  className={cn(
+                    "w-full px-4 py-3 text-left transition-colors duration-150",
+                    selected ? "bg-os-primary-soft" : "hover:bg-os-surface-hover",
+                  )}
+                  type="button"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", style.badge)}>
+                      {style.label}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
+                  </div>
+                  <div className="mt-1 truncate font-mono text-[11px] text-os-muted">{event.event_id}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </OsCard>
 
-      {/* 右侧：因果链树 */}
-      <div className="col-span-12 lg:col-span-8 space-y-2">
-        <div className="text-2xs font-medium text-os-subtle uppercase tracking-wider flex items-center gap-1.5">
-          <GitBranch size={11} className="text-emerald-400/70" />
-          因果链树
-          {selectedEventId && (
-            <span className="text-os-muted font-mono ml-2 truncate">{selectedEventId.slice(0, 16)}</span>
-          )}
-        </div>
-        <div className="rounded-md border border-os-border bg-os-surface/30 p-4 min-h-[400px]">
+      <OsCard padding="none" className="overflow-hidden">
+        <PanelTitle icon={GitBranch} title="因果链树" detail={selectedEventId?.slice(0, 18)} />
+        <div className="min-h-[420px] p-4">
           {!chain ? (
-            <div className="flex flex-col items-center justify-center py-12 text-2xs text-os-muted">
-              <GitBranch size={24} className="mb-2 opacity-50" />
-              <p>选择一个根事件查看因果链</p>
-            </div>
+            <EmptyState icon={GitBranch} title="选择根事件查看链路" description="因果链树会展示父事件、子事件、cause_type 与 payload 摘要。" />
           ) : (
             <CausalNode node={chain} />
           )}
         </div>
-      </div>
+      </OsCard>
     </div>
   );
 }
 
-// ── 因果链节点递归渲染 ──
-function CausalNode({ node, isLast = true }: { node: import("@/types/event-bus").CausalChainNode; isLast?: boolean }) {
+function CausalNode({ node }: { node: CausalChainNode }) {
   const [expanded, setExpanded] = useState(true);
   const event = node.event;
-  const style = SOURCE_STYLE[event.source];
-  const sevStyle = SEVERITY_STYLE[event.severity];
+  const source = SOURCE_STYLE[event.source];
+  const severity = SEVERITY_STYLE[event.severity];
 
   return (
-    <div className={cn("relative", node.depth > 0 && "ml-4 pl-4 border-l border-os-border/50")}>
+    <div className={cn("relative", node.depth > 0 && "ml-4 border-l border-os-border pl-4")}>
       <motion.div
         initial={{ opacity: 0, x: -8 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: node.depth * 0.05 }}
-        className="rounded-md border border-os-border bg-os-base/50 p-2.5 mb-2"
+        transition={{ delay: Math.min(node.depth * 0.04, 0.18) }}
+        className="mb-2 rounded-2xl border border-os-border bg-white p-3 shadow-os-card"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {node.children.length > 0 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-os-muted hover:text-os-text shrink-0"
+              className="shrink-0 rounded-lg p-1 text-os-muted hover:bg-os-surface-hover hover:text-os-text-high"
+              aria-label={expanded ? "收起子事件" : "展开子事件"}
+              type="button"
             >
-              {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </button>
           )}
-          <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", sevStyle.dot)} />
-          <span className={cn("text-2xs px-1.5 py-0.5 rounded font-mono shrink-0", style.bg, style.color)}>
-            {style.label}
+          <span className={cn("h-2 w-2 shrink-0 rounded-full", severity.dot)} />
+          <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", source.badge)}>
+            {source.label}
           </span>
-          <span className="text-2xs font-mono text-os-subtle truncate flex-1">{event.type}</span>
-          <span className="text-2xs text-os-muted shrink-0">{formatDate(event.timestamp)}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
+          <span className="shrink-0 text-xs text-os-muted">{formatDate(event.timestamp)}</span>
         </div>
-        <div className="mt-1.5 flex items-center gap-2 text-2xs text-os-muted">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-os-muted">
           <span className="font-mono">{event.event_id.slice(0, 12)}</span>
-          <span>·</span>
-          <span className="text-emerald-300/80">{CAUSE_LABELS[event.causal.cause_type]}</span>
-          <span>·</span>
-          <span className={sevStyle.color}>{event.severity}</span>
-        </div>
-        <div className="mt-1 text-2xs text-os-subtle font-mono">
-          payload: {Object.keys(event.payload).join(", ")}
+          <span className={source.text}>{CAUSE_LABELS[event.causal.cause_type]}</span>
+          <span className={severity.text}>{severity.label}</span>
+          <span className="font-mono">payload: {Object.keys(event.payload as object).join(", ") || "empty"}</span>
         </div>
       </motion.div>
-
       {expanded && node.children.length > 0 && (
         <div className="space-y-1">
-          {node.children.map((child, idx) => (
-            <CausalNode key={child.event.event_id} node={child} isLast={idx === node.children.length - 1} />
+          {node.children.map((child) => (
+            <CausalNode key={child.event.event_id} node={child} />
           ))}
         </div>
       )}
@@ -435,13 +424,9 @@ function CausalNode({ node, isLast = true }: { node: import("@/types/event-bus")
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 事件行组件
-// ═══════════════════════════════════════════════════════════════
-
 function EventRow({ event }: { event: SystemEvent }) {
-  const style = SOURCE_STYLE[event.source];
-  const sevStyle = SEVERITY_STYLE[event.severity];
+  const source = SOURCE_STYLE[event.source];
+  const severity = SEVERITY_STYLE[event.severity];
 
   return (
     <motion.li
@@ -449,145 +434,109 @@ function EventRow({ event }: { event: SystemEvent }) {
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0 }}
-      className="px-3 py-2 hover:bg-os-elevated/30 transition-colors"
+      className="px-4 py-3 transition-colors duration-150 hover:bg-os-surface-hover"
     >
-      <div className="flex items-center gap-2">
-        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", sevStyle.dot)} />
-        <span className={cn("text-2xs px-1.5 py-0.5 rounded font-mono shrink-0", style.bg, style.color)}>
-          {style.label}
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={cn("h-2 w-2 shrink-0 rounded-full", severity.dot)} />
+        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", source.badge)}>
+          {source.label}
         </span>
-        <span className="text-2xs font-mono text-os-subtle truncate flex-1">{event.type}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
         {event.causal.parent_event_id && (
-          <span className="text-2xs text-emerald-300/60 shrink-0 flex items-center gap-0.5">
-            <ChevronRight size={9} />
+          <span className="hidden items-center gap-0.5 rounded-full bg-os-surface-muted px-2 py-0.5 text-[11px] text-os-muted sm:flex">
+            <ChevronRight size={10} />
             child
           </span>
         )}
-        <span className="text-2xs text-os-muted shrink-0">{formatDate(event.timestamp)}</span>
+        <span className="shrink-0 text-xs text-os-muted">{formatDate(event.timestamp)}</span>
       </div>
-      <div className="mt-1 flex items-center gap-2 text-2xs text-os-muted">
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-os-muted">
         <span className="font-mono">{event.event_id.slice(0, 12)}</span>
-        <span>·</span>
-        <span className="font-mono text-os-subtle/70 truncate">{event.trace_id.slice(0, 20)}</span>
-        <span>·</span>
-        <span className={sevStyle.color}>{event.severity}</span>
-        <span>·</span>
-        <span className="text-emerald-300/70">{CAUSE_LABELS[event.causal.cause_type]}</span>
+        <span className="font-mono">{event.trace_id.slice(0, 22)}</span>
+        <span className={severity.text}>{event.severity}</span>
+        <span className={source.text}>{CAUSE_LABELS[event.causal.cause_type]}</span>
       </div>
     </motion.li>
   );
 }
 
 function ReplayEventRow({ event, index }: { event: SystemEvent; index: number }) {
-  const style = SOURCE_STYLE[event.source];
-  const sevStyle = SEVERITY_STYLE[event.severity];
+  const source = SOURCE_STYLE[event.source];
+  const severity = SEVERITY_STYLE[event.severity];
 
   return (
     <motion.li
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.03 }}
-      className="px-3 py-2.5"
+      transition={{ delay: index * 0.025 }}
+      className="px-4 py-3"
     >
-      <div className="flex items-center gap-2">
-        <span className="text-2xs font-mono text-os-muted shrink-0 w-6">#{index + 1}</span>
-        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", sevStyle.dot)} />
-        <span className={cn("text-2xs px-1.5 py-0.5 rounded font-mono shrink-0", style.bg, style.color)}>
-          {style.label}
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="w-8 shrink-0 font-mono text-xs text-os-muted">#{index + 1}</span>
+        <span className={cn("h-2 w-2 shrink-0 rounded-full", severity.dot)} />
+        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", source.badge)}>
+          {source.label}
         </span>
-        <span className="text-xs font-mono text-os-text-high truncate flex-1">{event.type}</span>
-        <span className="text-2xs text-os-muted shrink-0">{formatDate(event.timestamp)}</span>
+        <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
+        <span className="shrink-0 text-xs text-os-muted">{formatDate(event.timestamp)}</span>
       </div>
-      <div className="mt-1.5 ml-12 flex items-center gap-2 text-2xs text-os-muted">
+      <div className="mt-2 ml-10 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-os-muted">
         <span className="font-mono">{event.event_id.slice(0, 12)}</span>
-        <span>·</span>
-        <span className={sevStyle.color}>{event.severity}</span>
+        <span className={severity.text}>{event.severity}</span>
         {event.causal.parent_event_id ? (
-          <>
-            <span>·</span>
-            <span className="text-emerald-300/70">← {event.causal.parent_event_id.slice(0, 12)}</span>
-          </>
+          <span className="font-mono text-os-primary">parent {event.causal.parent_event_id.slice(0, 12)}</span>
         ) : (
-          <>
-            <span>·</span>
-            <span className="text-emerald-300 font-medium">ROOT</span>
-          </>
+          <span className="font-semibold text-os-success">ROOT</span>
         )}
       </div>
-      <div className="mt-1 ml-12 text-2xs text-os-subtle font-mono">
-        payload: {JSON.stringify(event.payload).slice(0, 120)}
-        {JSON.stringify(event.payload).length > 120 && "..."}
-      </div>
+      <p className="mt-1 ml-10 truncate font-mono text-[11px] text-os-muted">
+        payload: {JSON.stringify(event.payload).slice(0, 140)}
+        {JSON.stringify(event.payload).length > 140 && "..."}
+      </p>
     </motion.li>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 子组件
-// ═══════════════════════════════════════════════════════════════
-
-function StatTile({
-  label, value, icon, accent,
+function PanelTitle({
+  icon: Icon,
+  title,
+  count,
+  detail,
 }: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  accent: "rose" | "violet" | "amber" | "cyan" | "emerald";
+  icon: LucideIcon;
+  title: string;
+  count?: number;
+  detail?: string;
 }) {
-  const accentMap = {
-    rose: "text-rose-400",
-    violet: "text-violet-400",
-    amber: "text-amber-400",
-    cyan: "text-cyan-400",
-    emerald: "text-emerald-400",
-  };
   return (
-    <div className="rounded-md border border-os-border bg-os-surface/30 p-2.5">
-      <div className="flex items-center gap-1 text-2xs text-os-muted mb-1">
-        <span className={accentMap[accent]}>{icon}</span>
-        {label}
-      </div>
-      <div className={cn("text-lg font-bold tabular-nums", accentMap[accent])}>{value}</div>
+    <div className="flex min-h-11 items-center gap-2 border-b border-os-border px-4">
+      <Icon size={14} className="text-os-primary" />
+      <h2 className="text-sm font-semibold text-os-text-high">{title}</h2>
+      {detail && <span className="min-w-0 truncate font-mono text-[11px] text-os-muted">{detail}</span>}
+      {typeof count === "number" && <span className="ml-auto font-mono text-xs text-os-muted">{count}</span>}
     </div>
   );
 }
 
 function FilterChip({
-  active, onClick, label, color,
+  active,
+  onClick,
+  label,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
-  color?: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "px-2 py-0.5 rounded text-2xs transition-colors",
-        active
-          ? "bg-emerald-400/10 text-emerald-300 border border-emerald-400/30"
-          : "bg-os-elevated text-os-muted border border-os-border hover:text-os-subtle",
-        color && !active && color,
-      )}
-    >
+    <button onClick={onClick} className={chipStyles({ active })} type="button">
       {label}
     </button>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 模拟事件流 — 演示完整因果链路
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * 模拟系统事件流，演示因果链路：
- * User Action → Runtime Event → Governance Decision → Memory Update → Observability Trace
- */
 function simulateEventFlow() {
   const trace_id = newTraceId("trace");
 
-  // 1. 根事件：用户行为触发（observability.trace.started）
   const traceStart = createRootEvent(
     "observability",
     "observability.trace.started",
@@ -597,7 +546,6 @@ function simulateEventFlow() {
     "user_action",
   );
 
-  // 2. Agent 决策（agent.decision.made）— 子事件
   const agentDecision = createChildEvent(
     traceStart,
     "agent",
@@ -606,14 +554,13 @@ function simulateEventFlow() {
     {
       agent_id: "agent-001",
       decision: "execute_tool",
-      reasoning: "用户请求执行文件下载",
+      reasoning: "用户请求执行文件下载，需进入治理评估",
       confidence: 0.85,
       alternatives_considered: ["ask_confirmation", "deny"],
     },
     "agent_decision",
   );
 
-  // 3. Governance 策略评估（governance.policy.evaluated）— 子事件
   const policyEval = createChildEvent(
     agentDecision,
     "governance",
@@ -630,7 +577,6 @@ function simulateEventFlow() {
     "system_policy",
   );
 
-  // 4. Runtime Gate 拒绝（runtime.gate.denied）— 子事件
   const gateDenied = createChildEvent(
     policyEval,
     "runtime",
@@ -645,7 +591,6 @@ function simulateEventFlow() {
     "system_policy",
   );
 
-  // 5. Governance 审计记录（governance.audit.record_generated）— 子事件
   createChildEvent(
     gateDenied,
     "governance",
@@ -661,7 +606,6 @@ function simulateEventFlow() {
     "system_event",
   );
 
-  // 6. Memory 写入（memory.write.ltm）— 子事件，记录此次决策
   createChildEvent(
     gateDenied,
     "memory",
@@ -679,7 +623,6 @@ function simulateEventFlow() {
     "system_event",
   );
 
-  // 7. Observability trace 完成（observability.trace.completed）— 子事件
   createChildEvent(
     traceStart,
     "observability",

@@ -1,5 +1,8 @@
 openai>=1.30,<2.0
 chromadb>=0.5,<0.6
+# ChromaDB 0.5.x still calls the legacy posthog.capture(user_id, event, props)
+# signature. Newer posthog releases changed that API and spam startup errors.
+posthog<4
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.23,<1.0
 sqlite-utils>=3.0,<4.0

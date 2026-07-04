@@ -63,8 +63,8 @@ const NODE_COLORS: Record<WorkflowNode["node_type"], string> = {
   tool: "border-orange-500 bg-orange-500/10 text-orange-400",
   memory: "border-green-500 bg-green-500/10 text-green-400",
   knowledge_graph: "border-pink-500 bg-pink-500/10 text-pink-400",
-  start: "border-gray-500 bg-gray-500/10 text-gray-400",
-  end: "border-gray-500 bg-gray-500/10 text-gray-400",
+  start: "border-gray-500 bg-gray-500/10 text-os-subtle",
+  end: "border-gray-500 bg-gray-500/10 text-os-subtle",
 };
 
 function NodeCard({ node }: { node: WorkflowNode }) {
@@ -73,7 +73,7 @@ function NodeCard({ node }: { node: WorkflowNode }) {
   const label = NODE_LABELS[node.node_type] || node.node_type;
 
   return (
-    <div className={`p-4 rounded-xl border ${colorClass} bg-gray-900/40`}>
+    <div className={`p-4 rounded-xl border ${colorClass} bg-os-surface`}>
       <div className="flex items-center gap-2 mb-1">
         <Icon className="w-4 h-4" />
         <span className="text-xs uppercase tracking-wider opacity-70">{label}</span>
@@ -86,14 +86,14 @@ function NodeCard({ node }: { node: WorkflowNode }) {
                   ? "bg-red-500/20 text-red-300"
                   : node.status === "running"
                     ? "bg-blue-500/20 text-blue-300"
-                    : "bg-gray-500/20 text-gray-300"
+                    : "bg-gray-500/20 text-os-text"
             }`}
           >
             {node.status}
           </span>
         )}
       </div>
-      <p className="font-medium text-white">{node.name}</p>
+      <p className="font-medium text-os-text-high">{node.name}</p>
       {node.description && (
         <p className="text-xs opacity-70 mt-1">{node.description}</p>
       )}
@@ -111,18 +111,18 @@ function NodeCard({ node }: { node: WorkflowNode }) {
 
 function ExecutionCard({ execution }: { execution: WorkflowExecution }) {
   const statusColors: Record<string, string> = {
-    draft: "bg-gray-500/20 text-gray-300",
+    draft: "bg-gray-500/20 text-os-text",
     running: "bg-blue-500/20 text-blue-300",
     paused: "bg-yellow-500/20 text-yellow-300",
     completed: "bg-green-500/20 text-green-300",
     failed: "bg-red-500/20 text-red-300",
-    cancelled: "bg-gray-500/20 text-gray-500",
+    cancelled: "bg-gray-500/20 text-os-muted",
   };
 
   return (
     <Link
       href={`/agents/executions`}
-      className="block p-4 rounded-lg bg-gray-900/40 border border-gray-800 hover:border-gray-700 transition-colors"
+      className="block p-4 rounded-lg bg-os-surface border border-os-border shadow-os-sm hover:border-os-accent/30 transition-colors"
     >
       <div className="flex items-center justify-between mb-2">
         <span
@@ -130,11 +130,11 @@ function ExecutionCard({ execution }: { execution: WorkflowExecution }) {
         >
           {execution.status}
         </span>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-os-muted">
           {execution.duration_ms > 0 ? `${execution.duration_ms.toFixed(0)}ms` : ""}
         </span>
       </div>
-      <p className="text-sm text-gray-400 truncate">{execution.execution_id}</p>
+      <p className="text-sm text-os-subtle truncate">{execution.execution_id}</p>
       {execution.error && (
         <p className="text-xs text-red-400 mt-1 truncate">{execution.error}</p>
       )}
@@ -210,7 +210,7 @@ export default function WorkflowDetailPage() {
       {/* 面包屑 */}
       <Link
         href="/agents/workflows"
-        className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white mb-6 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-os-subtle hover:text-os-accent mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         返回工作流列表
@@ -223,21 +223,21 @@ export default function WorkflowDetailPage() {
             <GitBranch className="w-7 h-7 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">
+            <h1 className="text-3xl font-bold text-os-text-high mb-1">
               {workflow.name}
             </h1>
-            <p className="text-gray-400 max-w-lg">{workflow.description}</p>
+            <p className="text-os-subtle max-w-lg">{workflow.description}</p>
             <div className="flex items-center gap-3 mt-3">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-os-elevated text-os-text border border-os-border">
                 v{workflow.version}
               </span>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-os-elevated text-os-text border border-os-border">
                 {nodes.length} 节点
               </span>
               {workflow.tags?.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs px-2 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700"
+                  className="text-xs px-2 py-1 rounded-full bg-os-elevated text-os-subtle border border-os-border"
                 >
                   {tag}
                 </span>
@@ -249,7 +249,7 @@ export default function WorkflowDetailPage() {
         <button
           onClick={handleExecute}
           disabled={executing}
-          className="px-5 py-2.5 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-5 py-2.5 rounded-lg bg-os-accent text-white font-medium hover:bg-os-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {executing ? (
             <>
@@ -267,7 +267,7 @@ export default function WorkflowDetailPage() {
 
       {/* 节点流程可视化 */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-os-text-high mb-4 flex items-center gap-2">
           <GitBranch className="w-5 h-5 text-purple-400" />
           工作流节点
         </h2>
@@ -277,7 +277,7 @@ export default function WorkflowDetailPage() {
               <NodeCard node={node} />
               {i < nodes.length - 1 && (
                 <div className="hidden md:flex justify-center py-1">
-                  <span className="text-gray-600 text-lg">↓</span>
+                  <span className="text-os-muted text-lg">↓</span>
                 </div>
               )}
             </div>
@@ -288,16 +288,16 @@ export default function WorkflowDetailPage() {
       {/* 执行历史 */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-lg font-semibold text-white">执行历史</h2>
+          <h2 className="text-lg font-semibold text-os-text-high">执行历史</h2>
           <button
             onClick={fetchData}
-            className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-os-elevated transition-colors"
           >
-            <RefreshCw className="w-4 h-4 text-gray-500" />
+            <RefreshCw className="w-4 h-4 text-os-muted" />
           </button>
         </div>
         {executions.length === 0 ? (
-          <p className="text-gray-500 text-sm py-8 text-center">
+          <p className="text-os-muted text-sm py-8 text-center">
             暂无执行记录
           </p>
         ) : (
@@ -310,11 +310,11 @@ export default function WorkflowDetailPage() {
       </div>
 
       {/* 原始数据 */}
-      <details className="rounded-xl bg-gray-900/40 border border-gray-800 p-6">
-        <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+      <details className="rounded-xl bg-os-surface border border-os-border shadow-os-sm p-6">
+        <summary className="text-sm text-os-subtle cursor-pointer hover:text-os-text">
           工作流详情 (JSON)
         </summary>
-        <pre className="mt-4 text-xs text-gray-500 overflow-x-auto max-h-96">
+        <pre className="mt-4 text-xs text-os-muted overflow-x-auto max-h-96">
           {JSON.stringify(workflow, null, 2)}
         </pre>
       </details>

@@ -131,9 +131,9 @@ export function KnowledgeGraphBackground({ intensity, focusActive }: Props) {
       style={{
         // Deepest base — multilayered radial-gradient core
         background: `
-          radial-gradient(ellipse 80% 70% at 50% 50%, rgba(22,16,54,0.95) 0%, #080612 100%),
-          radial-gradient(ellipse 55% 45% at 42% 48%, rgba(26,34,80,0.40) 0%, transparent 100%),
-          radial-gradient(ellipse 40% 35% at 45% 55%, rgba(18,22,52,0.55) 0%, transparent 100%)
+          radial-gradient(ellipse 80% 70% at 50% 50%, rgba(255,255,255,0.92) 0%, #f8fafc 100%),
+          radial-gradient(ellipse 55% 45% at 42% 48%, rgba(99,102,241,0.10) 0%, transparent 100%),
+          radial-gradient(ellipse 40% 35% at 45% 55%, rgba(139,92,246,0.08) 0%, transparent 100%)
         `,
       }}
     >

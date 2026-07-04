@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" className="dark">
+    <html lang="zh-CN">
       <head>
         {/* Pre-hydration 毒数据清洗脚本 —— 在 React 水合与任何第三方库初始化之前
             以最高优先级同步执行，清除 localStorage 中的脏字符串脏数据，

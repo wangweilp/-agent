@@ -652,8 +652,8 @@ function KillSwitchConfirmModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-      <div className="w-full max-w-lg rounded-xl border border-red-500/30 bg-os-base shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 backdrop-blur-sm px-4">
+      <div className="w-full max-w-lg rounded-xl border border-red-500/30 bg-os-base shadow-os-lg overflow-hidden">
         {/* Header */}
         <div className="border-b border-os-border bg-gradient-to-r from-red-500/15 to-transparent p-6">
           <div className="flex items-center gap-3">
@@ -1013,7 +1013,7 @@ function CreateBindingDialog({ adapters, onClose, onSubmit }: { adapters: Runtim
   const [adapterId, setAdapterId] = useState("rtadp_simulation");
   const [policyId, setPolicyId] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 px-4" onClick={onClose}>
       <div className="os-card w-full max-w-md p-4" onClick={(event) => event.stopPropagation()}>
         <h3 className="mb-3 text-sm font-semibold text-os-text-high">Create 运行时 Binding</h3>
         <div className="space-y-3">
@@ -1044,7 +1044,7 @@ function CreateBindingDialog({ adapters, onClose, onSubmit }: { adapters: Runtim
 function AssignPolicyDialog({ policies, onClose, onAssign }: { policies: SandboxPolicy[]; onClose: () => void; onAssign: (pid: string) => void }) {
   const [selected, setSelected] = useState(policies[0]?.policy_id || "");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 px-4" onClick={onClose}>
       <div className="os-card w-full max-w-md p-4" onClick={(event) => event.stopPropagation()}>
         <h3 className="mb-3 text-sm font-semibold text-os-text-high">Assign Sandbox Policy</h3>
         <select value={selected} onChange={(event) => setSelected(event.target.value)} className="w-full rounded border border-os-border bg-os-elevated px-2 py-1.5 text-xs text-os-text-high outline-none focus:border-os-accent">
@@ -1064,7 +1064,7 @@ function AssignPolicyDialog({ policies, onClose, onAssign }: { policies: Sandbox
 
 function PolicyResultDialog({ policyId, result, onClose }: { policyId: string; result: SandboxPolicyTestResult; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 px-4" onClick={onClose}>
       <div className="os-card w-full max-w-md p-4" onClick={(event) => event.stopPropagation()}>
         <h3 className="mb-2 text-sm font-semibold text-os-text-high">Policy Test Result: {policyId}</h3>
         <div className={`mb-2 flex items-center gap-2 rounded px-2 py-1 text-xs ${result.allowed ? "bg-emerald-400/10 text-emerald-300" : "bg-red-400/10 text-red-300"}`}>

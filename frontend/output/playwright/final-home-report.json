@@ -1,0 +1,84 @@
+[
+  {
+    "url": "http://127.0.0.1:3140/home",
+    "bodyScrollWidth": 375,
+    "bodyClientWidth": 375,
+    "docScrollWidth": 375,
+    "docClientWidth": 375,
+    "title": "知维 OS",
+    "headerText": "就绪",
+    "cards": [
+      "全链路",
+      "Rootless",
+      "三层记忆"
+    ],
+    "screenshot": "D:\\dma\\day2\\frontend\\output\\playwright\\final-home-375x812.png",
+    "viewport": "375x812",
+    "console": [
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "log: [Fast Refresh] rebuilding",
+      "log: [Fast Refresh] done in 1114ms",
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    ]
+  },
+  {
+    "url": "http://127.0.0.1:3140/home",
+    "bodyScrollWidth": 768,
+    "bodyClientWidth": 768,
+    "docScrollWidth": 768,
+    "docClientWidth": 768,
+    "title": "知维 OS",
+    "headerText": "就绪\nEnterprise Cognitive Workspace\nv0.1.0",
+    "cards": [
+      "全链路",
+      "Rootless",
+      "三层记忆"
+    ],
+    "screenshot": "D:\\dma\\day2\\frontend\\output\\playwright\\final-home-768x1024.png",
+    "viewport": "768x1024",
+    "console": [
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    ]
+  },
+  {
+    "url": "http://127.0.0.1:3140/home",
+    "bodyScrollWidth": 1440,
+    "bodyClientWidth": 1440,
+    "docScrollWidth": 1440,
+    "docClientWidth": 1440,
+    "title": "知维 OS",
+    "headerText": "就绪\nEnterprise Cognitive Workspace\nDesign Audit\nv0.1.0",
+    "cards": [
+      "全链路",
+      "Rootless",
+      "三层记忆"
+    ],
+    "screenshot": "D:\\dma\\day2\\frontend\\output\\playwright\\final-home-1440x900.png",
+    "viewport": "1440x900",
+    "console": [
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    ]
+  },
+  {
+    "url": "http://127.0.0.1:3140/home",
+    "bodyScrollWidth": 1920,
+    "bodyClientWidth": 1920,
+    "docScrollWidth": 1920,
+    "docClientWidth": 1920,
+    "title": "知维 OS",
+    "headerText": "就绪\nEnterprise Cognitive Workspace\nDesign Audit\nv0.1.0",
+    "cards": [
+      "全链路",
+      "Rootless",
+      "三层记忆"
+    ],
+    "screenshot": "D:\\dma\\day2\\frontend\\output\\playwright\\final-home-1920x1080.png",
+    "viewport": "1920x1080",
+    "console": [
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    ]
+  }
+]

@@ -35,6 +35,7 @@ class ChromaDBAdapter:
         else:
             self._client = chromadb.PersistentClient(
                 path=config.chroma_persist_dir,
+                settings=chromadb.Settings(anonymized_telemetry=False),
             )
         self._collection = self._client.get_or_create_collection(
             name=collection_name,

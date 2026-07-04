@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>TRAE - Session 6a40e856</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; background:#1e1e2e; color:#cdd6f4; display:flex; height:100vh; overflow:hidden; }
+.sidebar { width:260px; background:#181825; border-right:1px solid #313244; display:flex; flex-direction:column; padding:12px 0; }
+.sidebar-header { padding:8px 16px 16px; font-size:18px; font-weight:700; color:#cba6f7; display:flex; align-items:center; gap:8px; }
+.sidebar-header span { font-size:22px; }
+.search-box { margin:0 12px 12px; padding:8px 12px; background:#313244; border-radius:8px; border:none; color:#cdd6f4; font-size:13px; outline:none; }
+.session-list { flex:1; overflow-y:auto; padding:0 8px; }
+.session-item { padding:10px 12px; border-radius:8px; margin-bottom:2px; cursor:pointer; font-size:13px; color:#a6adc8; }
+.session-item:hover { background:#313244; }
+.session-item.active { background:#45475a; color:#cdd6f4; }
+.session-item .time { font-size:11px; color:#6c7086; margin-top:2px; }
+.session-item .title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.main { flex:1; display:flex; flex-direction:column; }
+.topbar { height:44px; background:#1e1e2e; border-bottom:1px solid #313244; display:flex; align-items:center; padding:0 16px; gap:8px; }
+.topbar .model { background:#313244; padding:4px 12px; border-radius:6px; font-size:12px; color:#89b4fa; }
+.topbar .session-id { font-size:11px; color:#6c7086; font-family:monospace; margin-left:auto; }
+.chat-area { flex:1; overflow-y:auto; padding:24px 0; }
+.message { max-width:780px; margin:0 auto; padding:16px 24px; display:flex; gap:14px; }
+.message.user { flex-direction:row-reverse; }
+.avatar { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.avatar.user { background:#89b4fa; color:#1e1e2e; }
+.avatar.ai { background:#a6e3a1; color:#1e1e2e; }
+.bubble { padding:12px 16px; border-radius:12px; font-size:14px; line-height:1.7; max-width:680px; }
+.message.user .bubble { background:#45475a; color:#cdd6f4; }
+.message.ai .bubble { background:#313244; color:#cdd6f4; }
+.code-block { background:#11111b; border-radius:8px; padding:12px; margin:8px 0; font-family:'Cascadia Code','Fira Code',monospace; font-size:12px; color:#a6e3a1; overflow-x:auto; border:1px solid #45475a; }
+.check-item { display:flex; align-items:flex-start; gap:8px; margin:4px 0; font-size:13px; }
+.check-item::before { content:"✓"; color:#a6e3a1; font-weight:bold; flex-shrink:0; }
+.fail-item { display:flex; align-items:flex-start; gap:8px; margin:4px 0; font-size:13px; }
+.fail-item::before { content:"✗"; color:#f38ba8; font-weight:bold; flex-shrink:0; }
+.tag { display:inline-block; background:#f9e2af; color:#1e1e2e; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-right:6px; }
+.tag.ui { background:#fab387; }
+.tag.mobile { background:#f5c2e7; color:#1e1e2e; }
+.tag.hook { background:#94e2d5; color:#1e1e2e; }
+.tag.test { background:#a6e3a1; color:#1e1e2e; }
+.file-ref { background:#45475a; padding:2px 6px; border-radius:4px; font-family:monospace; font-size:12px; color:#f9e2af; }
+.pass-box { background:#1e2e1e; border:1px solid #a6e3a1; border-radius:8px; padding:12px; margin:8px 0; }
+.fail-box { background:#2e1e1e; border:1px solid #f38ba8; border-radius:8px; padding:12px; margin:8px 0; }
+.input-bar { padding:16px 24px; border-top:1px solid #313244; background:#1e1e2e; }
+.input-box { max-width:780px; margin:0 auto; background:#313244; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:8px; }
+.input-box input { flex:1; background:transparent; border:none; color:#cdd6f4; font-size:14px; outline:none; }
+.send-btn { background:#89b4fa; color:#1e1e2e; border:none; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sidebar-header"><span>⚡</span> TRAE</div>
+  <input class="search-box" placeholder="搜索对话...">
+  <div class="session-list">
+    <div class="session-item"><div class="title">品牌统一+赛博UI改造</div><div class="time">6月26日</div></div>
+    <div class="session-item"><div class="title">Marketplace极客商店风</div><div class="time">6月26日</div></div>
+    <div class="session-item"><div class="title">Sidebar导航+代码高亮修复</div><div class="time">6月27日</div></div>
+    <div class="session-item"><div class="title">Phase21移动端响应式修复</div><div class="time">6月28日</div></div>
+    <div class="session-item active"><div class="title">Phase22 Drawer Runtime升级</div><div class="time">6月28日 · Session: 6a40e856</div></div>
+    <div class="session-item"><div class="title">移动端访问URL配置</div><div class="time">6月28日</div></div>
+  </div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <span style="font-size:16px;">⚡</span>
+    <span style="font-size:14px;font-weight:600;">Phase 22 — Drawer Runtime 升级：ESC关闭 + 滚动锁定 + Tab焦点陷阱</span>
+    <span class="model">Claude</span>
+    <span class="session-id">Session: 6a40e85623f9791d477b17f9 · 2026-06-28</span>
+  </div>
+  <div class="chat-area">
+    <div class="message user">
+      <div class="avatar user">U</div>
+      <div class="bubble">
+        Phase 22 Drawer Runtime升级，分两步：<br><br>
+        STEP 1: 创建 <span class="file-ref">frontend/hooks/useDrawerRuntime.ts</span>，处理两个能力：<br>
+        - ESC键关闭：mobileOpen时keydown监听Escape，调用onClose<br>
+        - Body滚动锁定：mobileOpen时document.body.style.overflow='hidden'，关闭时恢复<br>
+        然后集成到 <span class="file-ref">app-layout.tsx</span>，在Sidebar Drawer渲染后调用 useDrawerRuntime(mobileOpen, () => setMobileOpen(false))<br><br>
+        STEP 2: 创建 <span class="file-ref">frontend/hooks/useFocusTrap.ts</span>，Tab键焦点边界：<br>
+        - drawer打开时，focusable elements限定在container内<br>
+        - Tab在最后一个元素时→跳到第一个，Shift+Tab在第一个→跳到最后<br>
+        - 关闭时恢复之前的focus<br>
+        修改 <span class="file-ref">Sidebar.tsx</span>，给motion.aside加ref，调用 useFocusTrap(drawerRef, mobileOpen)<br><br>
+        约束：桌面端行为完全不变，不修改现有API，typecheck 0 errors。
+      </div>
+    </div>
+    <div class="message ai">
+      <div class="avatar ai">⚡</div>
+      <div class="bubble">
+        <span class="tag hook">Hook开发</span><span class="tag mobile">移动端交互</span><br><br>
+        开始实现Phase 22 Drawer Runtime。<br><br>
+        <strong>STEP 1: useDrawerRuntime.ts</strong><br>
+        <div class="code-block">// frontend/hooks/useDrawerRuntime.ts
+import { useEffect } from 'react';
+
+export function useDrawerRuntime(
+  isOpen: boolean,
+  onClose: () => void
+) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+}</div>
+        集成到 <span class="file-ref">app-layout.tsx</span>:<br>
+        <div class="check-item">导入useDrawerRuntime</div>
+        <div class="check-item">在AppLayout组件内调用 useDrawerRuntime(mobileOpen, () => setMobileOpen(false))</div>
+        <div class="check-item">放在Sidebar Drawer条件渲染附近，确保Hook在组件顶层</div><br>
+        <strong>STEP 2: useFocusTrap.ts</strong><br>
+        <div class="code-block">// frontend/hooks/useFocusTrap.ts
+import { useEffect, useRef } from 'react';
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), ' +
+  'select:not([disabled]), textarea:not([disabled]), ' +
+  '[tabindex]:not([tabindex="-1"])';
+
+export function useFocusTrap(
+  containerRef: React.RefObject&lt;HTMLElement | null&gt;,
+  isActive: boolean
+) {
+  const prevFocusRef = useRef&lt;HTMLElement | null&gt;(null);
+  useEffect(() => {
+    if (!isActive || !containerRef.current) return;
+    prevFocusRef.current = document.activeElement as HTMLElement;
+    const container = containerRef.current;
+    const getFocusable = () =>
+      Array.from(container.querySelectorAll&lt;HTMLElement&gt;(FOCUSABLE_SELECTOR));
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const elements = getFocusable();
+      if (elements.length === 0) { e.preventDefault(); return; }
+      const first = elements[0], last = elements[elements.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    // focus first element
+    setTimeout(() => getFocusable()[0]?.focus(), 50);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      prevFocusRef.current?.focus();
+    };
+  }, [isActive, containerRef]);
+}</div>
+        修改 <span class="file-ref">Sidebar.tsx</span>:<br>
+        <div class="check-item">新增 drawerRef = useRef&lt;HTMLElement&gt;(null)</div>
+        <div class="check-item">motion.aside 添加 ref={drawerRef}</div>
+        <div class="check-item">调用 useFocusTrap(drawerRef, mobileOpen)</div>
+        <div class="check-item">导入useRef和useFocusTrap</div>
+      </div>
+    </div>
+    <div class="message user">
+      <div class="avatar user">U</div>
+      <div class="bubble">
+        验证一下typecheck和验收标准：<br>
+        1. ESC键关闭mobile drawer ✓<br>
+        2. 打开drawer时body滚动锁定 ✓<br>
+        3. Tab焦点不逃出drawer ✓<br>
+        4. 关闭drawer后焦点恢复 ✓<br>
+        5. 桌面端(md+)行为不变 ✓
+      </div>
+    </div>
+    <div class="message ai">
+      <div class="avatar ai">⚡</div>
+      <div class="bubble">
+        <span class="tag test">验收验证</span><br>
+        运行 typecheck：<br>
+        <div class="code-block">$ cd frontend && npx tsc --noEmit
+
+# 结果: 0 errors</div>
+        <div class="pass-box">
+          <strong style="color:#a6e3a1;">验收标准验证表：</strong><br><br>
+          <div class="check-item"><strong>ESC关闭</strong>: useDrawerRuntime监听Escape→onClose() → <strong style="color:#a6e3a1;">PASS</strong></div>
+          <div class="check-item"><strong>Body滚动锁定</strong>: overflow='hidden' + cleanup恢复 → <strong style="color:#a6e3a1;">PASS</strong></div>
+          <div class="check-item"><strong>Tab焦点陷阱</strong>: Tab→first/last循环，Shift+Tab反向 → <strong style="color:#a6e3a1;">PASS</strong></div>
+          <div class="check-item"><strong>关闭后焦点恢复</strong>: prevFocusRef.current?.focus() in cleanup → <strong style="color:#a6e3a1;">PASS</strong></div>
+          <div class="check-item"><strong>桌面端无影响</strong>: mobileOpen为false时hooks内early return，所有effect都不执行 → <strong style="color:#a6e3a1;">PASS</strong></div>
+          <div class="check-item"><strong>TypeScript编译</strong>: 0 errors → <strong style="color:#a6e3a1;">PASS</strong></div>
+        </div>
+        Phase 22 Drawer Runtime 完成 ✓ 两个Hook创建完毕 ✓ 集成到app-layout和Sidebar ✓ 桌面端行为未变 ✓
+      </div>
+    </div>
+  </div>
+  <div class="input-bar">
+    <div class="input-box">
+      <span>💬</span>
+      <input placeholder="和TRAE对话..." />
+      <button class="send-btn">发送</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

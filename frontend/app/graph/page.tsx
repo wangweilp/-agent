@@ -52,10 +52,10 @@ const NODE_COLORS: Record<string, string> = {
 };
 
 const NODE_GLOW: Record<string, string> = {
-  entity:  "rgba(127,140,255,0.25)",
-  concept: "rgba(74,222,128,0.25)",
-  memory:  "rgba(167,139,250,0.25)",
-  image:   "rgba(250,204,21,0.25)",
+  entity:  "rgba(99,102,241,0.18)",
+  concept: "rgba(16,185,129,0.16)",
+  memory:  "rgba(139,92,246,0.16)",
+  image:   "rgba(217,119,6,0.14)",
 };
 
 const GROUP_COLORS = [
@@ -64,17 +64,17 @@ const GROUP_COLORS = [
 ];
 
 // Edge — 蓝紫渐变主关系，灰紫次级
-const EDGE_PRIMARY   = "rgba(111,123,255,0.55)";
-const EDGE_SECONDARY = "rgba(139,128,188,0.22)";
-const EDGE_COOCCUR   = "rgba(90,82,128,0.18)";
+const EDGE_PRIMARY   = "rgba(99,102,241,0.38)";
+const EDGE_SECONDARY = "rgba(100,116,139,0.28)";
+const EDGE_COOCCUR   = "rgba(148,163,184,0.22)";
 
 // Highlight palette — cyan accent for selection (per Zhiwei OS design system)
 const HL_BG     = "#22D3EE";
 const HL_BORDER = "#22D3EE";
 const HL_EDGE   = "#A78BFA";
-const DIM_NODE  = "rgba(110,108,135,0.15)";
-const DIM_BORDER_NODE = "rgba(110,108,135,0.08)";
-const DIM_EDGE  = "rgba(80,76,110,0.08)";
+const DIM_NODE  = "rgba(148,163,184,0.18)";
+const DIM_BORDER_NODE = "rgba(148,163,184,0.12)";
+const DIM_EDGE  = "rgba(148,163,184,0.12)";
 
 // ── Sub-components ─────────────────────────────────────
 
@@ -96,16 +96,16 @@ function EntityDrawer({
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40" onClick={onClose}
+            className="fixed inset-0 bg-slate-950/20 backdrop-blur-[2px] z-40" onClick={onClose}
           />
           <motion.div
             initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#0E0B1A] border-l border-white/5 z-50 overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-os-surface border-l border-os-border z-50 overflow-y-auto shadow-os-lg"
           >
-            <div className="sticky top-0 bg-[#0E0B1A]/95 backdrop-blur border-b border-white/5 px-5 py-3 flex items-center justify-between z-10">
-              <h2 className="text-sm font-semibold text-zinc-200">{entityName}</h2>
-              <button onClick={onClose} className="p-1.5 rounded hover:bg-white/5 text-zinc-500">
+            <div className="sticky top-0 bg-os-surface/95 backdrop-blur border-b border-os-border px-5 py-3 flex items-center justify-between z-10">
+              <h2 className="text-sm font-semibold text-os-text-high">{entityName}</h2>
+              <button onClick={onClose} className="p-1.5 rounded text-os-subtle hover:bg-os-accent/10 hover:text-os-accent">
                 <X size={16} />
               </button>
             </div>
@@ -123,17 +123,17 @@ function EntityDrawer({
                     <span className="px-1.5 py-0.5 rounded bg-indigo-400/10 text-indigo-400">
                       {data.entity_type || "entity"}
                     </span>
-                    <span className="text-zinc-500">提及 {data.mention_count} 次</span>
-                    {data.first_seen && <span className="text-zinc-600">首次 {formatDate(data.first_seen)}</span>}
+                    <span className="text-os-muted">提及 {data.mention_count} 次</span>
+                    {data.first_seen && <span className="text-os-muted">首次 {formatDate(data.first_seen)}</span>}
                   </div>
 
                   {data.recent_activity.length > 0 && (
                     <div>
-                      <h3 className="text-2xs text-zinc-500 uppercase tracking-wider mb-2">最近活动</h3>
+                      <h3 className="text-2xs text-os-muted uppercase tracking-wider mb-2">最近活动</h3>
                       <div className="space-y-1.5">
                         {data.recent_activity.map((act) => (
-                          <div key={act.id} className="text-2xs text-zinc-300 line-clamp-2 bg-white/5 rounded p-2">
-                            <span className="text-zinc-500">{act.timestamp.slice(0, 10)} </span>
+                          <div key={act.id} className="text-2xs text-os-text line-clamp-2 bg-os-elevated rounded p-2">
+                            <span className="text-os-muted">{act.timestamp.slice(0, 10)} </span>
                             {act.content_preview}
                           </div>
                         ))}
@@ -143,14 +143,14 @@ function EntityDrawer({
 
                   {data.related_entities.length > 0 && (
                     <div>
-                      <h3 className="text-2xs text-zinc-500 uppercase tracking-wider mb-2">
+                      <h3 className="text-2xs text-os-muted uppercase tracking-wider mb-2">
                         相关实体 ({data.related_entities.length})
                       </h3>
                       <div className="flex flex-wrap gap-1.5">
                         {data.related_entities.map((e) => (
-                          <span key={e.name} className="text-2xs px-2 py-1 rounded-full bg-white/5 text-zinc-400 border border-white/5">
+                          <span key={e.name} className="text-2xs px-2 py-1 rounded-full bg-os-elevated text-os-subtle border border-os-border">
                             {e.name}
-                            <span className="text-zinc-600 ml-1">×{e.co_count}</span>
+                            <span className="text-os-muted ml-1">×{e.co_count}</span>
                           </span>
                         ))}
                       </div>
@@ -159,14 +159,14 @@ function EntityDrawer({
 
                   {data.related_memories.length > 0 && (
                     <div>
-                      <h3 className="text-2xs text-zinc-500 uppercase tracking-wider mb-2">
+                      <h3 className="text-2xs text-os-muted uppercase tracking-wider mb-2">
                         相关记忆 ({data.related_memories.length})
                       </h3>
                       <div className="space-y-2">
                         {data.related_memories.slice(0, 10).map((mem) => (
-                          <div key={mem.id} className="text-xs text-zinc-300 bg-white/5 rounded p-2.5">
+                          <div key={mem.id} className="text-xs text-os-text bg-os-elevated rounded p-2.5">
                             <p className="line-clamp-3 leading-relaxed">{mem.content_preview}</p>
-                            <div className="flex items-center gap-2 mt-1.5 text-2xs text-zinc-500">
+                            <div className="flex items-center gap-2 mt-1.5 text-2xs text-os-muted">
                               <span>{mem.timestamp.slice(0, 10)}</span>
                               <span className={importanceColor(mem.importance)}>重要度 {mem.importance}</span>
                             </div>
@@ -177,7 +177,7 @@ function EntityDrawer({
                   )}
                 </>
               ) : (
-                <p className="text-xs text-zinc-500 text-center py-8">加载失败</p>
+                <p className="text-xs text-os-muted text-center py-8">加载失败</p>
               )}
             </div>
           </motion.div>
@@ -253,11 +253,11 @@ export default function GraphPage() {
       color: {
         background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
         border: "rgba(129,140,248,0.4)",
-        highlight: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
-        hover: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+        highlight: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
+        hover: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
       },
       borderWidth: 1,
-      font: { color: "#A1A1AA", size: 9, face: "Inter, sans-serif" },
+      font: { color: "#475569", size: 9, face: "Inter, sans-serif" },
       shadow: false,
     })));
 
@@ -307,10 +307,10 @@ export default function GraphPage() {
       color: {
         background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
         border: "rgba(129,140,248,0.4)",
-        highlight: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
-        hover: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+        highlight: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
+        hover: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
       },
-      font: { color: "#A1A1AA", size: 9, face: "Inter, sans-serif" },
+      font: { color: "#475569", size: 9, face: "Inter, sans-serif" },
       borderWidth: 1,
       shape: n.type === "concept" ? "diamond" : n.type === "memory" ? "box" : "dot",
       size: (9 + Math.min(n.memory_count * 2, 32)) * NODE_SIZE_SCALE,
@@ -335,7 +335,7 @@ export default function GraphPage() {
         },
         width: Math.max(weight * 0.55, 0.35),
         smooth: { enabled: true, type: "continuous", roundness: 0 },
-        font: { color: "rgba(200,200,220,0.35)", size: 7, strokeWidth: 0 },
+        font: { color: "rgba(100,116,139,0.45)", size: 7, strokeWidth: 0 },
         arrows: { to: { enabled: false } },
       };
     }));
@@ -364,15 +364,15 @@ export default function GraphPage() {
         color: {
           background: "rgba(129,140,248,0.1)",
           border: "#818CF8",
-          highlight: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
-          hover: { background: "rgba(34,211,238,0.15)", border: "#22D3EE" },
+          highlight: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
+          hover: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
         },
-        font: { color: "#A1A1AA", face: "Inter, sans-serif" },
+        font: { color: "#475569", face: "Inter, sans-serif" },
         scaling: { min: 4 * NODE_SIZE_SCALE, max: 28 * NODE_SIZE_SCALE },
       },
       edges: {
         color: {
-          color: "#3F3F46",
+          color: "rgba(148,163,184,0.45)",
           highlight: "#A78BFA",
           hover: "#A78BFA",
         },
@@ -409,8 +409,8 @@ export default function GraphPage() {
             hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 2.5,
-          font: { color: "#A1A1AA", size: 11, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(34,211,238,0.5)", size: 16 },
+          font: { color: "#475569", size: 11, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(99,102,241,0.30)", size: 16 },
         };
         if (hl.has(n.id)) return {
           id: n.id,
@@ -421,8 +421,8 @@ export default function GraphPage() {
             hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 2,
-          font: { color: "#A1A1AA", size: 10, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(34,211,238,0.35)", size: 10 },
+          font: { color: "#475569", size: 10, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(99,102,241,0.22)", size: 10 },
         };
         return {
           id: n.id,
@@ -433,7 +433,7 @@ export default function GraphPage() {
             hover: { background: DIM_NODE, border: DIM_BORDER_NODE },
           },
           borderWidth: 0.3,
-          font: { color: "rgba(140,135,165,0.2)", size: 8, face: "Inter, sans-serif" },
+          font: { color: "rgba(148,163,184,0.35)", size: 8, face: "Inter, sans-serif" },
           shadow: false,
         };
       }));
@@ -481,8 +481,8 @@ export default function GraphPage() {
             hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 3,
-          font: { color: "#A1A1AA", size: 12, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(34,211,238,0.55)", size: 20 },
+          font: { color: "#475569", size: 12, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(99,102,241,0.34)", size: 20 },
         };
         if (hl.has(n.id)) return {
           id: n.id,
@@ -493,8 +493,8 @@ export default function GraphPage() {
             hover: { background: "#22D3EE", border: HL_BORDER },
           },
           borderWidth: 2.2,
-          font: { color: "#A1A1AA", size: 10, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(34,211,238,0.4)", size: 12 },
+          font: { color: "#475569", size: 10, face: "Inter, sans-serif" },
+          shadow: { enabled: true, color: "rgba(99,102,241,0.25)", size: 12 },
         };
         return {
           id: n.id,
@@ -505,7 +505,7 @@ export default function GraphPage() {
             hover: { background: DIM_NODE, border: DIM_BORDER_NODE },
           },
           borderWidth: 0.3,
-          font: { color: "rgba(140,135,165,0.2)", size: 8, face: "Inter, sans-serif" },
+          font: { color: "rgba(148,163,184,0.35)", size: 8, face: "Inter, sans-serif" },
           shadow: false,
         };
       }));
@@ -585,19 +585,19 @@ export default function GraphPage() {
         {/* Header */}
         <div className="flex items-center justify-between shrink-0">
           <div>
-            <h1 className="text-lg font-semibold text-zinc-200 tracking-tight">知识图谱</h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <h1 className="text-lg font-semibold text-os-text-high tracking-tight">知识图谱</h1>
+            <p className="text-xs text-os-muted mt-0.5">
               {stats ? `${stats.node_count} 节点 · ${stats.edge_count} 关系` : "加载中…"}
             </p>
           </div>
           <div className="flex items-center gap-1.5">
-            <button onClick={zoomIn} className="p-1.5 rounded hover:bg-white/5 text-zinc-500 hover:text-zinc-300" title="放大">
+            <button onClick={zoomIn} className="p-1.5 rounded hover:bg-os-accent/10 text-os-muted hover:text-os-accent" title="放大">
               <ZoomIn size={14} />
             </button>
-            <button onClick={zoomOut} className="p-1.5 rounded hover:bg-white/5 text-zinc-500 hover:text-zinc-300" title="缩小">
+            <button onClick={zoomOut} className="p-1.5 rounded hover:bg-os-accent/10 text-os-muted hover:text-os-accent" title="缩小">
               <ZoomOut size={14} />
             </button>
-            <button onClick={resetView} className="p-1.5 rounded hover:bg-white/5 text-zinc-500 hover:text-zinc-300" title="重置">
+            <button onClick={resetView} className="p-1.5 rounded hover:bg-os-accent/10 text-os-muted hover:text-os-accent" title="重置">
               <RotateCcw size={14} />
             </button>
             {focusNodeId && (
@@ -605,23 +605,23 @@ export default function GraphPage() {
                 取消聚焦
               </button>
             )}
-            <span className="w-px h-4 bg-white/5 mx-0.5" />
+            <span className="w-px h-4 bg-os-border mx-0.5" />
             <select
               value={entityFilter}
               onChange={(e) => setEntityFilter(e.target.value)}
-              className="h-7 px-2 rounded bg-white/5 border border-white/5 text-2xs text-zinc-300 focus:outline-none focus:border-white/10"
+              className="h-7 px-2 rounded bg-os-elevated border border-os-border text-2xs text-os-text focus:outline-none focus:border-os-accent/40"
             >
               <option value="">全部实体类型</option>
               {entityTypeOptions.filter(Boolean).map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <div className="relative">
-              <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-zinc-600" />
+              <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-os-muted" />
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="搜索实体…"
-                className="w-36 h-7 pl-7 pr-2 bg-white/5 border border-white/5 rounded text-2xs text-zinc-300 placeholder:text-zinc-600 focus:outline-none focus:border-white/10"
+                className="w-36 h-7 pl-7 pr-2 bg-os-elevated border border-os-border rounded text-2xs text-os-text placeholder:text-os-muted focus:outline-none focus:border-os-accent/40"
               />
             </div>
           </div>
@@ -629,16 +629,16 @@ export default function GraphPage() {
 
         {/* Stats */}
         {stats && (
-          <div className="flex items-center gap-4 shrink-0 text-2xs text-zinc-500">
+          <div className="flex items-center gap-4 shrink-0 text-2xs text-os-muted">
             <span className="flex items-center gap-1"><Brain size={11} className="text-[#7F8CFF]" />实体 {stats.entity_nodes || 0}</span>
             <span className="flex items-center gap-1"><GitGraph size={11} className="text-[#4ADE80]" />概念 {stats.concept_nodes || 0}</span>
             <span className="flex items-center gap-1"><Activity size={11} className="text-[#FACC15]" />关系 {stats.edge_count || 0}</span>
             {stats.top_entities && stats.top_entities.length > 0 && (
               <>
-                <span className="w-px h-3 bg-white/5" />
+                <span className="w-px h-3 bg-os-elevated" />
                 {stats.top_entities.slice(0, 5).map(name => (
                   <button key={name} onClick={() => setSelectedEntity(name)}
-                    className="px-1.5 py-0.5 rounded bg-white/5 text-[#7F8CFF]/70 hover:text-[#7F8CFF] transition-colors">
+                    className="px-1.5 py-0.5 rounded bg-os-accent/10 text-os-accent hover:bg-os-accent/15 transition-colors">
                     {name}
                   </button>
                 ))}
@@ -651,23 +651,23 @@ export default function GraphPage() {
         <div
           ref={canvasWrapperRef}
           onMouseMove={handleCanvasMouseMove}
-          className="flex-1 min-h-0 relative rounded-lg overflow-hidden border border-white/5"
+          className="flex-1 min-h-0 relative rounded-lg overflow-hidden border border-os-border bg-os-surface shadow-os-sm"
         >
           <KnowledgeGraphBackground intensity={parallaxIntensity} focusActive={!!focusNodeId} />
 
           {isLoading ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center">
               <div className="text-center space-y-3">
-                <GitGraph size={48} className="text-zinc-700 mx-auto animate-pulse" />
-                <p className="text-xs text-zinc-600">加载图谱数据…</p>
+                <GitGraph size={48} className="text-os-muted mx-auto animate-pulse" />
+                <p className="text-xs text-os-muted">加载图谱数据…</p>
               </div>
             </div>
           ) : !data || data.nodes.length === 0 ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center">
               <div className="text-center space-y-2">
-                <GitGraph size={48} className="text-zinc-700 mx-auto opacity-20" />
-                <p className="text-xs text-zinc-600">暂无图谱数据</p>
-                <p className="text-2xs text-zinc-700">开始记录带有实体的记忆后，图谱将自动生成</p>
+                <GitGraph size={48} className="text-os-muted mx-auto opacity-20" />
+                <p className="text-xs text-os-muted">暂无图谱数据</p>
+                <p className="text-2xs text-os-muted">开始记录带有实体的记忆后，图谱将自动生成</p>
               </div>
             </div>
           ) : null}
@@ -722,7 +722,7 @@ export default function GraphPage() {
                     </div>
                     <button
                       onClick={clearHighlight}
-                      className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-os-muted hover:text-os-text-high hover:bg-os-elevated transition-colors"
+                      className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-os-muted hover:text-os-accent-high hover:bg-os-elevated transition-colors"
                     >
                       <X size={13} />
                     </button>

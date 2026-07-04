@@ -39,8 +39,8 @@ export function ReviewActionDialog({ open, action, submissionId, saving, error, 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-md rounded-lg border border-os-border bg-os-base shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 px-4">
+      <div className="w-full max-w-md rounded-lg border border-os-border bg-os-base shadow-os-lg">
         <div className="flex items-center justify-between border-b border-os-border px-5 py-3">
           <h2 className={`text-sm font-semibold ${cfg.color}`}>{cfg.title}</h2>
           <button onClick={onClose} disabled={saving} className="rounded p-1 text-os-subtle hover:text-os-text-high disabled:opacity-50"><X size={16}/></button>

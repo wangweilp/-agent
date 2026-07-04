@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Lightbulb, Calendar } from "lucide-react";
+import { Calendar, Lightbulb } from "lucide-react";
 import { Skeleton } from "@/components/animations/skeleton";
+import { EmptyState, OsBadge } from "@/components/ui/os";
 import { formatDate } from "@/lib/utils";
 import type { RecentReflectionItem } from "@/types";
 
@@ -12,13 +13,16 @@ interface RecentReflectionsProps {
 }
 
 export function RecentReflections({ reflections, isLoading }: RecentReflectionsProps) {
-  if (isLoading) return <Skeleton className="h-64" />;
+  if (isLoading) return <Skeleton className="h-72 rounded-2xl" />;
+
   if (!reflections || reflections.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-2xs text-os-muted">
-        <Lightbulb size={20} className="mb-2 opacity-40" />
-        暂无反思记录
-      </div>
+      <EmptyState
+        icon={Lightbulb}
+        title="暂无反思记录"
+        description="当系统从记忆中沉淀出洞察时，这里会显示主题、发现与相关实体。"
+        className="min-h-[260px]"
+      />
     );
   }
 
@@ -29,30 +33,26 @@ export function RecentReflections({ reflections, isLoading }: RecentReflectionsP
           key={ref.id}
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.06 }}
-          className="os-card p-3 group transition-colors"
+          transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.16 }}
+          className="rounded-2xl border border-os-border bg-white p-4 shadow-os-card transition-colors hover:border-os-primary/25"
         >
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-400/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Lightbulb size={13} className="text-amber-400" />
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-os-warning/20 bg-os-warning-soft text-os-warning">
+              <Lightbulb size={16} />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-os-text-high truncate">
-                {ref.topic}
-              </p>
-              <p className="text-2xs text-os-subtle mt-1 line-clamp-3 leading-relaxed">
-                {ref.finding}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-2xs text-os-muted flex items-center gap-1">
-                  <Calendar size={10} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-os-text-high">{ref.topic}</p>
+              <p className="mt-1 line-clamp-3 text-sm leading-6 text-os-muted">{ref.finding}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-os-muted">
+                  <Calendar size={12} />
                   {formatDate(ref.timestamp)}
                 </span>
-                {ref.entities.length > 0 && (
-                  <span className="text-2xs text-os-muted truncate">
-                    {ref.entities.slice(0, 2).join(", ")}
-                  </span>
-                )}
+                {ref.entities.slice(0, 2).map((entity) => (
+                  <OsBadge key={entity} variant="muted">
+                    #{entity}
+                  </OsBadge>
+                ))}
               </div>
             </div>
           </div>

@@ -153,7 +153,7 @@ function CodeBlock({ code, title, language }: { code: string, title: string, lan
     .replace(/(#.*)/g, '<span class="text-os-muted italic">$1</span>');
 
   return (
-    <div className="bg-[#0a0a0b] rounded-2xl border border-os-border/60 shadow-xl overflow-hidden group">
+    <div className="bg-os-surface rounded-2xl border border-os-border/60 shadow-os-lg overflow-hidden group">
       {/* macOS 风格顶部栏 */}
       <div className="flex items-center justify-between px-4 py-3 bg-os-surface/30 border-b border-os-border/50">
         <div className="flex space-x-2">

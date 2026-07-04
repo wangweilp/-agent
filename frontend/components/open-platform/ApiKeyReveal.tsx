@@ -24,7 +24,7 @@ export function ApiKeyReveal({ rawKey, onClose }: { rawKey: string; onClose: () 
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/20 backdrop-blur-sm px-4"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
@@ -34,7 +34,7 @@ export function ApiKeyReveal({ rawKey, onClose }: { rawKey: string; onClose: () 
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="w-full max-w-md overflow-hidden rounded-2xl border border-os-border bg-os-base shadow-2xl"
+          className="w-full max-w-md overflow-hidden rounded-2xl border border-os-border bg-os-base shadow-os-lg"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-os-border px-5 py-3.5">

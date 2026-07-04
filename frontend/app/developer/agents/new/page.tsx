@@ -237,7 +237,7 @@ export default function NewSubmissionPage() {
                   {systemPrompt.length} chars · 支持 <code className="text-os-accent">{"{{var}}"}</code>
                 </span>
               </div>
-              <div className="relative rounded-xl border border-os-border bg-[#000000] overflow-hidden focus-within:ring-1 focus-within:ring-os-accent focus-within:border-os-accent transition-all">
+              <div className="relative rounded-xl border border-os-border bg-slate-50 overflow-hidden focus-within:ring-1 focus-within:ring-os-accent focus-within:border-os-accent transition-all">
                 {/* 编辑器顶部栏 */}
                 <div className="flex items-center justify-between px-3 py-1.5 border-b border-os-border/50 bg-os-elevated/40">
                   <div className="flex items-center gap-1.5">

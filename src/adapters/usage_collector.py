@@ -124,14 +124,14 @@ class UsageCollector:
             sub = self._subscription_store.get_subscription(tenant_id)
             memory_limit = 100  # default free tier
             if sub:
-                from src.core.subscription import PLAN_LIMITS, PlanTier
+                from src.core.subscription import PLANS, PlanTier
                 tier = (
                     PlanTier(sub.plan_tier)
                     if hasattr(sub.plan_tier, "value")
                     else PlanTier(str(sub.plan_tier))
                 )
-                limits = PLAN_LIMITS.get(tier, {})
-                memory_limit = limits.get("memory_count", 100)
+                limits = PLANS.get(tier)
+                memory_limit = limits.memory_count if limits else 100
 
             memory_count_row = self._usage_store._db.execute(
                 """SELECT COUNT(*) AS cnt FROM usage_events

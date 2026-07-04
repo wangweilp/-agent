@@ -73,7 +73,7 @@ export function AnalyticsCard({
 
       {/* Optional detail slot */}
       {children && (
-        <div className="mt-1 border-t border-white/5 pt-2">{children}</div>
+        <div className="mt-1 border-t border-os-border/70 pt-2">{children}</div>
       )}
     </motion.div>
   );
@@ -94,7 +94,7 @@ export function MiniProgressBar({
   return (
     <div className="flex items-center gap-2 text-2xs">
       <span className="w-10 text-os-muted">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/5">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-os-elevated">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(percent, 100)}%` }}

@@ -633,7 +633,7 @@ export default function PolicyCenterPage() {
       {/* ── Retention Modal ── */}
       {showRetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowRetModal(false)} />
+          <div className="absolute inset-0 bg-slate-950/20" onClick={() => setShowRetModal(false)} />
           <div className="relative bg-os-surface border border-os-border rounded-lg shadow-os-lg w-full max-w-sm mx-4 p-5 z-10 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-os-text-high">
@@ -709,7 +709,7 @@ export default function PolicyCenterPage() {
       {/* ── ABAC Modal ── */}
       {showAbacModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowAbacModal(false)} />
+          <div className="absolute inset-0 bg-slate-950/20" onClick={() => setShowAbacModal(false)} />
           <div className="relative bg-os-surface border border-os-border rounded-lg shadow-os-lg w-full max-w-sm mx-4 p-5 z-10 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-os-text-high">

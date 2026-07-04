@@ -1,7 +1,9 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BarChart3 } from "lucide-react";
 import { Skeleton } from "@/components/animations/skeleton";
+import { EmptyState } from "@/components/ui/os";
 import { ResponsiveChartContainer } from "@/components/ui/ResponsiveChartContainer";
 
 interface ChartDataPoint {
@@ -18,64 +20,72 @@ interface MemoryChartProps {
 }
 
 export function MemoryChart({ data, isLoading }: MemoryChartProps) {
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
+  if (isLoading) return <Skeleton className="h-64 w-full rounded-2xl" />;
+
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-2xs text-os-muted">
-        暂无增长数据 — 开始记录记忆后将显示趋势
-      </div>
+      <EmptyState
+        icon={BarChart3}
+        title="暂无增长数据"
+        description="开始记录记忆后，这里会显示情景、语义与反思记忆的 30 天趋势。"
+        className="min-h-[256px]"
+      />
     );
   }
 
   return (
-    <div className="h-48 w-full">
-      <ResponsiveChartContainer height="100%">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id="episodicGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#818CF8" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#818CF8" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="semanticGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#34D399" stopOpacity={0.25} />
-              <stop offset="100%" stopColor="#34D399" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="reflectGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FBBF24" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#FBBF24" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="label"
-            tick={{ fill: "#52525B", fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fill: "#52525B", fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            allowDecimals={false}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#18181B",
-              border: "1px solid #27272A",
-              borderRadius: "12px",
-              fontSize: "12px",
-              color: "#E4E4E7",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-            }}
-            itemStyle={{ color: "#A1A1AA" }}
-          />
-          <Bar dataKey="episodic" stackId="a" fill="#818CF8" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="semantic" stackId="a" fill="#34D399" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="reflect" stackId="a" fill="#FBBF24" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-      </ResponsiveChartContainer>
+    <div className="space-y-3">
+      <div className="h-64 w-full">
+        <ResponsiveChartContainer height="100%" className="border-0 bg-transparent shadow-none">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <CartesianGrid stroke="#E6EAF2" strokeDasharray="3 4" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "#64748B", fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "#64748B", fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                cursor={{ fill: "rgba(99,102,241,0.06)" }}
+                contentStyle={{
+                  backgroundColor: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: "14px",
+                  fontSize: "12px",
+                  color: "#334155",
+                  boxShadow: "0 12px 30px rgba(15, 23, 42, 0.10)",
+                }}
+                labelStyle={{ color: "#0F172A", fontWeight: 600 }}
+              />
+              <Bar dataKey="episodic" stackId="a" fill="#7C8CF8" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="semantic" stackId="a" fill="#3DBE8B" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="reflect" stackId="a" fill="#D99A1E" radius={[5, 5, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ResponsiveChartContainer>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 text-xs text-os-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm bg-[#7C8CF8]" />
+          情景记忆
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm bg-[#3DBE8B]" />
+          语义记忆
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm bg-[#D99A1E]" />
+          反思记忆
+        </span>
+      </div>
     </div>
   );
 }

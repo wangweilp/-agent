@@ -1,0 +1,124 @@
+2026-07-03T23:14:23.037 INFO [__main__] 服务启动完成
+2026-07-03T23:14:23.038 INFO [src.bootstrap.orchestrator] orchestrator_initialized
+2026-07-03T23:14:23.039 INFO [src.bootstrap.system] system_runtime_initialized
+2026-07-03T23:14:27.494 INFO [src.tools.registry] tool:registered
+2026-07-03T23:14:27.496 INFO [src.tools.registry] tool:registered
+2026-07-03T23:14:27.497 INFO [src.tools.registry] tool:registered
+2026-07-03T23:14:27.498 INFO [__main__] memory_writer 线程已启动
+2026-07-03T23:14:27.551 INFO [src.core.memory_queue] memory_worker_started
+2026-07-03T23:14:33.537 INFO [src.adapters.embedding] 加载 embedding 模型: BAAI/bge-small-zh-v1.5 (device=cpu)
+2026-07-03T23:14:33.539 INFO [sentence_transformers.SentenceTransformer] Load pretrained SentenceTransformer: BAAI/bge-small-zh-v1.5
+2026-07-03T23:14:33.700 INFO [src.adapters.embedding] embedding 模型预热完成
+2026-07-03T23:14:33.703 INFO [src.bootstrap.event_bridge] structured_event_emitter_started
+2026-07-03T23:14:33.703 INFO [src.bootstrap.event_bridge] event_emitter_initialized
+2026-07-03T23:14:34.134 INFO [src.adapters.auth_store] auth:super_admin_exists
+2026-07-03T23:14:34.135 INFO [__main__] super_admin_ready
+2026-07-03T23:14:34.327 INFO [src.tools.registry] tool:registered
+2026-07-03T23:14:34.327 INFO [src.tools.registry] tool:registered
+2026-07-03T23:14:34.327 INFO [src.tools.registry] tool:registered
+2026-07-03T23:14:34.341 INFO [__main__] import_worker 线程已启动
+2026-07-03T23:14:34.387 INFO [src.core.import_worker] import_worker_started
+2026-07-03T23:14:34.447 INFO [__main__] sync_local_folder_allowlist_configured
+2026-07-03T23:14:34.448 INFO [src.sync.sync_worker] sync_worker_started
+2026-07-03T23:14:34.448 INFO [__main__] sync_worker + sync_scheduler 线程已启动
+2026-07-03T23:14:34.449 INFO [src.sync.scheduler] sync_scheduler_started
+2026-07-03T23:14:34.673 INFO [__main__] workspace_account_entitlements_ready
+2026-07-03T23:14:34.779 INFO [__main__] saas platform routers registered
+2026-07-03T23:14:34.802 INFO [src.adapters.usage_collector] usage_collector:started
+2026-07-03T23:14:34.802 INFO [__main__] usage_collector 后台线程已启动
+2026-07-03T23:14:34.968 INFO [__main__] dashboard_v2 routers registered
+2026-07-03T23:14:34.970 INFO [__main__] dashboard_alert_rules_already_seeded
+2026-07-03T23:14:34.971 INFO [__main__] growth & analytics center routers registered
+2026-07-03T23:14:34.971 INFO [__main__] enterprise brain routers registered
+2026-07-03T23:14:35.009 INFO [__main__] analytics pipeline initialized
+2026-07-03T23:14:35.009 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.010 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.010 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.011 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.011 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.011 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.011 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.012 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.012 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.012 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.013 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.013 INFO [src.agents.registry] agent_registered
+2026-07-03T23:14:35.013 INFO [src.agents.workflow] workflow_registered
+2026-07-03T23:14:35.013 INFO [__main__] preset_workflow_registered
+2026-07-03T23:14:35.014 INFO [src.agents.workflow] workflow_registered
+2026-07-03T23:14:35.014 INFO [__main__] preset_workflow_registered
+2026-07-03T23:14:35.079 INFO [__main__] enterprise_agent_platform_bootstrap_complete
+2026-07-03T23:14:35.090 INFO [__main__] marketplace_store_initialized
+2026-07-03T23:14:35.091 INFO [src.agents.marketplace] marketplace_agent_updated
+2026-07-03T23:14:35.092 INFO [src.agents.marketplace] marketplace_agent_updated
+2026-07-03T23:14:35.092 INFO [src.agents.marketplace] marketplace_agent_updated
+2026-07-03T23:14:35.093 INFO [src.agents.marketplace] marketplace_agent_updated
+2026-07-03T23:14:35.094 INFO [src.agents.marketplace] marketplace_agent_updated
+2026-07-03T23:14:35.094 INFO [src.agents.marketplace] marketplace_agent_updated
+2026-07-03T23:14:35.094 INFO [src.agents.marketplace] marketplace_seed_complete
+2026-07-03T23:14:35.095 INFO [__main__] marketplace_seed_complete
+2026-07-03T23:14:35.138 INFO [__main__] marketplace_api_registered
+2026-07-03T23:14:35.165 INFO [__main__] developer_store_initialized
+2026-07-03T23:14:35.170 INFO [__main__] submission_store_initialized
+2026-07-03T23:14:35.180 INFO [__main__] runtime_store_initialized
+2026-07-03T23:14:35.181 INFO [src.adapters.runtime_store] runtime_adapters_seeded
+2026-07-03T23:14:35.181 INFO [__main__] runtime_adapters_seeded
+2026-07-03T23:14:35.186 INFO [__main__] simulation_runtime_service_initialized
+2026-07-03T23:14:35.237 INFO [__main__] developer_api_registered
+2026-07-03T23:14:35.260 INFO [__main__] sandbox_policy_store_initialized
+2026-07-03T23:14:35.261 INFO [src.adapters.sandbox_policy_store] sandbox_policies_seeded
+2026-07-03T23:14:35.261 INFO [__main__] sandbox_policies_seeded
+2026-07-03T23:14:35.297 INFO [__main__] sandbox_policy_api_registered
+2026-07-03T23:14:35.430 INFO [__main__] runtime_admin_api_registered
+2026-07-03T23:14:35.443 INFO [__main__] package_validation_store_initialized
+2026-07-03T23:14:35.443 INFO [__main__] package_validation_service_initialized
+2026-07-03T23:14:35.479 INFO [__main__] admin_review_api_registered
+2026-07-03T23:14:35.515 INFO [__main__] runtime_plan_store_initialized
+2026-07-03T23:14:35.515 INFO [__main__] runtime_planner_initialized
+2026-07-03T23:14:35.516 INFO [__main__] policy_translator_initialized
+2026-07-03T23:14:35.516 INFO [__main__] worker_registry_initialized
+2026-07-03T23:14:35.544 INFO [__main__] runtime_execution_api_registered
+2026-07-03T23:14:35.720 INFO [__main__] sandbox_v2_store_initialized
+2026-07-03T23:14:35.726 INFO [__main__] sandbox_v2_queue_initialized
+2026-07-03T23:14:35.727 INFO [__main__] sandbox_v2_artifact_store_initialized
+2026-07-03T23:14:35.727 INFO [__main__] sandbox_v2_package_quarantine_store_initialized
+2026-07-03T23:14:35.727 INFO [__main__] sandbox_v2_network_service_initialized
+2026-07-03T23:14:35.736 INFO [__main__] sandbox_v2_execution_providers_initialized
+2026-07-03T23:14:35.736 INFO [__main__] sandbox_v2_kill_switch_initialized
+2026-07-03T23:14:35.737 INFO [__main__] sandbox_v2_service_initialized
+2026-07-03T23:14:35.737 INFO [__main__] sandbox_v2_worker_initialized
+2026-07-03T23:14:36.038 INFO [__main__] sandbox_v2_api_registered
+2026-07-03T23:14:36.053 INFO [__main__] artifact_store_initialized
+2026-07-03T23:14:36.053 INFO [__main__] artifact_service_initialized
+2026-07-03T23:14:36.084 INFO [__main__] artifact_api_registered
+2026-07-03T23:14:36.098 INFO [__main__] package_store_initialized
+2026-07-03T23:14:36.098 INFO [__main__] package_service_initialized
+2026-07-03T23:14:36.128 INFO [__main__] package_api_registered
+2026-07-03T23:14:36.142 INFO [__main__] workflow_store_initialized
+2026-07-03T23:14:36.142 INFO [__main__] workflow_service_initialized
+2026-07-03T23:14:36.256 INFO [__main__] workflow_api_registered
+2026-07-03T23:14:36.272 INFO [__main__] agent_module_store_initialized
+2026-07-03T23:14:36.272 INFO [__main__] agent_module_service_initialized
+2026-07-03T23:14:36.272 INFO [__main__] marketplace_service_initialized
+2026-07-03T23:14:36.293 INFO [__main__] agent_publishing_api_registered
+2026-07-03T23:14:36.303 INFO [__main__] marketplace_api_registered
+2026-07-03T23:14:36.308 INFO [__main__] saas_integration_service_initialized
+2026-07-03T23:14:36.323 INFO [__main__] saas_integration_api_registered
+2026-07-03T23:14:36.338 INFO [__main__] governance_store_initialized
+2026-07-03T23:14:36.339 INFO [__main__] governance_service_initialized
+2026-07-03T23:14:36.361 INFO [__main__] governance_api_registered
+2026-07-03T23:14:36.374 INFO [__main__] marketplace_analytics_store_initialized
+2026-07-03T23:14:36.374 INFO [__main__] analytics_service_initialized
+2026-07-03T23:14:36.389 INFO [__main__] analytics_api_registered
+2026-07-03T23:14:36.401 INFO [__main__] billing_service_initialized
+2026-07-03T23:14:36.402 INFO [__main__] rbac_service_initialized
+2026-07-03T23:14:36.406 INFO [__main__] ct_analytics_store_initialized
+2026-07-03T23:14:36.406 INFO [__main__] ct_analytics_service_initialized
+2026-07-03T23:14:36.427 INFO [__main__] billing_rbac_analytics_api_registered
+INFO:     Started server process [27184]
+INFO:     Waiting for application startup.
+2026-07-03T23:14:36.710 INFO [__main__] 服务启动
+2026-07-03T23:14:36.711 INFO [__main__] dashboard_alert_evaluator_task_started
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-07-03T23:14:36.715 INFO [src.adapters.alert_store] alert:event_recorded

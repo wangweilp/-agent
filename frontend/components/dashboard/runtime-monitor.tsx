@@ -2,23 +2,18 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { HardDrive, CheckCircle2, XCircle, Clock, Layers, Database } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, HardDrive, Layers, XCircle } from "lucide-react";
 import { api } from "@/services/api";
+import { EmptyState, OsBadge, StatusBadge } from "@/components/ui/os";
+import { Skeleton } from "@/components/animations/skeleton";
 import { cn } from "@/lib/utils";
 import type { RuntimeStats } from "@/types";
 
-const statusColor: Record<string, string> = {
-  pending: "text-amber-400",
-  processing: "text-blue-400",
-  stored: "text-emerald-400",
-  failed: "text-red-400",
-};
-
-const statusDot: Record<string, string> = {
-  pending: "bg-amber-400",
-  processing: "bg-blue-400 animate-pulse",
-  stored: "bg-emerald-400",
-  failed: "bg-red-400",
+const statusTone: Record<string, string> = {
+  pending: "bg-os-warning",
+  processing: "bg-os-info animate-pulse",
+  stored: "bg-os-success",
+  failed: "bg-os-danger",
 };
 
 function formatUptime(seconds: number): string {
@@ -41,19 +36,22 @@ export function RuntimeMonitor() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 animate-pulse">
-        <div className="h-4 bg-os-surface-hover rounded w-24" />
-        <div className="h-16 bg-os-surface-hover rounded" />
-        <div className="h-20 bg-os-surface-hover rounded" />
+      <div className="space-y-3">
+        <Skeleton className="h-10 rounded-xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-36 rounded-2xl" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="text-xs text-red-400">
-        Worker 状态获取失败 — 检查服务是否在线
-      </div>
+      <EmptyState
+        icon={AlertTriangle}
+        title="Worker 状态获取失败"
+        description="请检查运行时服务是否在线，仪表盘会继续按 3 秒间隔自动重试。"
+        className="min-h-[220px] border-os-danger/20 bg-os-danger-soft"
+      />
     );
   }
 
@@ -61,100 +59,79 @@ export function RuntimeMonitor() {
 
   return (
     <div className="space-y-4">
-      {/* Worker Status Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div
-            className={cn(
-              "w-2 h-2 rounded-full",
-              worker.alive ? "bg-emerald-400 animate-status-breathe" : "bg-red-400"
-            )}
-          />
-          <span className="text-xs font-medium text-os-text-high">
-            MemoryWriteWorker
-          </span>
-          <span className="text-2xs text-os-muted">
-            {worker.alive ? `运行 ${formatUptime(worker.uptime_seconds)}` : "离线"}
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-os-border bg-os-surface-tinted p-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <StatusBadge status={worker.alive ? "ready" : "danger"}>
+              {worker.alive ? "在线" : "离线"}
+            </StatusBadge>
+            <span className="truncate text-sm font-semibold text-os-text-high">MemoryWriteWorker</span>
+          </div>
+          <p className="mt-1 text-xs text-os-muted">
+            {worker.alive ? `已运行 ${formatUptime(worker.uptime_seconds)}` : "等待 worker 心跳"}
+          </p>
         </div>
-        <span className="text-2xs text-os-muted font-mono">
-          started {worker.started_at ? new Date(worker.started_at).toLocaleTimeString() : "-"}
+        <span className="font-mono text-xs text-os-muted">
+          {worker.started_at ? new Date(worker.started_at).toLocaleTimeString() : "-"}
         </span>
       </div>
 
-      {/* Queue Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="os-card p-4 rounded-xl text-center hover:border-os-accent/50 transition-colors">
-          <div className="flex items-center justify-center gap-1.5 mb-2">
-            <Clock size={13} className="text-amber-400" />
-            <span className="text-xs text-os-subtle">待处理</span>
-          </div>
-          <p className="text-xl font-mono font-semibold text-amber-400">
-            {queue.pending}
-          </p>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-os-border bg-white p-3 text-center shadow-os-card">
+          <Clock size={14} className="mx-auto text-os-warning" />
+          <p className="mt-1 text-xs text-os-muted">待处理</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-os-warning">{queue.pending}</p>
         </div>
-        <div className="os-card p-4 rounded-xl text-center hover:border-os-accent/50 transition-colors">
-          <div className="flex items-center justify-center gap-1.5 mb-2">
-            <CheckCircle2 size={13} className="text-emerald-400" />
-            <span className="text-xs text-os-subtle">已存储</span>
-          </div>
-          <p className="text-xl font-mono font-semibold text-emerald-400">
-            {queue.total_stored}
-          </p>
+        <div className="rounded-2xl border border-os-border bg-white p-3 text-center shadow-os-card">
+          <CheckCircle2 size={14} className="mx-auto text-os-success" />
+          <p className="mt-1 text-xs text-os-muted">已存储</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-os-success">{queue.total_stored}</p>
         </div>
-        <div className="os-card p-4 rounded-xl text-center hover:border-os-accent/50 transition-colors">
-          <div className="flex items-center justify-center gap-1.5 mb-2">
-            <XCircle size={13} className="text-red-400" />
-            <span className="text-xs text-os-subtle">失败</span>
-          </div>
-          <p className={cn(
-            "text-xl font-mono font-semibold",
-            queue.total_failed > 0 ? "text-red-400" : "text-os-subtle"
-          )}>
+        <div className="rounded-2xl border border-os-border bg-white p-3 text-center shadow-os-card">
+          <XCircle size={14} className="mx-auto text-os-danger" />
+          <p className="mt-1 text-xs text-os-muted">失败</p>
+          <p className={cn("mt-1 font-mono text-lg font-semibold", queue.total_failed > 0 ? "text-os-danger" : "text-os-muted")}>
             {queue.total_failed}
           </p>
         </div>
       </div>
 
-      {/* DLQ Status */}
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2 text-os-subtle">
-          <HardDrive size={12} />
+      <div className="flex items-center justify-between rounded-xl border border-os-border bg-white px-3 py-2 text-sm">
+        <span className="inline-flex items-center gap-2 text-os-muted">
+          <HardDrive size={14} />
           Dead Letter Queue
-        </div>
-        <span className={cn(
-          "font-mono",
-          dead_letter.count > 0 ? "text-amber-400" : "text-os-muted"
-        )}>
-          {dead_letter.count} 条待重试
         </span>
+        <OsBadge variant={dead_letter.count > 0 ? "warning" : "muted"}>{dead_letter.count} 条待重试</OsBadge>
       </div>
 
-      {/* Recent Tasks */}
       <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Layers size={12} className="text-os-subtle" />
-          <span className="text-xs text-os-subtle uppercase tracking-wider">最近任务</span>
+        <div className="mb-3 flex items-center gap-2">
+          <Layers size={14} className="text-os-subtle" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-os-muted">最近任务</span>
         </div>
-        <div className="space-y-1 max-h-48 overflow-y-auto scrollbar-thin">
+        <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
           {recent_tasks.length === 0 ? (
-            <p className="text-xs text-os-muted py-3 text-center">暂无任务记录</p>
+            <EmptyState
+              icon={Layers}
+              title="暂无任务记录"
+              description="当 worker 处理记忆写入任务时，最近任务会显示在这里。"
+              className="min-h-[180px]"
+            />
           ) : (
-            recent_tasks.slice().reverse().map((task) => (
+            recent_tasks.slice().reverse().map((task, index) => (
               <motion.div
                 key={task.task_id}
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2.5 py-2 px-3 rounded-lg hover:bg-os-surface-hover transition-colors"
+                transition={{ delay: Math.min(index * 0.02, 0.14), duration: 0.16 }}
+                className="flex min-w-0 items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-os-surface-hover"
               >
-                <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusDot[task.status] || "bg-os-muted")} />
-                <span className="text-xs text-os-text-high truncate flex-1">
+                <span className={cn("h-2 w-2 shrink-0 rounded-full", statusTone[task.status] || "bg-os-muted")} />
+                <span className="min-w-0 flex-1 truncate text-sm text-os-text-high">
                   {task.content_preview || "(无内容)"}
                 </span>
-                <span className={cn("text-xs font-mono shrink-0", statusColor[task.status] || "text-os-muted")}>
-                  {task.status}
-                </span>
-                <span className="text-xs text-os-muted font-mono shrink-0 w-14 text-right">
+                <span className="shrink-0 font-mono text-xs text-os-muted">{task.status}</span>
+                <span className="w-14 shrink-0 text-right font-mono text-xs text-os-muted">
                   {formatMs(task.elapsed_ms)}
                 </span>
               </motion.div>

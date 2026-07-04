@@ -76,10 +76,10 @@ function CapabilityCards() {
         { icon: Database, label: "记忆 / KG", desc: "知识库 + 图谱调用" },
         { icon: Layers, label: "Trace / Metrics", desc: "每一步可审计" },
       ].map(({ icon: Icon, label, desc }) => (
-        <div key={label} className="rounded-lg border border-gray-800 bg-gray-900/40 p-3 text-center">
+        <div key={label} className="rounded-lg border border-os-border bg-os-surface shadow-os-sm p-3 text-center">
           <Icon size={18} className="mx-auto mb-1 text-blue-400" />
-          <p className="text-xs font-medium text-gray-300">{label}</p>
-          <p className="text-2xs text-gray-500">{desc}</p>
+          <p className="text-xs font-medium text-os-text">{label}</p>
+          <p className="text-2xs text-os-muted">{desc}</p>
         </div>
       ))}
     </div>
@@ -88,15 +88,15 @@ function CapabilityCards() {
 
 function DemoStatusBar() {
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-6 text-xs text-gray-500">
+    <div className="flex flex-wrap items-center gap-2 mb-6 text-xs text-os-muted">
       <span className="flex items-center gap-1 px-2 py-1 rounded bg-green-500/10 text-green-400">
         <CheckCircle2 size={11} /> Demo Ready
       </span>
-      <span className="px-2 py-1 rounded bg-gray-800 text-gray-400">2 业务场景</span>
-      <span className="flex items-center gap-1 px-2 py-1 rounded bg-gray-800 text-gray-400">
+      <span className="px-2 py-1 rounded bg-os-elevated text-os-subtle">2 业务场景</span>
+      <span className="flex items-center gap-1 px-2 py-1 rounded bg-os-elevated text-os-subtle">
         <GitBranch size={11} /> WorkflowExecution
       </span>
-      <span className="flex items-center gap-1 px-2 py-1 rounded bg-gray-800 text-gray-400">
+      <span className="flex items-center gap-1 px-2 py-1 rounded bg-os-elevated text-os-subtle">
         <Shield size={11} /> Auth / RBAC
       </span>
     </div>
@@ -131,7 +131,7 @@ function ScenarioCard({
           </h3>
           <p className="mt-1 text-xs text-os-subtle line-clamp-2">{scenario.description}</p>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-os-elevated text-os-subtle border border-os-border">
               {scenario.category === "automation" ? "自动化" : "助手"}
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
@@ -145,7 +145,7 @@ function ScenarioCard({
       </div>
 
       {/* Flow visualization */}
-      <div className="flex items-center gap-1 mb-4 overflow-x-auto text-2xs text-gray-600 pb-1">
+      <div className="flex items-center gap-1 mb-4 overflow-x-auto text-2xs text-os-muted pb-1">
         {isM2T ? (
           <>会议纪要 <ArrowRight size={10} /> Meeting 智能体 <ArrowRight size={10} /> Knowledge 智能体 <ArrowRight size={10} /> KG <ArrowRight size={10} /> Training 智能体 <ArrowRight size={10} /> WorkflowExecution</>
         ) : (
@@ -173,7 +173,7 @@ function ScenarioCard({
       <button
         onClick={onRun}
         disabled={busy}
-        className="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 text-xs font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+        className="mt-auto inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-os-accent px-4 text-xs font-medium text-white transition-colors hover:bg-os-accent/90 disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
         {busy ? "执行中..." : "运行场景"}
@@ -198,19 +198,19 @@ function MetricsBar({
   return (
     <div className="flex flex-wrap gap-2 mb-2">
       {typeof duration_ms === "number" && (
-        <span className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 flex items-center gap-1">
+        <span className="text-xs px-2 py-1 rounded bg-os-elevated text-os-text flex items-center gap-1">
           <Clock size={11} /> {duration_ms.toFixed(0)}ms
         </span>
       )}
       {typeof steps_count === "number" && steps_count > 0 && (
-        <span className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 flex items-center gap-1">
+        <span className="text-xs px-2 py-1 rounded bg-os-elevated text-os-text flex items-center gap-1">
           <GitBranch size={11} /> {steps_count} steps
         </span>
       )}
-      <span className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 flex items-center gap-1">
+      <span className="text-xs px-2 py-1 rounded bg-os-elevated text-os-text flex items-center gap-1">
         <Database size={11} /> 记忆 {Array.isArray(memory_refs) ? (memory_refs as unknown[]).length : 0}
       </span>
-      <span className="text-xs px-2 py-1 rounded bg-gray-800 text-gray-300 flex items-center gap-1">
+      <span className="text-xs px-2 py-1 rounded bg-os-elevated text-os-text flex items-center gap-1">
         <Brain size={11} /> 图谱 {Array.isArray(knowledge_refs) ? (knowledge_refs as unknown[]).length : 0}
       </span>
       {fallback_mode && (
@@ -229,7 +229,7 @@ function ExecutionTimeline({
 }) {
   if (!steps || steps.length === 0) {
     return (
-      <div className="mt-2 text-xs text-gray-600 pl-4 border-l border-gray-800">
+      <div className="mt-2 text-xs text-os-muted pl-4 border-l border-os-border">
         等待执行...
       </div>
     );
@@ -237,11 +237,11 @@ function ExecutionTimeline({
 
   return (
     <details className="mt-3" open>
-      <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 flex items-center gap-1">
+      <summary className="text-xs text-os-subtle cursor-pointer hover:text-os-text flex items-center gap-1">
         <GitBranch size={12} />
         Workflow Execution Steps · {steps.length} nodes
       </summary>
-      <div className="mt-2 pl-4 border-l border-gray-700 space-y-1">
+      <div className="mt-2 pl-4 border-l border-os-border space-y-1">
         {steps.map((item: Record<string, unknown>, i: number) => (
           <div key={i} className="relative pl-5 pb-2">
             <div
@@ -252,20 +252,20 @@ function ExecutionTimeline({
               }`}
             />
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-300 font-medium">
+              <span className="text-xs text-os-text font-medium">
                 {String(item.node_name || `Node ${i}`)}
               </span>
-              <span className="text-2xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">
+              <span className="text-2xs px-1.5 py-0.5 rounded bg-os-elevated text-os-muted">
                 {String(item.node_type || "")}
               </span>
               {item.duration_ms != null && (
-                <span className="text-2xs text-gray-600">
+                <span className="text-2xs text-os-muted">
                   {Number(item.duration_ms).toFixed(0)}ms
                 </span>
               )}
             </div>
             {item.output_summary != null && (
-              <p className="text-2xs text-gray-600 mt-0.5 line-clamp-1">{String(item.output_summary)}</p>
+              <p className="text-2xs text-os-muted mt-0.5 line-clamp-1">{String(item.output_summary)}</p>
             )}
             {item.error != null && (
               <span className="text-2xs text-red-400 block mt-0.5">{String(item.error)}</span>
@@ -302,7 +302,7 @@ function ResultCard({
   };
 
   return (
-    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-800 space-y-3">
+    <div className="p-4 rounded-xl bg-os-surface border border-os-border shadow-os-sm space-y-3">
       {/* Status + IDs */}
       <div className="flex items-center gap-2 flex-wrap">
         {result.success ? (
@@ -320,17 +320,17 @@ function ResultCard({
 
       {/* WF Execution ID */}
       {wfExecId && (
-        <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-900/80 rounded px-2 py-1">
-          <GitBranch size={11} className="text-gray-600" />
-          <code className="text-gray-400 font-mono text-2xs truncate flex-1">{wfExecId}</code>
+        <div className="flex items-center gap-2 text-xs text-os-muted bg-os-elevated rounded px-2 py-1">
+          <GitBranch size={11} className="text-os-muted" />
+          <code className="text-os-subtle font-mono text-2xs truncate flex-1">{wfExecId}</code>
           <button
             onClick={() => copyToClipboard(wfExecId)}
-            className="text-gray-600 hover:text-gray-400 transition-colors"
+            className="text-os-muted hover:text-os-subtle transition-colors"
             title="复制"
           >
             <Copy size={11} />
           </button>
-          <span className="text-2xs text-gray-600">
+          <span className="text-2xs text-os-muted">
             {fallback ? "确定性引擎 · 可追溯" : "WorkflowEngine · 可追溯"}
           </span>
         </div>
@@ -358,72 +358,72 @@ function ResultCard({
 
       {/* M2T business results */}
       {isM2T && m2tResult && (
-        <div className="space-y-2 text-sm border-t border-gray-800 pt-3">
+        <div className="space-y-2 text-sm border-t border-os-border pt-3">
           {m2tResult.summary && (
             <details open>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">会议摘要</summary>
-              <p className="mt-1 text-gray-300 whitespace-pre-wrap text-xs max-h-40 overflow-y-auto leading-relaxed">{m2tResult.summary}</p>
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">会议摘要</summary>
+              <p className="mt-1 text-os-text whitespace-pre-wrap text-xs max-h-40 overflow-y-auto leading-relaxed">{m2tResult.summary}</p>
             </details>
           )}
           {m2tResult.decisions?.length > 0 && (
             <details>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 决策要点 ({m2tResult.decisions.length})
               </summary>
-              <ul className="mt-1 list-disc pl-5 text-gray-300 text-xs space-y-0.5">
+              <ul className="mt-1 list-disc pl-5 text-os-text text-xs space-y-0.5">
                 {m2tResult.decisions.map((d, i) => <li key={i}>{d}</li>)}
               </ul>
             </details>
           )}
           {m2tResult.action_items?.length > 0 && (
             <details open>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 行动项 ({m2tResult.action_items.length})
               </summary>
-              <ul className="mt-1 list-disc pl-5 text-gray-300 text-xs space-y-0.5">
+              <ul className="mt-1 list-disc pl-5 text-os-text text-xs space-y-0.5">
                 {m2tResult.action_items.map((a, i) => <li key={i}>{a}</li>)}
               </ul>
             </details>
           )}
           {m2tResult.knowledge_entries?.length > 0 && (
             <details>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 知识条目 ({m2tResult.knowledge_entries.length})
               </summary>
-              <ul className="mt-1 list-disc pl-5 text-gray-300 text-xs space-y-0.5">
+              <ul className="mt-1 list-disc pl-5 text-os-text text-xs space-y-0.5">
                 {m2tResult.knowledge_entries.map((k, i) => <li key={i}>{k.content}</li>)}
               </ul>
             </details>
           )}
           {m2tResult.training_outline?.length > 0 && (
             <details>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 培训大纲 ({m2tResult.training_outline.length})
               </summary>
-              <ol className="mt-1 list-decimal pl-5 text-gray-300 text-xs space-y-0.5">
+              <ol className="mt-1 list-decimal pl-5 text-os-text text-xs space-y-0.5">
                 {m2tResult.training_outline.map((t, i) => <li key={i}>{t}</li>)}
               </ol>
             </details>
           )}
           {m2tResult.training_qa?.length > 0 && (
             <details>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 练习QA ({m2tResult.training_qa.length})
               </summary>
-              <ul className="mt-1 list-disc pl-5 text-gray-300 text-xs space-y-0.5">
+              <ul className="mt-1 list-disc pl-5 text-os-text text-xs space-y-0.5">
                 {m2tResult.training_qa.map((q, i) => <li key={i}>{q}</li>)}
               </ul>
             </details>
           )}
           {m2tResult.entity_suggestions?.length > 0 && (
             <details>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 实体建议 ({m2tResult.entity_suggestions.length})
               </summary>
               <div className="mt-1 flex flex-wrap gap-1">
                 {m2tResult.entity_suggestions.map((e, i) => (
-                  <span key={i} className="text-2xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">
-                    {e.name} <span className="text-gray-600">[{e.entity_type}]</span>
+                  <span key={i} className="text-2xs px-2 py-0.5 rounded bg-os-elevated text-os-subtle border border-os-border">
+                    {e.name} <span className="text-os-muted">[{e.entity_type}]</span>
                   </span>
                 ))}
               </div>
@@ -434,48 +434,48 @@ function ResultCard({
 
       {/* DA business results */}
       {!isM2T && daResult && (
-        <div className="space-y-2 text-sm border-t border-gray-800 pt-3">
+        <div className="space-y-2 text-sm border-t border-os-border pt-3">
           {daResult.answer && (
             <details open>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">分析结果</summary>
-              <p className="mt-1 text-gray-300 whitespace-pre-wrap text-xs max-h-48 overflow-y-auto leading-relaxed">{daResult.answer}</p>
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">分析结果</summary>
+              <p className="mt-1 text-os-text whitespace-pre-wrap text-xs max-h-48 overflow-y-auto leading-relaxed">{daResult.answer}</p>
             </details>
           )}
           {daResult.reasoning_summary && (
             <details>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">推理依据</summary>
-              <p className="mt-1 text-gray-300 text-xs">{daResult.reasoning_summary}</p>
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">推理依据</summary>
+              <p className="mt-1 text-os-text text-xs">{daResult.reasoning_summary}</p>
             </details>
           )}
           {daResult.recommended_actions?.length > 0 && (
             <details open>
-              <summary className="text-gray-400 cursor-pointer hover:text-gray-300 text-xs font-medium">
+              <summary className="text-os-subtle cursor-pointer hover:text-os-text text-xs font-medium">
                 建议行动 ({daResult.recommended_actions.length})
               </summary>
-              <ul className="mt-1 list-disc pl-5 text-gray-300 text-xs space-y-0.5">
+              <ul className="mt-1 list-disc pl-5 text-os-text text-xs space-y-0.5">
                 {daResult.recommended_actions.map((a, i) => <li key={i}>{a}</li>)}
               </ul>
             </details>
           )}
           {typeof daResult.confidence === "number" && (
             <div className="flex items-center gap-3 text-xs flex-wrap">
-              <span className="text-gray-400">
-                置信度: <span className="text-white font-medium">{(daResult.confidence * 100).toFixed(0)}%</span>
+              <span className="text-os-subtle">
+                置信度: <span className="text-os-text-high font-medium">{(daResult.confidence * 100).toFixed(0)}%</span>
               </span>
               {daResult.confidence_reason && (
-                <span className="text-gray-600">({daResult.confidence_reason})</span>
+                <span className="text-os-muted">({daResult.confidence_reason})</span>
               )}
             </div>
           )}
           {(typeof daResult.related_memory_count === "number" || typeof daResult.related_entity_count === "number") && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-os-muted">
               关联记忆 {daResult.related_memory_count ?? 0} 条 | 关联实体 {daResult.related_entity_count ?? 0} 个
             </div>
           )}
           {daResult.limitations?.length > 0 && (
             <details>
-              <summary className="text-gray-500 cursor-pointer hover:text-gray-400 text-xs">局限性</summary>
-              <ul className="mt-1 list-disc pl-5 text-gray-500 text-xs space-y-0.5">
+              <summary className="text-os-muted cursor-pointer hover:text-os-subtle text-xs">局限性</summary>
+              <ul className="mt-1 list-disc pl-5 text-os-muted text-xs space-y-0.5">
                 {daResult.limitations.map((l, i) => <li key={i}>{l}</li>)}
               </ul>
             </details>
@@ -485,17 +485,17 @@ function ResultCard({
 
       {/* Agent Trace */}
       {trace.length > 0 && (
-        <details className="border-t border-gray-800 pt-3">
-          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 flex items-center gap-1">
+        <details className="border-t border-os-border pt-3">
+          <summary className="text-xs text-os-muted cursor-pointer hover:text-os-subtle flex items-center gap-1">
             <Layers size={12} />
             Agent Trace · {trace.length} PEOR entries
           </summary>
           <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
             {trace.map((t, i) => (
-              <div key={i} className="text-xs text-gray-600 pl-4 border-l border-gray-800">
-                <span className="text-gray-500">[{String(t.phase || t.node_type || "step")}]</span>{" "}
+              <div key={i} className="text-xs text-os-muted pl-4 border-l border-os-border">
+                <span className="text-os-muted">[{String(t.phase || t.node_type || "step")}]</span>{" "}
                 {String(t.detail || t.node_name || t.output_summary || "").slice(0, 120)}
-                {t.duration_ms != null && <span className="ml-2 text-gray-700">{Number(t.duration_ms).toFixed(0)}ms</span>}
+                {t.duration_ms != null && <span className="ml-2 text-os-muted">{Number(t.duration_ms).toFixed(0)}ms</span>}
               </div>
             ))}
           </div>
@@ -504,7 +504,7 @@ function ResultCard({
 
       {/* Empty trace */}
       {trace.length === 0 && steps.length === 0 && !result.success && (
-        <div className="text-xs text-gray-600 py-2 text-center">
+        <div className="text-xs text-os-muted py-2 text-center">
           无执行记录
         </div>
       )}
@@ -607,16 +607,16 @@ export default function ScenariosPage() {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Business Scenarios</h1>
-            <p className="text-gray-400 text-sm max-w-xl">
+            <h1 className="text-3xl font-bold text-os-text-high mb-1">Business Scenarios</h1>
+            <p className="text-os-subtle text-sm max-w-xl">
               用 Enterprise AI Agent 将会议、知识、部门问题转化为可追踪、可审计的组织行动。
             </p>
           </div>
-          <button onClick={() => void fetchScenarios()} className="p-2 rounded-lg hover:bg-gray-800 transition-colors">
-            <RefreshCw className="w-5 h-5 text-gray-400" />
+          <button onClick={() => void fetchScenarios()} className="p-2 rounded-lg hover:bg-os-elevated transition-colors">
+            <RefreshCw className="w-5 h-5 text-os-subtle" />
           </button>
         </div>
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-os-muted">
           内部智能体中心 · 每一次 Agent 执行都有 WorkflowExecution 记录 · Trace / Metrics / Steps 让组织智能体可解释、可审计
         </p>
       </div>
@@ -652,17 +652,17 @@ export default function ScenariosPage() {
                 <>
                   <input type="text" placeholder="会议标题" value={m2tInput.meeting_title}
                     onChange={(e) => setM2tInput((p) => ({ ...p, meeting_title: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors" />
+                    className="w-full px-3 py-2 rounded-lg bg-os-elevated border border-os-border text-os-text-high text-sm placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors" />
                   <textarea placeholder="会议记录内容…粘贴后运行即可" rows={4} value={m2tInput.meeting_notes}
                     onChange={(e) => setM2tInput((p) => ({ ...p, meeting_notes: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none transition-colors" />
+                    className="w-full px-3 py-2 rounded-lg bg-os-elevated border border-os-border text-os-text-high text-sm placeholder:text-os-muted focus:outline-none focus:border-os-accent resize-none transition-colors" />
                 </>
               )}
               {s.scenario_id === "department-assistant" && (
                 <>
                   <select value={daInput.department}
                     onChange={(e) => setDaInput((p) => ({ ...p, department: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors">
+                    className="w-full px-3 py-2 rounded-lg bg-os-elevated border border-os-border text-os-text-high text-sm focus:outline-none focus:border-os-accent transition-colors">
                     <option value="">选择部门…部门智能体默认遵守知识边界</option>
                     <option value="engineering">研发部</option>
                     <option value="product">产品部</option>
@@ -673,7 +673,7 @@ export default function ScenariosPage() {
                   </select>
                   <input type="text" placeholder="输入业务问题…" value={daInput.question}
                     onChange={(e) => setDaInput((p) => ({ ...p, question: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors" />
+                    className="w-full px-3 py-2 rounded-lg bg-os-elevated border border-os-border text-os-text-high text-sm placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors" />
                 </>
               )}
             </div>
@@ -684,10 +684,10 @@ export default function ScenariosPage() {
       {/* Results */}
       {Object.keys(results).length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-os-text-high flex items-center gap-2">
             <Layers size={18} className="text-blue-400" />
             执行结果
-            <span className="text-xs text-gray-500 font-normal">
+            <span className="text-xs text-os-muted font-normal">
               · 从知识沉淀到行动执行
             </span>
           </h2>
@@ -699,7 +699,7 @@ export default function ScenariosPage() {
 
       {/* Empty state */}
       {scenarios.length === 0 && !loading && (
-        <div className="text-center py-12 text-gray-500">
+        <div className="text-center py-12 text-os-muted">
           <Beaker className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>暂无可用业务场景</p>
           <p className="text-xs mt-1">请确认后端已启动，场景 API 可通过 GET /agents/scenarios 访问</p>

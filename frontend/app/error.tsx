@@ -27,7 +27,7 @@ export default function GlobalError({
 
   return (
     <main className="min-h-screen bg-os-base flex items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-red-500/20 bg-os-surface/60 backdrop-blur-md p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-red-500/20 bg-os-surface/60 backdrop-blur-md p-6 shadow-os-lg">
         <div className="flex items-start gap-4 mb-5">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-red-400">
             <AlertTriangle size={22} />
@@ -43,7 +43,7 @@ export default function GlobalError({
         </div>
 
         {isDev && (
-          <details className="mb-5 rounded-lg border border-os-border/60 bg-[#000000] p-3 group">
+          <details className="mb-5 rounded-lg border border-os-border/60 bg-slate-50 p-3 group">
             <summary className="flex cursor-pointer items-center gap-2 text-2xs font-mono text-os-muted hover:text-os-subtle">
               <Bug size={12} />
               <span>错误详情（仅开发环境）</span>

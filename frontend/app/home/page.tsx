@@ -1,10 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { PremiumHero } from "@/components/home/PremiumHero";
 import {
-  ArrowRight,
-  BookOpen,
   Brain,
   ShieldCheck,
   Layers,
@@ -16,9 +14,9 @@ import {
 
 // ── 工作台门面首页 (Workspace Hub) ──
 // 与 /dashboard（数据图表监控中心）物理隔离：
-//   - /home       = 登录后门面首页，极客风 Hero 视觉 + 业务引导
+//   - /home       = 登录后门面首页，Premium Hero 视觉 + 业务引导
 //   - /dashboard  = 纯数据图表监控中心，无 Hero 元素
-// 两个页面 UI 代码完全独立，不共享任何视觉组件。
+// 首屏展示组件共享，页面后续业务区块保持独立。
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -47,19 +45,19 @@ const BENTO_FEATURES: BentoFeature[] = [
     desc: "Rootless 容器隔离 + MicroVM 沙箱，零信任执行面，全链路审计与 kill-switch。",
     icon: ShieldCheck,
     rowSpan: "md:row-span-2",
-    accent: "text-emerald-400",
+    accent: "text-emerald-600",
   },
   {
     title: "插件生态大厅",
     desc: "Raycast 风格的 Agent Marketplace，开发者 SDK 一键发布，版本签名校验。",
     icon: Layers,
-    accent: "text-os-accent-cyan",
+    accent: "text-indigo-500",
   },
   {
     title: "决策可观测内核",
     desc: "Waterfall Trace + Causal Graph，每一个 LLM 调用的 Latency / Tokens / Cost 全链路可视。",
     icon: GitBranch,
-    accent: "text-os-accent-violet",
+    accent: "text-violet-500",
   },
 ];
 
@@ -72,13 +70,13 @@ interface CodeToken {
 }
 
 const TOKEN_COLOR: Record<TokenKind, string> = {
-  keyword: "text-purple-400",
-  string: "text-emerald-400",
+  keyword: "text-violet-600",
+  string: "text-emerald-600",
   comment: "text-os-subtle italic",
-  number: "text-amber-400",
-  func: "text-sky-400",
+  number: "text-amber-600",
+  func: "text-blue-600",
   plain: "text-os-text",
-  class: "text-os-accent-cyan",
+  class: "text-indigo-600",
 };
 
 function tokenizeLine(line: string): CodeToken[] {
@@ -158,112 +156,28 @@ const MOCK_CODE_LINES = [
 export default function WorkspaceHomePage() {
   return (
     <main className="min-h-screen bg-os-base text-os-text-high overflow-x-hidden">
-      {/* ── Hero Section ── */}
-      <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 bg-os-grid bg-os-grid opacity-[0.15]" />
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-os-accent/10 blur-3xl" />
-
-        <div className="relative mx-auto max-w-5xl px-4 pt-24 pb-20 sm:px-6 sm:pt-32 sm:pb-24 lg:pt-40 lg:pb-32 text-center">
-          {/* 小徽章 */}
-          <motion.div
-            {...fadeUp}
-            transition={{ duration: 0.5 }}
-            className="mb-6 inline-flex items-center gap-2 rounded-full border border-os-border/60 bg-os-surface/50 px-3 py-1 text-2xs font-mono text-os-subtle backdrop-blur-sm"
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            </span>
-            v6.2 · Separation Kernel 已冻结
-          </motion.div>
-
-          {/* 巨大渐变发光标题 */}
-          <motion.h1
-            {...fadeUp}
-            transition={{ duration: 0.6, delay: 0.05 }}
-            className="text-3xl md:text-5xl lg:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-os-muted"
-          >
-            知维 OS
-          </motion.h1>
-          <motion.p
-            {...fadeUp}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="mt-3 text-xl md:text-2xl lg:text-3xl font-semibold bg-clip-text text-transparent bg-gradient-to-b from-os-text-high to-os-subtle"
-          >
-            The Cognitive OS for Enterprise Agents
-          </motion.p>
-
-          {/* 副标题 */}
-          <motion.p
-            {...fadeUp}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            className="mx-auto mt-6 text-os-subtle text-lg md:text-xl max-w-2xl text-center"
-          >
-            面向企业级 Agent 的认知操作系统。安全沙箱执行面、长期记忆引擎、
-            决策可观测内核——让每一个智能体都拥有可治理的「大脑」。
-          </motion.p>
-
-          {/* CTA 按钮 — 内部业务引导（区别于落地页的"进入工作台"） */}
-          <motion.div
-            {...fadeUp}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-10 flex items-center justify-center gap-4"
-          >
-            <Link
-              href="/dashboard"
-              className="group inline-flex items-center gap-2 rounded-xl bg-os-accent px-6 py-3 text-sm font-semibold text-white shadow-[0_0_30px_rgba(129,140,248,0.35)] transition-all hover:bg-os-accent/85 hover:shadow-[0_0_40px_rgba(129,140,248,0.5)]"
-            >
-              查看数据仪表盘
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href="/docs"
-              className="inline-flex items-center gap-2 rounded-xl border border-os-border bg-os-surface/30 px-6 py-3 text-sm font-semibold text-os-text-high backdrop-blur-sm transition-all hover:border-os-accent/50 hover:bg-os-surface/60"
-            >
-              <BookOpen className="h-4 w-4" />
-              阅读开发者文档
-            </Link>
-          </motion.div>
-
-          {/* 关键指标条 */}
-          <motion.div
-            {...fadeUp}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto"
-          >
-            {[
-              { label: "Trace 链路", value: "全链路" },
-              { label: "沙箱隔离", value: "Rootless" },
-              { label: "记忆架构", value: "3 层" },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-os-border/50 bg-os-surface/30 p-3 backdrop-blur-sm"
-              >
-                <p className="text-xl font-bold text-os-text-high font-mono">{item.value}</p>
-                <p className="text-2xs text-os-subtle mt-0.5">{item.label}</p>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+      <PremiumHero
+        primaryHref="/dashboard"
+        primaryLabel="查看数据仪表盘"
+        secondaryLabel="阅读开发者文档"
+      />
 
       {/* ── Bento Box 特性网格 ── */}
-      <section className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <section className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 md:py-14">
         <motion.div
           {...fadeUp}
           transition={{ duration: 0.5 }}
           className="mb-10 text-center"
         >
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-os-text-high">
+          <h2 className="text-2xl font-semibold text-os-text-high sm:text-3xl md:text-4xl">
             一体化的 Agent 基础设施
           </h2>
-          <p className="mt-3 text-os-subtle text-sm md:text-base">
+          <p className="mt-3 text-sm text-os-subtle md:text-base">
             从记忆到执行，从决策到可观测——知维 OS 提供端到端的能力底座。
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 auto-rows-[minmax(180px,auto)]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-5 auto-rows-[minmax(164px,auto)]">
           {BENTO_FEATURES.map((feat, i) => {
             const Icon = feat.icon;
             return (
@@ -271,16 +185,16 @@ export default function WorkspaceHomePage() {
                 key={feat.title}
                 {...fadeUp}
                 transition={{ duration: 0.5, delay: 0.05 * i }}
-                className={`group relative overflow-hidden rounded-3xl border border-os-border/50 bg-os-surface/40 backdrop-blur-md p-4 sm:p-5 md:p-6 transition-colors hover:border-os-accent/50 ${feat.colSpan ?? ""} ${feat.rowSpan ?? ""}`}
+                className={`group relative overflow-hidden rounded-lg border border-os-border bg-white/95 p-4 shadow-os-sm transition-all duration-150 hover:border-os-accent/20 hover:bg-white hover:shadow-os-md sm:p-5 ${feat.colSpan ?? ""} ${feat.rowSpan ?? ""}`}
               >
-                <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-os-accent/5 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-os-accent/0 transition-colors duration-200 group-hover:bg-os-accent/20" />
 
                 <div className="relative flex h-full flex-col">
-                  <div className={`mb-4 inline-flex w-10 h-10 items-center justify-center rounded-xl bg-os-elevated/60 border border-os-border/50 ${feat.accent}`}>
+                  <div className={`mb-4 inline-flex w-9 h-9 items-center justify-center rounded-md border border-os-accent/10 bg-os-accent-soft ${feat.accent}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="text-lg font-semibold text-os-text-high">{feat.title}</h3>
-                  <p className="mt-2 text-sm text-os-subtle leading-relaxed">{feat.desc}</p>
+                  <h3 className="text-base font-semibold text-os-text-high">{feat.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-os-subtle">{feat.desc}</p>
                 </div>
               </motion.div>
             );
@@ -289,14 +203,14 @@ export default function WorkspaceHomePage() {
       </section>
 
       {/* ── Developer Code Showcase ── */}
-      <section className="relative mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20">
+      <section className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-16 md:py-20">
         <motion.div
           {...fadeUp}
           transition={{ duration: 0.5 }}
           className="mb-8 flex items-center gap-3"
         >
           <Terminal className="h-5 w-5 text-os-accent" />
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-os-text-high">
+          <h2 className="text-xl font-semibold text-os-text-high sm:text-2xl md:text-3xl">
             开发者优先
           </h2>
         </motion.div>
@@ -304,13 +218,13 @@ export default function WorkspaceHomePage() {
         <motion.div
           {...fadeUp}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="overflow-hidden rounded-2xl border border-os-border bg-[#0a0a0b] shadow-os-lg"
+          className="overflow-hidden rounded-lg border border-os-border bg-white shadow-os-md"
         >
           {/* macOS 风格顶栏 */}
-          <div className="flex items-center gap-2 border-b border-os-border/60 bg-os-elevated/40 px-4 py-3">
-            <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-            <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-            <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+          <div className="flex items-center gap-2 border-b border-os-border bg-os-elevated/80 px-4 py-2.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
             <span className="ml-3 text-2xs font-mono text-os-subtle">zhiwei_quickstart.py</span>
           </div>
 
@@ -319,7 +233,7 @@ export default function WorkspaceHomePage() {
             <pre className="min-w-max">
               {MOCK_CODE_LINES.map((line, i) => (
                 <div key={i} className="flex">
-                  <span className="select-none w-8 shrink-0 pr-3 text-right text-os-border text-xs">
+                  <span className="select-none w-8 shrink-0 pr-3 text-right text-os-muted/60 text-xs">
                     {i + 1}
                   </span>
                   <code className="whitespace-pre">
@@ -355,7 +269,7 @@ export default function WorkspaceHomePage() {
             return (
               <span
                 key={tag.label}
-                className="inline-flex items-center gap-1.5 rounded-full border border-os-border/50 bg-os-surface/40 px-3 py-1 text-2xs font-mono text-os-subtle backdrop-blur-sm"
+                className="inline-flex items-center gap-1.5 rounded-md border border-os-border bg-white/90 px-3 py-1 text-2xs font-mono text-os-subtle shadow-os-sm"
               >
                 <Icon className="h-3 w-3 text-os-accent" />
                 {tag.label}

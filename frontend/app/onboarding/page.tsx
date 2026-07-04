@@ -123,7 +123,7 @@ export default function OnboardingPage() {
   const canProceedStep0 = orgName.trim().length >= 2;
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-os-surface via-[#000000] to-[#000000]">
+    <div className="relative min-h-screen overflow-hidden flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-os-base to-os-base">
       {/* 网格背景层 */}
       <div className="absolute inset-0 bg-grid-subtle opacity-30 pointer-events-none" />
 
@@ -165,7 +165,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* ── 步骤卡片容器 ── */}
-        <div className="backdrop-blur-2xl bg-os-surface/40 border border-os-border/50 shadow-2xl rounded-2xl p-6 min-h-[360px] flex flex-col">
+        <div className="backdrop-blur-2xl bg-os-surface/40 border border-os-border/50 shadow-os-lg rounded-2xl p-6 min-h-[360px] flex flex-col">
           <AnimatePresence mode="wait">
             {/* ── Step 1: Initializing Cognitive Core ── */}
             {step === 0 && (
@@ -382,7 +382,7 @@ export default function OnboardingPage() {
                       </p>
 
                       {/* 终端启动日志 */}
-                      <div className="rounded-lg border border-os-border/30 bg-[#000000] p-3 h-32 overflow-y-auto font-mono text-2xs space-y-0.5">
+                      <div className="rounded-lg border border-os-border/60 bg-slate-50 p-3 h-32 overflow-y-auto font-mono text-2xs space-y-0.5">
                         {visibleLogs.map((log, i) => (
                           <motion.div
                             key={i}
