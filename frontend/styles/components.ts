@@ -68,7 +68,7 @@ export const badgeStyles = cva(
         warning: "border-os-warning/20 bg-os-warning-soft text-os-warning",
         danger: "border-os-danger/20 bg-os-danger-soft text-os-danger",
         info: "border-os-info/20 bg-os-info-soft text-os-info",
-        muted: "border-os-border-subtle bg-os-surface-muted text-os-muted",
+        muted: "border-os-border-subtle bg-os-surface-muted text-os-subtle",
       },
     },
     defaultVariants: {
@@ -93,7 +93,7 @@ export const tabStyles = cva(
 );
 
 export const inputStyles =
-  "h-9 rounded-xl border border-os-border bg-white px-3 text-sm text-os-text-high outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-os-muted focus:border-os-primary/35 focus:ring-2 focus:ring-os-primary/15 disabled:cursor-not-allowed disabled:bg-os-surface-muted disabled:text-os-muted";
+  "h-9 rounded-xl border border-os-border bg-white px-3 text-sm text-os-text-high outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-os-subtle focus:border-os-primary/35 focus:ring-2 focus:ring-os-primary/15 disabled:cursor-not-allowed disabled:bg-os-surface-muted disabled:text-os-subtle";
 
 export const emptyStateStyles =
   "flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-os-border bg-os-surface-tinted px-6 py-10 text-center";

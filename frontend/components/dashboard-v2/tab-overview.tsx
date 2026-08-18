@@ -31,7 +31,7 @@ const STALE = 60 * 1000; // 60s
 function KpiGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-2xs font-medium text-os-muted uppercase tracking-wider px-1">{title}</h3>
+      <h3 className="text-2xs font-medium text-os-subtle uppercase tracking-wider px-1">{title}</h3>
       <div className={layout.grid.fourLg}>{children}</div>
     </div>
   );
@@ -66,7 +66,7 @@ export function TabOverview() {
           <KpiCard icon={DollarSign} label="MRR" value={formatCents(data?.mrr_cents ?? 0)} accent="emerald" sub="月度经常性收入" />
           <KpiCard icon={TrendingUp} label="ARR" value={formatCents(data?.arr_cents ?? 0)} accent="emerald" sub="年化收入" />
           <KpiCard icon={DollarSign} label="ARPU" value={formatCents(data?.arpu_cents ?? 0)} accent="cyan" sub="单用户平均收入" />
-          <KpiCard icon={Activity} label="Gross Margin" value={formatPercent(data?.gross_margin_pct ?? 0)} accent="emerald" sub="毛利率" />
+          <KpiCard icon={Activity} label="毛利率" value={formatPercent(data?.gross_margin_pct ?? 0)} accent="emerald" sub="收入减直接成本" />
         </KpiGroup>
 
         <KpiGroup title="用户增长">
@@ -88,7 +88,7 @@ export function TabOverview() {
 
         <KpiGroup title="记忆健康">
           <KpiCard icon={Brain} label="总记忆" value={formatCompact(data?.total_memories ?? 0)} accent="indigo" sub="全量" />
-          <KpiCard icon={Target} label="命中率" value={formatPercent(data?.memory_hit_rate ?? 0)} accent="emerald" sub="记忆 Hit Rate" />
+          <KpiCard icon={Target} label="命中率" value={formatPercent(data?.memory_hit_rate ?? 0)} accent="emerald" sub="记忆命中率" />
           <KpiCard icon={GitBranch} label="净增长" value={formatDelta(data?.net_growth_today ?? 0)} accent="cyan" sub="今日" />
         </KpiGroup>
       </div>

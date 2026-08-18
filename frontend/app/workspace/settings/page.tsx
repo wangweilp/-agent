@@ -18,10 +18,10 @@ import { cn, formatDate } from "@/lib/utils";
 import type { WorkspaceMember, WorkspaceRole, ActivityEvent } from "@/types";
 
 const roleMeta: Record<WorkspaceRole, { icon: typeof User; label: string; color: string }> = {
-  owner:  { icon: Crown,  label: "拥有者", color: "text-amber-400 bg-amber-400/10" },
-  admin:  { icon: Shield, label: "管理员", color: "text-indigo-400 bg-indigo-400/10" },
-  member: { icon: User,   label: "成员",   color: "text-emerald-400 bg-emerald-400/10" },
-  viewer: { icon: Eye,    label: "访客",   color: "text-zinc-400 bg-zinc-400/10" },
+  owner:  { icon: Crown,  label: "拥有者", color: "text-os-warning bg-os-warning-soft" },
+  admin:  { icon: Shield, label: "管理员", color: "text-os-primary bg-os-primary-soft" },
+  member: { icon: User,   label: "成员",   color: "text-os-success bg-os-success-soft" },
+  viewer: { icon: Eye,    label: "访客",   color: "text-os-subtle bg-os-surface-muted" },
 };
 
 const roleOptionLabel: Record<string, string> = {
@@ -49,7 +49,11 @@ function SettingsContent() {
   });
 
   // Fetch activity log
-  const { data: activityLog } = useQuery({
+  const {
+    data: activityLog,
+    isLoading: activityLoading,
+    isError: activityError,
+  } = useQuery({
     queryKey: ["workspace-activity", wsId],
     queryFn: () => api.workspace.activityLog(wsId, 20),
     enabled: !!wsId,
@@ -150,8 +154,8 @@ function SettingsContent() {
   if (!wsId) {
     return (
       <PageTransition>
-        <div className="flex flex-col items-center justify-center py-32 text-os-muted">
-          <AlertCircle size={48} className="mb-4 opacity-30" />
+        <div className="flex flex-col items-center justify-center py-32 text-os-subtle">
+          <AlertCircle size={48} className="mb-4 text-os-muted" />
           <p className="text-sm">未指定工作区</p>
           <p className="text-2xs mt-1">请从工作区列表进入设置</p>
         </div>
@@ -199,7 +203,7 @@ function SettingsContent() {
               <Users size={15} className="text-os-accent" />
               成员
               {members && (
-                <span className="text-xs font-normal text-os-muted">({members.length})</span>
+                <span className="text-xs font-normal text-os-subtle">({members.length})</span>
               )}
             </h2>
             {canManage && (
@@ -216,14 +220,14 @@ function SettingsContent() {
           {/* Add member form */}
           {showAdd && canManage && (
             <div className="os-card p-3 space-y-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   autoFocus
                   value={addEmail}
                   onChange={(e) => { setAddEmail(e.target.value); setAddError(""); }}
                   onKeyDown={(e) => e.key === "Enter" && addEmail.trim() && addMutation.mutate()}
                   placeholder="输入成员邮箱"
-                  className="flex-1 h-8 px-2.5 rounded bg-os-surface border border-os-border text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent"
+                  className="h-8 min-w-[12rem] flex-1 px-2.5 rounded bg-os-surface border border-os-border text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent"
                 />
                 <select
                   value={addRole}
@@ -249,7 +253,7 @@ function SettingsContent() {
                   <X size={14} />
                 </button>
               </div>
-              {addError && <p className="text-2xs text-red-400">{addError}</p>}
+              {addError && <p className="text-2xs text-os-danger">{addError}</p>}
             </div>
           )}
 
@@ -263,11 +267,11 @@ function SettingsContent() {
               ))}
             </div>
           ) : membersError ? (
-            <div className="os-card p-4 text-center text-sm text-red-400">
+            <div className="os-card p-4 text-center text-sm text-os-danger">
               加载成员失败
             </div>
           ) : !members || members.length === 0 ? (
-            <div className="os-card p-8 text-center text-sm text-os-muted">
+            <div className="os-card p-8 text-center text-sm text-os-subtle">
               暂无成员
             </div>
           ) : (
@@ -302,7 +306,7 @@ function SettingsContent() {
                             <span className="text-2xs text-os-accent bg-os-accent/10 px-1 py-0.5 rounded shrink-0">你</span>
                           )}
                         </div>
-                        <span className="text-2xs text-os-muted truncate block">{member.email}</span>
+                        <span className="text-2xs text-os-subtle truncate block">{member.email}</span>
                       </div>
 
                       {/* Role */}
@@ -378,8 +382,16 @@ function SettingsContent() {
             <Activity size={15} className="text-os-accent" />
             最近活动
           </h2>
-          {!activityLog || activityLog.length === 0 ? (
-            <div className="os-card p-6 text-center text-sm text-os-muted">
+          {activityLoading ? (
+            <div className="os-card p-6 text-center text-sm text-os-subtle">
+              正在加载活动记录...
+            </div>
+          ) : activityError ? (
+            <div className="os-card p-6 text-center text-sm text-os-danger">
+              活动记录加载失败，请稍后重试
+            </div>
+          ) : !activityLog || activityLog.length === 0 ? (
+            <div className="os-card p-6 text-center text-sm text-os-subtle">
               暂无活动记录
             </div>
           ) : (
@@ -392,14 +404,14 @@ function SettingsContent() {
                   <div className="flex-1 min-w-0">
                     <span className="text-xs text-os-text">{ev.message}</span>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-2xs text-os-muted">{ev.user_name}</span>
-                      <span className="text-2xs text-os-muted">
+                      <span className="text-2xs text-os-subtle">{ev.user_name}</span>
+                      <span className="text-2xs text-os-subtle">
                         {ev.timestamp ? formatDate(ev.timestamp) : ""}
                       </span>
                     </div>
                   </div>
                   {ev.event_type && (
-                    <span className="text-2xs text-os-muted bg-os-surface px-1.5 py-0.5 rounded shrink-0">
+                    <span className="text-2xs text-os-subtle bg-os-surface px-1.5 py-0.5 rounded shrink-0">
                       {eventTypeLabel[ev.event_type] || ev.event_type}
                     </span>
                   )}
@@ -415,13 +427,13 @@ function SettingsContent() {
             <div className="rounded-2xl border border-os-danger/40 bg-os-danger/5 p-6">
               <div className="mb-4 flex items-center gap-2">
                 <AlertTriangle size={16} className="text-os-danger" />
-                <h2 className="text-sm font-semibold text-os-danger">Danger Zone</h2>
+                <h2 className="text-sm font-semibold text-os-danger">危险操作区</h2>
               </div>
               <p className="mb-4 text-xs text-os-subtle">
                 以下操作不可逆。执行前请确认你理解其后果。
               </p>
 
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-os-border/50 bg-os-surface/30 p-4">
+              <div className="flex flex-col items-start gap-4 rounded-lg border border-os-border/50 bg-os-surface/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <h3 className="text-sm font-medium text-os-text-high">移除全部非拥有者成员</h3>
                   <p className="mt-1 text-xs text-os-subtle">
@@ -432,7 +444,7 @@ function SettingsContent() {
                   type="button"
                   onClick={() => setShowRemoveAll(true)}
                   disabled={removableMembers.length === 0}
-                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-os-danger px-3 text-xs font-medium text-os-danger transition-colors hover:bg-os-danger/10 disabled:cursor-not-allowed disabled:border-os-border disabled:text-os-muted"
+                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-os-danger px-3 text-xs font-medium text-os-danger transition-colors hover:bg-os-danger/10 disabled:cursor-not-allowed disabled:border-os-border disabled:text-os-subtle"
                 >
                   <Trash2 size={13} />
                   移除全部

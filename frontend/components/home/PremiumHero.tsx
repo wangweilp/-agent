@@ -39,9 +39,9 @@ const CAPABILITIES: Capability[] = [
   {
     no: "01",
     title: "全链路",
-    label: "Trace & Observability",
+    label: "链路追踪与可观测性",
     desc: "端到端追踪与因果链路可视化，洞见每一次 Agent 决策。",
-    status: "Full Chain",
+    status: "全链路",
     href: "/dashboard",
     icon: GitBranch,
     line: "bg-gradient-to-r from-os-data-cyan to-os-accent",
@@ -52,9 +52,9 @@ const CAPABILITIES: Capability[] = [
   {
     no: "02",
     title: "Rootless",
-    label: "Isolation & Execution",
+    label: "隔离与执行",
     desc: "无 Root 容器技术，构建安全可控的 Agent 执行环境。",
-    status: "Sandbox",
+    status: "沙箱",
     href: "/runtime",
     icon: ShieldCheck,
     line: "bg-gradient-to-r from-blue-500 to-os-accent",
@@ -65,14 +65,14 @@ const CAPABILITIES: Capability[] = [
   {
     no: "03",
     title: "三层记忆",
-    label: "Memory Architecture",
+    label: "记忆架构",
     desc: "感知层 / 反思层 / 语义层，构成可进化的记忆系统。",
-    status: "3 Layers",
+    status: "三层",
     href: "/memory-console",
     icon: Database,
     line: "bg-gradient-to-r from-os-success to-os-memory-violet",
     iconShell: "border-os-success/20 bg-os-success-soft",
-    iconColor: "text-os-success",
+    iconColor: "text-emerald-700",
     arrow: "text-os-memory-violet",
   },
 ];
@@ -111,14 +111,14 @@ function CapabilityCard({
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="font-mono text-[11px] font-semibold leading-4 text-os-muted">
+                <span className="font-mono text-[11px] font-semibold leading-4 text-os-subtle">
                   {item.no}
                 </span>
                 <h3 className="truncate text-[17px] font-semibold leading-6 text-os-text-high">
                   {item.title}
                 </h3>
               </div>
-              <p className="mt-0.5 truncate text-xs font-medium leading-5 text-os-muted">
+              <p className="mt-0.5 truncate text-xs font-medium leading-5 text-os-subtle">
                 {item.label}
               </p>
               <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-os-subtle lg:mt-3 lg:line-clamp-none">
@@ -128,7 +128,7 @@ function CapabilityCard({
           </div>
 
           <div className="flex shrink-0 items-center gap-2 lg:w-full lg:justify-between">
-            <span className="hidden rounded-full border border-slate-900/[0.07] bg-os-surface-muted px-2 py-1 text-[10px] font-medium text-os-muted lg:inline-flex">
+            <span className="hidden rounded-full border border-slate-900/[0.07] bg-os-surface-muted px-2 py-1 text-[10px] font-medium text-os-subtle lg:inline-flex">
               {item.status}
             </span>
             <ArrowRight
@@ -166,9 +166,9 @@ export function PremiumHero({
               className="inline-flex h-8 max-w-full items-center gap-2 rounded-full border border-slate-900/[0.075] bg-white/82 px-3 text-[11px] text-os-subtle shadow-[0_1px_2px_rgba(16,24,40,0.035)] backdrop-blur-md"
             >
               <span className="runtime-status-pulse h-1.5 w-1.5 shrink-0 rounded-full bg-os-success" />
-              <span className="font-mono text-os-text-high">Runtime Ready</span>
-              <span className="text-os-muted">/</span>
-              <span className="truncate">Separation Kernel</span>
+              <span className="font-mono text-os-text-high">运行时就绪</span>
+              <span className="text-os-subtle">/</span>
+              <span className="truncate">分离内核</span>
             </motion.div>
 
             <motion.h1
@@ -185,16 +185,20 @@ export function PremiumHero({
               {...motionProps(shouldReduceMotion, 0.08)}
               className="mt-[18px] max-w-[720px] text-xl font-medium leading-tight text-[#344054] sm:text-2xl md:text-[28px]"
             >
-              Enterprise cognitive infrastructure for governed agents.
+              面向受治理智能体的企业级认知基础设施
             </motion.p>
 
-            <motion.p
+            <motion.div
               {...motionProps(shouldReduceMotion, 0.12)}
-              className="mt-5 max-w-[600px] text-base leading-8 text-os-subtle md:text-[17px] md:leading-8"
+              className="mt-5 max-w-3xl space-y-1.5"
             >
-              面向企业级 Agent 的认知操作系统。安全沙箱执行面、长期记忆引擎、
-              决策可观测内核，让智能体在可治理边界内持续运行。
-            </motion.p>
+              <p className="text-base font-medium leading-7 text-os-subtle sm:text-lg">
+                AI 认知操作系统与智能体开放平台
+              </p>
+              <p className="text-lg font-semibold leading-8 tracking-[-0.01em] text-os-text-high sm:text-xl">
+                让每一个组织拥有不会遗忘的大脑
+              </p>
+            </motion.div>
 
             <motion.div
               {...motionProps(shouldReduceMotion, 0.16)}

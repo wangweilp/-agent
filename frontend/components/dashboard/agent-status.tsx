@@ -31,8 +31,10 @@ export function AgentStatusPanel() {
               <motion.div
                 animate={isCurrent ? { scale: [1, 1.05, 1] } : {}}
                 transition={{ duration: 2, repeat: Infinity }}
-                className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-lg transition-colors ${
-                  isActive ? "bg-os-accent/5" : "opacity-30"
+                className={`flex-1 flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-colors ${
+                  isActive
+                    ? "border-os-accent/20 bg-os-accent/5"
+                    : "border-os-border/60 bg-os-surface-muted"
                 }`}
               >
                 <Icon size={16} className={isCurrent ? "text-os-accent" : "text-os-subtle"} />
@@ -61,8 +63,8 @@ export function AgentStatusPanel() {
         </div>
         {traceId && (
           <div className="flex items-center justify-between">
-            <span className="text-xs text-os-subtle">Trace ID</span>
-            <span className="text-xs text-os-muted font-mono">{traceId.slice(0, 12)}</span>
+            <span className="text-xs text-os-subtle">追踪 ID（Trace ID）</span>
+            <span className="text-xs text-os-subtle font-mono">{traceId.slice(0, 12)}</span>
           </div>
         )}
       </div>
@@ -72,13 +74,13 @@ export function AgentStatusPanel() {
         <span className="text-xs text-os-subtle uppercase tracking-wider">最近活动</span>
         <div className="mt-3 space-y-1.5 max-h-32 overflow-y-auto">
           {traces.slice(-5).reverse().map((t) => (
-            <div key={t.id} className="text-xs text-os-muted flex justify-between">
+            <div key={t.id} className="text-xs text-os-subtle flex justify-between">
               <span className="truncate mr-2">{t.detail}</span>
               <span className="shrink-0">{t.status === "running" ? "⏳" : t.status === "success" ? "✓" : "✗"}</span>
             </div>
           ))}
           {traces.length === 0 && (
-            <p className="text-xs text-os-muted">暂无活动</p>
+            <p className="text-xs text-os-subtle">暂无活动</p>
           )}
         </div>
       </div>

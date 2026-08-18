@@ -98,6 +98,7 @@ export function AgentConfigDialog({
             onClick={onClose}
             disabled={saving}
             className="rounded p-1 text-os-subtle hover:bg-os-elevated hover:text-os-text-high disabled:opacity-50"
+            aria-label="关闭"
           >
             <X size={16} />
           </button>
@@ -106,21 +107,21 @@ export function AgentConfigDialog({
         {/* Body */}
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4 space-y-4">
           {/* Installation ID hint */}
-          <p className="rounded bg-os-elevated px-3 py-2 font-mono text-2xs text-os-muted">
+          <p className="break-all rounded bg-os-elevated px-3 py-2 font-mono text-2xs text-os-subtle">
             {installation.installation_id}
           </p>
 
           {/* Config JSON */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-os-subtle">
-              配置 (JSON 对象)
+              配置（JSON 对象）
             </label>
             <textarea
               rows={5}
               value={configText}
               onChange={(e) => setConfigText(e.target.value)}
               spellCheck={false}
-              className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+              className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
               placeholder='{"key": "value"}'
             />
           </div>
@@ -128,14 +129,14 @@ export function AgentConfigDialog({
           {/* Permissions Granted */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-os-subtle">
-              已授权权限 (JSON 数组)
+              已授权权限（JSON 数组）
             </label>
             <textarea
               rows={4}
               value={permissionsText}
               onChange={(e) => setPermissionsText(e.target.value)}
               spellCheck={false}
-              className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+              className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
               placeholder='["agent:execute", "memory:read"]'
             />
           </div>
@@ -143,14 +144,14 @@ export function AgentConfigDialog({
           {/* Usage Limit Override */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-os-subtle">
-              用量限制覆盖 (JSON 对象)
+              用量限制覆盖（JSON 对象）
             </label>
             <textarea
               rows={4}
               value={usageLimitText}
               onChange={(e) => setUsageLimitText(e.target.value)}
               spellCheck={false}
-              className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+              className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
               placeholder='{"max_calls": 1000}'
             />
           </div>
@@ -158,30 +159,30 @@ export function AgentConfigDialog({
           {/* Version Pinned */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-os-subtle">
-              锁定版本 (留空 = 跟随最新)
+              锁定版本（留空即跟随最新）
             </label>
             <input
               type="text"
               value={versionPinned}
               onChange={(e) => setVersionPinned(e.target.value)}
-              className="h-10 w-full rounded-md border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
-              placeholder="例如: 1.2.0"
+              className="h-10 w-full rounded-md border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
+              placeholder="例如：1.2.0"
             />
           </div>
 
           {/* JSON error */}
           {jsonError && (
-            <div className="flex items-center gap-2 rounded-md border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-300">
+            <div className="flex items-center gap-2 rounded-md border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-700">
               <AlertTriangle size={13} />
-              {jsonError}
+              <span className="min-w-0 break-words">{jsonError}</span>
             </div>
           )}
 
           {/* API error */}
           {error && (
-            <div className="flex items-center gap-2 rounded-md border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-200">
+            <div className="flex items-center gap-2 rounded-md border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-700">
               <AlertTriangle size={13} />
-              {error}
+              <span className="min-w-0 break-words">{error}</span>
             </div>
           )}
         </div>

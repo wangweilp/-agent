@@ -7,7 +7,7 @@ import {
   Layers, Zap, Brain, Database, Activity, TrendingUp,
   Archive, GitMerge, FileText, Cpu, Sparkles,
 } from "lucide-react";
-import { cn, formatNumber, formatDate, importanceColor } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { api } from "@/services/api";
 import type { DashboardSummary } from "@/types";
 import { layout } from "@/styles/layout";
@@ -40,11 +40,11 @@ const TYPE_LABELS: Record<string, string> = {
   reflect: "反思",
 };
 
-const SOURCE_LABELS: Record<string, string> = {
-  user: "用户",
-  agent: "智能体",
-  reflect: "反思",
-};
+function importanceText(score: number): string {
+  if (score >= 8) return "text-emerald-700";
+  if (score >= 6) return "text-amber-800";
+  return "text-zinc-600";
+}
 
 export function MemoryOverview({ summary }: Props) {
   // 拉取记忆列表用于三层推断
@@ -124,8 +124,8 @@ export function MemoryOverview({ summary }: Props) {
         <TierCard
           tier="STM"
           label="短期记忆"
-          subtitle="Short-Term Memory"
-          description="Context Window 模拟 · 近 1h 情景记忆"
+          subtitle="短期上下文层"
+          description="上下文窗口模拟 · 近 1 小时情景记忆"
           count={tiers.stm.count}
           avgImportance={tiers.stm.avgImportance}
           accent="cyan"
@@ -136,8 +136,8 @@ export function MemoryOverview({ summary }: Props) {
         <TierCard
           tier="WM"
           label="工作记忆"
-          subtitle="Working Memory"
-          description="高频访问活跃集 · access_count ≥ 3"
+          subtitle="高频工作集"
+          description="高频访问活跃集 · 访问次数（access_count）≥ 3"
           count={tiers.wm.count}
           avgImportance={tiers.wm.avgImportance}
           accent="violet"
@@ -148,7 +148,7 @@ export function MemoryOverview({ summary }: Props) {
         <TierCard
           tier="LTM"
           label="长期记忆"
-          subtitle="Long-Term Memory"
+          subtitle="持久知识层"
           description="语义/程序知识 · 已归档记忆"
           count={tiers.ltm.count}
           avgImportance={tiers.ltm.avgImportance}
@@ -164,7 +164,7 @@ export function MemoryOverview({ summary }: Props) {
         {/* 全局记忆统计 */}
         <div className="rounded-md border border-os-border bg-os-surface/30 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Layers size={13} className="text-violet-400" />
+            <Layers size={13} className="text-violet-700" />
             <h3 className="text-xs font-semibold text-os-text-high">全局记忆统计</h3>
           </div>
           <div className={layout.grid.fourMd}>
@@ -182,11 +182,11 @@ export function MemoryOverview({ summary }: Props) {
         {/* 向量索引健康度 */}
         <div className="rounded-md border border-os-border bg-os-surface/30 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Cpu size={13} className="text-violet-400" />
+            <Cpu size={13} className="text-violet-700" />
             <h3 className="text-xs font-semibold text-os-text-high">向量索引健康度</h3>
             {memoryHealth && (
-              <span className="ml-auto text-2xs text-os-muted font-mono">
-                hit_rate: {(memoryHealth.hit_rate * 100).toFixed(1)}%
+              <span className="ml-auto text-2xs text-os-subtle font-mono">
+                命中率：{(memoryHealth.hit_rate * 100).toFixed(1)}%
               </span>
             )}
           </div>
@@ -198,7 +198,7 @@ export function MemoryOverview({ summary }: Props) {
           </div>
           {/* 覆盖率进度条 */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-2xs text-os-muted">
+            <div className="flex items-center justify-between text-2xs text-os-subtle">
               <span>向量覆盖率</span>
               <span className="font-mono">{(vectorStats.rate * 100).toFixed(1)}%</span>
             </div>
@@ -217,7 +217,7 @@ export function MemoryOverview({ summary }: Props) {
           {/* 类型分布 */}
           {memoryHealth?.type_distribution && memoryHealth.type_distribution.length > 0 && (
             <div className="mt-3 pt-3 border-t border-os-border/50">
-              <div className="text-2xs text-os-muted mb-2">类型分布</div>
+              <div className="text-2xs text-os-subtle mb-2">类型分布</div>
               <div className="flex flex-wrap gap-1.5">
                 {memoryHealth.type_distribution.map((t) => (
                   <span key={t.memory_type} className="text-2xs px-2 py-0.5 rounded bg-os-elevated text-os-subtle font-mono">
@@ -239,23 +239,23 @@ const ACCENT_MAP = {
   cyan: {
     border: "border-cyan-400/20",
     bg: "bg-cyan-400/[0.02]",
-    text: "text-cyan-400",
+    text: "text-cyan-700",
     bar: "bg-cyan-400",
-    chip: "bg-cyan-400/10 text-cyan-400",
+    chip: "bg-cyan-400/10 text-cyan-700",
   },
   violet: {
     border: "border-violet-400/20",
     bg: "bg-violet-400/[0.02]",
-    text: "text-violet-400",
+    text: "text-violet-700",
     bar: "bg-violet-400",
-    chip: "bg-violet-400/10 text-violet-400",
+    chip: "bg-violet-400/10 text-violet-700",
   },
   emerald: {
     border: "border-emerald-400/20",
     bg: "bg-emerald-400/[0.02]",
-    text: "text-emerald-400",
+    text: "text-emerald-700",
     bar: "bg-emerald-400",
-    chip: "bg-emerald-400/10 text-emerald-400",
+    chip: "bg-emerald-400/10 text-emerald-700",
   },
 } as const;
 
@@ -288,11 +288,11 @@ function TierCard({
             <span className={cn("text-xs font-bold tracking-wider", a.text)}>{tier}</span>
             <span className="text-xs font-medium text-os-text-high">{label}</span>
           </div>
-          <div className="text-2xs text-os-muted mt-0.5">{subtitle}</div>
+          <div className="text-2xs text-os-subtle mt-0.5">{subtitle}</div>
         </div>
         <div className="text-right">
           <div className={cn("text-xl font-bold tabular-nums", a.text)}>{count}</div>
-          <div className="text-2xs text-os-muted">items</div>
+          <div className="text-2xs text-os-subtle">条目</div>
         </div>
       </div>
 
@@ -301,7 +301,7 @@ function TierCard({
 
       {/* Avg importance bar */}
       <div className="space-y-1">
-        <div className="flex items-center justify-between text-2xs text-os-muted">
+        <div className="flex items-center justify-between text-2xs text-os-subtle">
           <span>平均重要度</span>
           <span className="font-mono">{avgImportance.toFixed(1)}</span>
         </div>
@@ -315,11 +315,11 @@ function TierCard({
 
       {/* Top items */}
       <div className="space-y-1.5">
-        <div className="text-2xs text-os-muted uppercase tracking-wider">Top 5</div>
+        <div className="text-2xs uppercase tracking-wider text-os-subtle">前 5 项</div>
         {isLoading ? (
-          <div className="text-2xs text-os-muted py-2">加载中...</div>
+          <div className="text-2xs text-os-subtle py-2">加载中...</div>
         ) : items.length === 0 ? (
-          <div className="text-2xs text-os-muted py-2">暂无数据</div>
+          <div className="text-2xs text-os-subtle py-2">暂无数据</div>
         ) : (
           <ul className="space-y-1">
             {items.map((item) => (
@@ -330,7 +330,7 @@ function TierCard({
                 <span className="text-os-subtle truncate flex-1" title={item.content}>
                   {item.content}
                 </span>
-                <span className={cn("shrink-0 font-mono", importanceColor(item.importance))}>
+                <span className={cn("shrink-0 font-mono", importanceText(item.importance))}>
                   {item.importance}
                 </span>
               </li>
@@ -354,14 +354,14 @@ function StatTile({
 }) {
   const accentMap = {
     zinc: "text-os-subtle",
-    emerald: "text-emerald-400",
-    amber: "text-amber-400",
-    rose: "text-rose-400",
-    violet: "text-violet-400",
+    emerald: "text-emerald-700",
+    amber: "text-amber-800",
+    rose: "text-rose-700",
+    violet: "text-violet-700",
   };
   return (
     <div className="rounded-md border border-os-border/50 bg-os-base/50 p-2.5">
-      <div className="flex items-center gap-1 text-2xs text-os-muted mb-1">
+      <div className="flex items-center gap-1 text-2xs text-os-subtle mb-1">
         <span className={accentMap[accent]}>{icon}</span>
         {label}
       </div>

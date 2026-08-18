@@ -17,7 +17,7 @@ function MetricCard({ title, value, subtitle, icon, trend, trendValue }: MetricC
     <div className="rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-muted-foreground">{title}</span>
-        <span className="text-muted-foreground/60">{icon}</span>
+        <span className="text-muted-foreground">{icon}</span>
       </div>
       <div className="mt-2">
         <span className="text-2xl font-bold">{value}</span>
@@ -25,7 +25,7 @@ function MetricCard({ title, value, subtitle, icon, trend, trendValue }: MetricC
           <span
             className={cn(
               "ml-2 text-sm font-medium",
-              trend === "up" ? "text-green-500" : "text-red-500"
+              trend === "up" ? "text-green-700" : "text-red-700"
             )}
           >
             {trend === "up" ? <TrendingUp className="inline h-3 w-3" /> : <TrendingDown className="inline h-3 w-3" />}

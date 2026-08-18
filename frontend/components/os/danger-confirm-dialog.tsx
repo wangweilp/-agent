@@ -70,7 +70,7 @@ export function DangerConfirmDialog({
           >
             {/* Header — danger accent */}
             <div className="flex items-center justify-between border-b border-os-danger/20 bg-os-danger/5 px-5 py-3.5">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-os-danger">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-red-700">
                 <AlertTriangle size={16} />
                 {title}
               </h2>
@@ -89,10 +89,10 @@ export function DangerConfirmDialog({
 
               {/* Confirm word hint */}
               <div className="rounded-lg border border-os-danger/20 bg-os-danger/5 px-3 py-2.5">
-                <p className="text-2xs text-os-muted">
+                <p className="text-2xs text-os-subtle">
                   {confirmWordLabel || "请输入确认词以继续"}
                 </p>
-                <p className="mt-1 font-mono text-sm font-semibold text-os-danger">
+                <p className="mt-1 font-mono text-sm font-semibold text-red-700">
                   {confirmWord}
                 </p>
               </div>
@@ -106,7 +106,7 @@ export function DangerConfirmDialog({
                   placeholder={confirmWord}
                   disabled={loading}
                   className={cn(
-                    "h-10 w-full rounded-lg border bg-os-surface px-3 font-mono text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted",
+                    "h-10 w-full rounded-lg border bg-os-surface px-3 font-mono text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle",
                     isMatch
                       ? "border-os-danger/50 focus:border-os-danger"
                       : "border-os-border focus:border-os-danger/40",
@@ -136,8 +136,8 @@ export function DangerConfirmDialog({
                   className={cn(
                     "inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-all duration-200",
                     isMatch && !loading
-                      ? "border-os-danger bg-os-danger/10 text-os-danger hover:bg-os-danger/20"
-                      : "border-os-border bg-os-surface text-os-muted cursor-not-allowed",
+                      ? "border-os-danger bg-os-danger/10 text-red-700 hover:bg-os-danger/20"
+                      : "border-os-border bg-os-surface text-os-subtle cursor-not-allowed",
                   )}
                 >
                   {loading ? (

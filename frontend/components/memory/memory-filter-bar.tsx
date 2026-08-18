@@ -87,7 +87,7 @@ export function MemoryFilterBar({
           className="w-32 h-6 px-2 rounded bg-os-surface border border-os-border text-2xs text-os-text-high focus:outline-none focus:border-os-accent"
           title="起始日期"
         />
-        <span className="text-2xs text-os-muted">至</span>
+        <span className="text-2xs text-os-subtle">至</span>
         <input
           type="date"
           value={dateTo}
@@ -101,7 +101,7 @@ export function MemoryFilterBar({
       {hasFilters && (
         <button
           onClick={onClear}
-          className="text-2xs text-os-muted hover:text-os-text px-2 py-1 rounded hover:bg-os-surface transition-colors"
+          className="text-2xs text-os-subtle hover:text-os-text px-2 py-1 rounded hover:bg-os-surface transition-colors"
         >
           清除筛选
         </button>

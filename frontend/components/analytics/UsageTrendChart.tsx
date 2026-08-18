@@ -117,7 +117,7 @@ export function ImportChannelChart({ channels, title }: ImportChannelChartProps)
             ))}
           </Pie>
           <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#A1A1AA" }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#52525B" }} />
         </PieChart>
       </ResponsiveContainer>
     </div>

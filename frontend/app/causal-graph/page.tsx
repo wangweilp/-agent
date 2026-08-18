@@ -1,38 +1,100 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  GitGraph, Zap, Play, ChevronRight, X, Activity,
-  Crosshair, Layers, AlertTriangle, CircleDot, ArrowRight,
-  RefreshCw, Target, Flame,
+  AlertTriangle,
+  ArrowRight,
+  ChevronRight,
+  CircleDot,
+  Crosshair,
+  Flame,
+  GitGraph,
+  Layers,
+  Play,
+  RefreshCw,
+  Target,
+  Zap,
 } from "lucide-react";
 import { PageTransition } from "@/components/animations/page-transition";
-import { cn, formatDate } from "@/lib/utils";
+import {
+  EmptyState,
+  InfoBanner,
+  OsBadge,
+  OsButton,
+  OsCard,
+  PageHeader,
+  PageShell,
+  ProgressBar,
+  RankRow,
+  SectionHeader,
+  StatusBadge,
+  Toolbar,
+} from "@/components/ui/os";
+import { formatDate } from "@/lib/utils";
 import {
   causalKernel,
-  createRootEvent, createChildEvent, createMultiCausalEvent, newTraceId,
+  createChildEvent,
+  createMultiCausalEvent,
+  createRootEvent,
+  newTraceId,
 } from "@/lib/event-bus/causal-kernel";
 import { useCausalGraph, useTopImpactNodes } from "@/hooks/use-causal-graph";
 import { useRecentTraces } from "@/hooks/use-event-stream";
 import type {
-  CausalGraphNode, CausalGraphEdge, EventSource, EventSeverity,
-  CausalRelation, SystemEvent,
+  CausalGraphEdge,
+  CausalGraphNode,
+  CausalRelation,
+  EventSeverity,
+  EventSource,
+  SystemEvent,
 } from "@/types/event-bus";
 
-// ═══════════════════════════════════════════════════════════════
-// 来源样式映射 — 按用户规范着色
-// 🟥 Runtime / 🟦 Memory / 🟨 Governance / 🟩 Agent / ⬜ Observability
-// ═══════════════════════════════════════════════════════════════
+type BadgeTone = "default" | "primary" | "success" | "warning" | "danger" | "info" | "muted";
 
-const SOURCE_CONFIG: Record<EventSource, {
-  color: string; fill: string; stroke: string; label: string; layer: number;
-}> = {
-  runtime: { color: "#f43f5e", fill: "rgba(244,63,94,0.15)", stroke: "#f43f5e", label: "运行时", layer: 0 },
-  governance: { color: "#f59e0b", fill: "rgba(245,158,11,0.15)", stroke: "#f59e0b", label: "治理", layer: 1 },
-  agent: { color: "#22c55e", fill: "rgba(34,197,94,0.15)", stroke: "#22c55e", label: "智能体", layer: 2 },
-  memory: { color: "#3b82f6", fill: "rgba(59,130,246,0.15)", stroke: "#3b82f6", label: "记忆", layer: 3 },
-  observability: { color: "#64748b", fill: "rgba(100,116,139,0.10)", stroke: "#64748b", label: "可观测性", layer: 4 },
+const SOURCE_CONFIG: Record<
+  EventSource,
+  { color: string; fill: string; border: string; label: string; layer: number; badge: BadgeTone }
+> = {
+  runtime: {
+    color: "#D65F5F",
+    fill: "rgba(214,95,95,0.12)",
+    border: "#D65F5F",
+    label: "运行时",
+    layer: 0,
+    badge: "danger",
+  },
+  governance: {
+    color: "#C88A2D",
+    fill: "rgba(200,138,45,0.13)",
+    border: "#C88A2D",
+    label: "治理",
+    layer: 1,
+    badge: "warning",
+  },
+  agent: {
+    color: "#3B9F72",
+    fill: "rgba(59,159,114,0.13)",
+    border: "#3B9F72",
+    label: "智能体",
+    layer: 2,
+    badge: "success",
+  },
+  memory: {
+    color: "#6678D9",
+    fill: "rgba(102,120,217,0.13)",
+    border: "#6678D9",
+    label: "记忆",
+    layer: 3,
+    badge: "primary",
+  },
+  observability: {
+    color: "#64748B",
+    fill: "rgba(100,116,139,0.10)",
+    border: "#64748B",
+    label: "可观测性",
+    layer: 4,
+    badge: "muted",
+  },
 };
 
 const SOURCE_ORDER: EventSource[] = ["runtime", "governance", "agent", "memory", "observability"];
@@ -44,84 +106,63 @@ const RELATION_LABEL: Record<CausalRelation, string> = {
   triggered_by: "触发",
 };
 
-const SEVERITY_DOT: Record<EventSeverity, string> = {
-  info: "bg-os-muted",
-  warn: "bg-amber-400",
-  critical: "bg-rose-400",
+const SEVERITY_CONFIG: Record<EventSeverity, { label: string; dot: string; badge: BadgeTone }> = {
+  info: { label: "信息", dot: "bg-os-muted", badge: "muted" },
+  warn: { label: "警告", dot: "bg-os-warning", badge: "warning" },
+  critical: { label: "严重", dot: "bg-os-danger", badge: "danger" },
 };
-
-// ═══════════════════════════════════════════════════════════════
-// 图布局算法 — 分层 + 时间排序
-// ═══════════════════════════════════════════════════════════════
 
 interface PositionedNode extends CausalGraphNode {
   x: number;
   y: number;
 }
 
-const LAYER_HEIGHT = 130;
-const NODE_RADIUS = 22;
-const PADDING_X = 60;
-const PADDING_Y = 50;
-const MIN_LAYER_GAP = 180;
+type TraceRuntimeState = "hydrating" | "ready" | "empty" | "invalid";
 
-function layoutGraph(
-  nodes: CausalGraphNode[],
-  edges: CausalGraphEdge[],
-  width: number,
-): { positioned: PositionedNode[]; layerYs: number[] } {
+const LAYER_HEIGHT = 128;
+const NODE_RADIUS = 23;
+const PADDING_X = 72;
+const PADDING_Y = 58;
+const MIN_CANVAS_WIDTH = 760;
+
+function layoutGraph(nodes: CausalGraphNode[], width: number): { positioned: PositionedNode[]; layerYs: number[] } {
   if (nodes.length === 0) return { positioned: [], layerYs: [] };
 
-  // 按来源分组
   const bySource = new Map<EventSource, CausalGraphNode[]>();
-  for (const n of nodes) {
-    const arr = bySource.get(n.source) || [];
-    arr.push(n);
-    bySource.set(n.source, arr);
+  for (const node of nodes) {
+    const list = bySource.get(node.source) || [];
+    list.push(node);
+    bySource.set(node.source, list);
   }
 
-  // 每层内按时间排序
-  for (const arr of bySource.values()) {
-    arr.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  for (const list of bySource.values()) {
+    list.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
 
-  // 计算每层 Y 坐标（仅包含有节点的层）
-  const activeLayers = SOURCE_ORDER.filter((s) => (bySource.get(s)?.length || 0) > 0);
-  const layerYs = activeLayers.map((_, i) => PADDING_Y + i * LAYER_HEIGHT);
+  const activeLayers = SOURCE_ORDER.filter((source) => (bySource.get(source)?.length || 0) > 0);
+  const layerYs = activeLayers.map((_, index) => PADDING_Y + index * LAYER_HEIGHT);
+  const usableWidth = Math.max(width, MIN_CANVAS_WIDTH) - PADDING_X * 2;
 
-  // 计算每层 X 坐标（均匀分布）
   const positioned: PositionedNode[] = [];
-  const usableWidth = Math.max(width - PADDING_X * 2, MIN_LAYER_GAP);
-
-  activeLayers.forEach((source, layerIdx) => {
-    const arr = bySource.get(source)!;
-    const y = layerYs[layerIdx];
-    const stepX = arr.length > 1 ? usableWidth / (arr.length - 1) : 0;
-    arr.forEach((n, i) => {
-      const x = arr.length === 1
-        ? PADDING_X + usableWidth / 2
-        : PADDING_X + i * stepX;
-      positioned.push({ ...n, x, y });
+  activeLayers.forEach((source, layerIndex) => {
+    const list = bySource.get(source) || [];
+    const y = layerYs[layerIndex];
+    const stepX = list.length > 1 ? usableWidth / (list.length - 1) : 0;
+    list.forEach((node, index) => {
+      positioned.push({
+        ...node,
+        x: list.length === 1 ? PADDING_X + usableWidth / 2 : PADDING_X + index * stepX,
+        y,
+      });
     });
   });
 
   return { positioned, layerYs };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 主页面
-// ═══════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════
-// 渲染契约 — Trace 运行时状态机
-// GraphCanvas 仅允许在 "ready" 状态下挂载，彻底消灭 null-entry 渲染风险
-// ═══════════════════════════════════════════════════════════════
-
-type TraceRuntimeState =
-  | "hydrating" // 正在播种 / graph 未水合完成
-  | "ready"     // trace 有效且 nodes 已就绪，唯一允许渲染 GraphCanvas 的状态
-  | "empty"     // 无 trace
-  | "invalid";  // selectedTrace 已失效（不在 trace list 中）
+function eventShortType(type: string) {
+  return type.split(".").slice(-2).join(".");
+}
 
 export default function CausalGraphPage() {
   const traces = useRecentTraces(30);
@@ -130,31 +171,27 @@ export default function CausalGraphPage() {
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [canvasWidth, setCanvasWidth] = useState(900);
+  const autoSeededRef = useRef(false);
+  const [canvasWidth, setCanvasWidth] = useState(920);
 
-  // 自动选中第一个 trace
   useEffect(() => {
     if (!selectedTrace && traces.length > 0) {
       setSelectedTrace(traces[0]);
     }
   }, [traces, selectedTrace]);
 
-  // Fallback A — trace list 为空时自动生成默认 trace，保证 Graph Engine 永不进入“空白不可交互”状态
-  const autoSeededRef = useRef(false);
   useEffect(() => {
     if (autoSeededRef.current) return;
     if (traces.length === 0) {
       autoSeededRef.current = true;
       setIsSeeding(true);
-      const tid = simulateMultiCausalFlow();
-      setSelectedTrace(tid);
+      const traceId = simulateMultiCausalFlow();
+      setSelectedTrace(traceId);
       setSelectedNodeId(null);
       setIsSeeding(false);
     }
   }, [traces]);
 
-  // 防 stale trace — selectedTrace 指向已不在 store 中的 trace 时清空
-  // 仅在 traces 已水合（非空）时判定，避免与 autoSeed 的同步发布产生竞态
   useEffect(() => {
     if (selectedTrace && traces.length > 0 && !traces.includes(selectedTrace)) {
       setSelectedTrace(null);
@@ -162,121 +199,100 @@ export default function CausalGraphPage() {
     }
   }, [traces, selectedTrace]);
 
-  // 统一的模拟入口：生成 trace 后直接选中，避免静默空白
-  const handleSimulate = () => {
-    setIsSeeding(true);
-    const tid = simulateMultiCausalFlow();
-    setSelectedTrace(tid);
-    setSelectedNodeId(null);
-    setIsSeeding(false);
-  };
-
-  // 监听 canvas 宽度
   useEffect(() => {
     const update = () => {
-      if (canvasRef.current) {
-        setCanvasWidth(canvasRef.current.clientWidth);
-      }
+      if (canvasRef.current) setCanvasWidth(canvasRef.current.clientWidth);
     };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
+  const handleSimulate = () => {
+    setIsSeeding(true);
+    const traceId = simulateMultiCausalFlow();
+    setSelectedTrace(traceId);
+    setSelectedNodeId(null);
+    setIsSeeding(false);
+  };
+
   const graph = useCausalGraph(selectedTrace);
   const topImpact = useTopImpactNodes(selectedTrace, 5);
 
-  // ── 渲染契约（Render Gate）──
-  // traceState 是 GraphCanvas 挂载的唯一授权凭据；canRenderGraph 为真才允许进入渲染阶段
-  // hydrating 由 hook 的 hydrated lifecycle 凭据推导，而非用 nodes.length 反推，
-  // 避免「合法空图（trace 存在但无事件）」被误判为「正在水合」
   const traceState: TraceRuntimeState = useMemo(() => {
     if (isSeeding) return "hydrating";
     if (!selectedTrace) return "empty";
-    // traces 为空说明仍在水合中，不判 invalid（避免与 autoSeed 竞态）
     if (traces.length > 0 && !traces.includes(selectedTrace)) return "invalid";
     if (!graph.hydrated) return "hydrating";
-    // 已水合但无节点 → 合法空图，归入 empty（非 hydrating）
     if (graph.nodes.length === 0) return "empty";
     return "ready";
   }, [isSeeding, selectedTrace, traces, graph.hydrated, graph.nodes.length]);
 
   const canRenderGraph = traceState === "ready";
 
-  // 布局计算
   const { positioned, layerYs } = useMemo(
-    () => layoutGraph(graph.nodes, graph.edges, canvasWidth),
-    [graph.nodes, graph.edges, canvasWidth],
+    () => layoutGraph(graph.nodes, canvasWidth),
+    [graph.nodes, canvasWidth],
   );
 
   const nodeMap = useMemo(() => {
-    const m = new Map<string, PositionedNode>();
-    for (const n of positioned) m.set(n.event_id, n);
-    return m;
+    const map = new Map<string, PositionedNode>();
+    for (const node of positioned) map.set(node.event_id, node);
+    return map;
   }, [positioned]);
 
-  // 选中节点
-  const selectedNode = selectedNodeId ? (nodeMap.get(selectedNodeId) ?? null) : null;
+  const selectedNode = selectedNodeId ? nodeMap.get(selectedNodeId) ?? null : null;
   const selectedEvent = selectedNodeId ? causalKernel.getEvent(selectedNodeId) : null;
 
-  // 选中节点的因果链（父 + 子）
-  const selectedCausalChain = useMemo(() => {
-    if (!selectedNodeId) return { parents: [] as SystemEvent[], children: [] as SystemEvent[] };
-    return {
-      parents: causalKernel.getParents(selectedNodeId),
-      children: causalKernel.getChildren(selectedNodeId),
-    };
-  }, [selectedNodeId, graph]);
+  const selectedCausalChain = selectedNodeId
+    ? {
+        parents: causalKernel.getParents(selectedNodeId),
+        childEvents: causalKernel.getChildren(selectedNodeId),
+      }
+    : { parents: [] as SystemEvent[], childEvents: [] as SystemEvent[] };
 
-  // 过滤显示（仅关键路径模式）
   const visibleEdges = useMemo(() => {
     if (!showCriticalOnly) return graph.edges;
-    return graph.edges.filter((e) => e.is_critical_path);
+    return graph.edges.filter((edge) => edge.is_critical_path);
   }, [graph.edges, showCriticalOnly]);
 
   const visibleNodeIds = useMemo(() => {
+    if (!showCriticalOnly) return new Set(positioned.map((node) => node.event_id));
     const ids = new Set<string>();
-    for (const e of visibleEdges) {
-      ids.add(e.from);
-      ids.add(e.to);
+    for (const edge of visibleEdges) {
+      ids.add(edge.from);
+      ids.add(edge.to);
     }
-    // 关键路径模式下也要包含选中节点
     if (selectedNodeId) ids.add(selectedNodeId);
     return ids;
-  }, [visibleEdges, selectedNodeId, showCriticalOnly]);
+  }, [positioned, visibleEdges, selectedNodeId, showCriticalOnly]);
 
-  const canvasHeight = layerYs.length > 0 ? layerYs[layerYs.length - 1] + PADDING_Y : 400;
+  const canvasHeight = Math.max(520, layerYs.length > 0 ? layerYs[layerYs.length - 1] + PADDING_Y + 52 : 520);
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-4 max-w-[1440px] mx-auto">
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold text-os-text-high tracking-tight flex items-center gap-2">
-              <GitGraph size={16} className="text-emerald-400" />
-              Causal Graph Engine
-            </h1>
-            <p className="text-xs text-os-subtle mt-0.5">
-              知维 OS 因果图引擎 — Event → Node · Causal Link → Edge · Trace → Subgraph
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSimulate}
-              className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
-            >
-              <Zap size={11} />
-              模拟因果图
-            </button>
-          </div>
-        </div>
+      <PageShell>
+        <PageHeader
+          icon={GitGraph}
+          title="因果图引擎"
+          subtitle="把事件流投影为可解释的因果 DAG，追踪运行时、治理、智能体、记忆与可观测性之间的影响路径。"
+          actions={
+            <>
+              <StatusBadge status={canRenderGraph ? "ready" : traceState === "invalid" ? "warning" : "info"}>
+                {canRenderGraph ? "图谱就绪" : traceState === "invalid" ? "追踪记录已失效" : "准备中"}
+              </StatusBadge>
+              <OsButton type="button" variant="primary" size="md" onClick={handleSimulate}>
+                <Zap size={15} />
+                模拟因果图
+              </OsButton>
+            </>
+          }
+        />
 
-        {/* ── Trace Selector + Stats ── */}
-        <div className="flex items-center gap-3 p-3 rounded-lg border border-os-border bg-os-surface">
+        <Toolbar>
           <div className="flex items-center gap-2">
-            <Crosshair size={14} className="text-os-subtle" />
-            <span className="text-2xs text-os-subtle uppercase tracking-wider">Trace</span>
+            <Crosshair size={15} className="text-os-subtle" />
+            <span className="text-xs font-semibold tracking-[0.08em] text-os-subtle">追踪记录</span>
           </div>
           <select
             value={selectedTrace || ""}
@@ -284,92 +300,97 @@ export default function CausalGraphPage() {
               setSelectedTrace(e.target.value || null);
               setSelectedNodeId(null);
             }}
-            className="h-7 px-2 rounded-md border border-os-border bg-os-base text-xs text-os-text-high font-mono focus:outline-none focus:border-emerald-400/50"
+            aria-label="选择追踪记录"
+            className="h-9 min-w-0 rounded-xl border border-os-border bg-white px-3 font-mono text-xs text-os-text-high outline-none focus:border-os-primary/35 focus:ring-2 focus:ring-os-primary/15 sm:min-w-[260px]"
           >
-            <option value="">{traces.length === 0 ? "— 无 Trace（自动生成中）—" : "— 选择 Trace —"}</option>
-            {traces.map((t) => (
-              <option key={t} value={t}>{t.slice(0, 24)}...</option>
+            <option value="">{traces.length === 0 ? "暂无追踪记录" : "选择追踪记录"}</option>
+            {traces.map((traceId) => (
+              <option key={traceId} value={traceId}>
+                {traceId.slice(0, 32)}
+              </option>
             ))}
           </select>
 
           {graph.stats && (
-            <div className="flex items-center gap-4 ml-auto">
-              <Stat label="Nodes" value={graph.stats.node_count} />
-              <Stat label="Edges" value={graph.stats.edge_count} />
-              <Stat label="Roots" value={graph.stats.root_count} />
-              <Stat label="Leaves" value={graph.stats.leaf_count} />
-              <Stat label="Depth" value={graph.stats.max_depth} />
-              {graph.criticalPath && (
-                <Stat label="Critical" value={graph.criticalPath.nodes.length} accent="rose" />
-              )}
+            <div className="flex flex-wrap items-center gap-2">
+              <OsBadge variant="muted">节点 {graph.stats.node_count}</OsBadge>
+              <OsBadge variant="muted">边 {graph.stats.edge_count}</OsBadge>
+              <OsBadge variant="muted">根节点 {graph.stats.root_count}</OsBadge>
+              <OsBadge variant="muted">叶节点 {graph.stats.leaf_count}</OsBadge>
+              <OsBadge variant={graph.criticalPath ? "danger" : "muted"}>
+                关键路径 {graph.criticalPath?.nodes.length || 0}
+              </OsBadge>
             </div>
           )}
 
-          <button
-            onClick={() => setShowCriticalOnly(!showCriticalOnly)}
-            className={cn(
-              "flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-2xs transition-colors",
-              showCriticalOnly
-                ? "border-rose-400/40 bg-rose-400/15 text-rose-300"
-                : "border-os-border bg-os-base text-os-subtle hover:text-os-text",
-            )}
+          <OsButton
+            type="button"
+            variant={showCriticalOnly ? "dangerSoft" : "secondary"}
+            size="md"
+            onClick={() => setShowCriticalOnly((value) => !value)}
+            className="ml-auto"
           >
-            <Flame size={11} />
+            <Flame size={14} />
             {showCriticalOnly ? "仅关键路径" : "全部边"}
-          </button>
-        </div>
+          </OsButton>
+          <OsButton type="button" variant="ghost" size="md" onClick={graph.rebuild}>
+            <RefreshCw size={14} />
+            重建
+          </OsButton>
+        </Toolbar>
 
-        {/* ── Main Layout: Graph Canvas + Side Panel ── */}
-        <div className="flex gap-4">
-          {/* Graph Canvas */}
-          <div
-            ref={canvasRef}
-            className="flex-1 rounded-lg border border-os-border bg-os-surface overflow-hidden relative"
-            style={{ minHeight: canvasHeight }}
-          >
-            {!canRenderGraph ? (
-              <EmptyState
-                state={traceState}
-                hasTrace={!!selectedTrace}
-                onGenerate={handleSimulate}
-              />
-            ) : (
-              <GraphCanvas
-                positioned={positioned}
-                layerYs={layerYs}
-                edges={visibleEdges}
-                nodeMap={nodeMap}
-                visibleNodeIds={visibleNodeIds}
-                selectedNodeId={selectedNodeId}
-                onSelectNode={setSelectedNodeId}
-                canvasHeight={canvasHeight}
-                showCriticalOnly={showCriticalOnly}
-              />
-            )}
-          </div>
+        <InfoBanner variant="info" icon={Layers}>
+          关键路径只强调风险传播链，不改变底层事件存储。选择节点后右侧检查器会展示事件载荷、父事件、子事件与影响分。
+        </InfoBanner>
 
-          {/* Side Panel */}
-          <div className="w-80 shrink-0 rounded-lg border border-os-border bg-os-surface overflow-hidden flex flex-col">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <OsCard padding="none" className="min-h-[560px] overflow-hidden">
+            <div className="border-b border-os-border bg-white px-4 py-3">
+              <SectionHeader
+                icon={GitGraph}
+                title="因果画布"
+                subtitle="按事件来源分层，边的粗细表示因果权重，虚线表示影响关系。"
+                actions={graph.isBuilding ? <StatusBadge status="info">构建中</StatusBadge> : undefined}
+              />
+            </div>
+            <div ref={canvasRef} className="relative min-h-[520px] overflow-hidden bg-white">
+              {!canRenderGraph ? (
+                <GraphEmptyState state={traceState} hasTrace={!!selectedTrace} onGenerate={handleSimulate} />
+              ) : (
+                <GraphCanvas
+                  width={Math.max(canvasWidth, MIN_CANVAS_WIDTH)}
+                  positioned={positioned}
+                  layerYs={layerYs}
+                  edges={visibleEdges}
+                  nodeMap={nodeMap}
+                  visibleNodeIds={visibleNodeIds}
+                  selectedNodeId={selectedNodeId}
+                  onSelectNode={setSelectedNodeId}
+                  canvasHeight={canvasHeight}
+                  showCriticalOnly={showCriticalOnly}
+                />
+              )}
+            </div>
+          </OsCard>
+
+          <OsCard padding="none" className="min-h-[560px] overflow-hidden">
             <SidePanel
               node={selectedNode}
               event={selectedEvent}
               parents={selectedCausalChain.parents}
-              children={selectedCausalChain.children}
+              childEvents={selectedCausalChain.childEvents}
               topImpact={topImpact}
               onSelectNode={setSelectedNodeId}
             />
-          </div>
+          </OsCard>
         </div>
-      </div>
+      </PageShell>
     </PageTransition>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Graph Canvas — SVG 因果图可视化
-// ═══════════════════════════════════════════════════════════════
-
 interface GraphCanvasProps {
+  width: number;
   positioned: PositionedNode[];
   layerYs: number[];
   edges: CausalGraphEdge[];
@@ -382,160 +403,126 @@ interface GraphCanvasProps {
 }
 
 function GraphCanvas({
-  positioned, layerYs, edges, nodeMap, visibleNodeIds,
-  selectedNodeId, onSelectNode, canvasHeight, showCriticalOnly,
+  width,
+  positioned,
+  layerYs,
+  edges,
+  nodeMap,
+  visibleNodeIds,
+  selectedNodeId,
+  onSelectNode,
+  canvasHeight,
+  showCriticalOnly,
 }: GraphCanvasProps) {
-  const activeLayers = SOURCE_ORDER.filter((s) =>
-    positioned.some((n) => n.source === s),
-  );
+  const activeLayers = SOURCE_ORDER.filter((source) => positioned.some((node) => node.source === source));
 
   return (
     <svg
       width="100%"
       height={canvasHeight}
+      viewBox={`0 0 ${width} ${canvasHeight}`}
       className="block"
-      style={{ background: "radial-gradient(circle at 50% 0%, rgba(16,185,129,0.03), transparent 60%)" }}
+      role="img"
+      aria-label="因果事件图谱"
+      style={{
+        background:
+          "radial-gradient(circle at 50% 0%, rgba(102,120,217,0.08), transparent 46%), linear-gradient(#FFFFFF, #F8FAFC)",
+      }}
     >
-      {/* 层背景线 + 标签 */}
-      {activeLayers.map((source, i) => {
+      <defs>
+        <pattern id="causal-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="rgba(100,116,139,0.08)" strokeWidth="1" />
+        </pattern>
+        <marker id="arrow-muted" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="rgba(100,116,139,0.45)" />
+        </marker>
+        <marker id="arrow-critical" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#D65F5F" />
+        </marker>
+      </defs>
+
+      <rect x="0" y="0" width={width} height={canvasHeight} fill="url(#causal-grid)" />
+
+      {activeLayers.map((source, index) => {
         const cfg = SOURCE_CONFIG[source];
-        const y = layerYs[i];
+        const y = layerYs[index];
         return (
           <g key={source}>
-            <line
-              x1={0} y1={y} x2="100%" y2={y}
-              stroke={cfg.color} strokeOpacity={0.08} strokeDasharray="4 4"
-            />
-            <text
-              x={12} y={y - 8}
-              fill={cfg.color} fillOpacity={0.6}
-              fontSize={10} fontWeight={500}
-              className="uppercase tracking-wider"
-            >
+            <line x1={0} y1={y} x2={width} y2={y} stroke={cfg.color} strokeOpacity={0.13} strokeDasharray="5 5" />
+            <text x={18} y={y - 12} fill={cfg.color} fillOpacity={0.72} fontSize={11} fontWeight={600}>
               {cfg.label}
             </text>
           </g>
         );
       })}
 
-      {/* 边 */}
       <g>
-        {edges.map((edge, i) => {
+        {edges.map((edge, index) => {
           const from = nodeMap.get(edge.from);
           const to = nodeMap.get(edge.to);
           if (!from || !to) return null;
           if (showCriticalOnly && !edge.is_critical_path) return null;
 
-          const isCritical = edge.is_critical_path;
-          const strokeColor = isCritical ? "#f43f5e" : "#64748b";
-          const strokeOpacity = isCritical ? 0.7 : 0.25;
-          const strokeWidth = Math.max(1, edge.weight * 2.5);
-
-          // 贝塞尔曲线
+          const isCritical = !!edge.is_critical_path;
+          const strokeColor = isCritical ? SOURCE_CONFIG.runtime.color : "rgba(100,116,139,0.42)";
+          const strokeWidth = Math.max(1, edge.weight * (isCritical ? 2.1 : 1.45));
           const midY = (from.y + to.y) / 2;
           const path = `M ${from.x} ${from.y} C ${from.x} ${midY}, ${to.x} ${midY}, ${to.x} ${to.y}`;
 
           return (
-            <g key={`edge-${i}`}>
+            <g key={`${edge.from}-${edge.to}-${index}`}>
+              {isCritical && <path d={path} fill="none" stroke={strokeColor} strokeOpacity={0.12} strokeWidth={strokeWidth + 8} />}
               <path
                 d={path}
                 fill="none"
                 stroke={strokeColor}
-                strokeOpacity={strokeOpacity}
+                strokeOpacity={isCritical ? 0.78 : 0.36}
                 strokeWidth={strokeWidth}
-                strokeDasharray={edge.relation === "influenced_by" ? "4 3" : undefined}
+                strokeDasharray={edge.relation === "influenced_by" ? "5 4" : undefined}
+                markerEnd={isCritical ? "url(#arrow-critical)" : "url(#arrow-muted)"}
               />
-              {isCritical && (
-                <path
-                  d={path}
-                  fill="none"
-                  stroke="#f43f5e"
-                  strokeOpacity={0.3}
-                  strokeWidth={strokeWidth + 4}
-                  className="animate-pulse"
-                />
-              )}
             </g>
           );
         })}
       </g>
 
-      {/* 节点 */}
       <g>
         {positioned.map((node) => {
           const cfg = SOURCE_CONFIG[node.source];
-          const isSelected = node.event_id === selectedNodeId;
+          const isSelected = selectedNodeId === node.event_id;
           const isVisible = visibleNodeIds.has(node.event_id);
           if (showCriticalOnly && !isVisible) return null;
 
-          const isHighImpact = (node.impact_score || 0) > 5;
-          const radius = NODE_RADIUS + (node.impact_score || 0) * 0.5;
+          const impact = node.impact_score || 0;
+          const radius = NODE_RADIUS + Math.min(impact, 12) * 0.45;
+          const isHighImpact = impact > 5;
 
           return (
             <g
               key={node.event_id}
               transform={`translate(${node.x}, ${node.y})`}
-              className="cursor-pointer"
+              className="cursor-pointer outline-none"
+              role="button"
+              tabIndex={0}
+              aria-label={`${cfg.label} ${eventShortType(node.type)}`}
               onClick={() => onSelectNode(node.event_id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") onSelectNode(node.event_id);
+              }}
             >
-              {/* 高影响光晕 */}
-              {isHighImpact && (
-                <circle
-                  r={radius + 6}
-                  fill={cfg.color}
-                  fillOpacity={0.08}
-                  className="animate-pulse"
-                />
-              )}
-              {/* 选中环 */}
-              {isSelected && (
-                <circle
-                  r={radius + 4}
-                  fill="none"
-                  stroke={cfg.color}
-                  strokeWidth={1.5}
-                  strokeOpacity={0.6}
-                />
-              )}
-              {/* 节点主体 */}
-              <circle
-                r={radius}
-                fill={cfg.fill}
-                stroke={cfg.stroke}
-                strokeWidth={isSelected ? 2 : 1}
-              />
-              {/* 严重级别点 */}
-              <circle
-                cx={radius * 0.6}
-                cy={-radius * 0.6}
-                r={3}
-                className={SEVERITY_DOT[node.severity]}
-                fill="currentColor"
-              />
-              {/* 节点标签 */}
-              <text
-                y={radius + 14}
-                textAnchor="middle"
-                fill={cfg.color}
-                fontSize={9}
-                fontWeight={500}
-                className="font-mono pointer-events-none"
-              >
-                {node.type.split(".").pop()}
-              </text>
-              {/* impact score */}
-              {node.impact_score !== undefined && node.impact_score > 0 && (
-                <text
-                  y={3}
-                  textAnchor="middle"
-                  fill={cfg.color}
-                  fontSize={10}
-                  fontWeight={600}
-                  className="pointer-events-none"
-                >
-                  {Math.round(node.impact_score)}
+              <title>{`${cfg.label} | ${node.type} | ${node.severity}`}</title>
+              {isHighImpact && <circle r={radius + 9} fill={cfg.color} fillOpacity={0.08} />}
+              {isSelected && <circle r={radius + 6} fill="none" stroke={cfg.color} strokeOpacity={0.55} strokeWidth={2} />}
+              <circle r={radius} fill={cfg.fill} stroke={cfg.border} strokeWidth={isSelected ? 2.2 : 1.2} />
+              <circle cx={radius * 0.58} cy={-radius * 0.58} r={3.6} className={SEVERITY_CONFIG[node.severity].dot} fill="currentColor" />
+              {impact > 0 && (
+                <text y={4} textAnchor="middle" fill={cfg.color} fontSize={11} fontWeight={700} className="pointer-events-none">
+                  {Math.round(impact)}
                 </text>
               )}
+              <text y={radius + 17} textAnchor="middle" fill="#334155" fontSize={10} fontWeight={600} className="pointer-events-none">
+                {eventShortType(node.type)}
+              </text>
             </g>
           );
         })}
@@ -544,29 +531,27 @@ function GraphCanvas({
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Side Panel — 事件详情 + 因果链 + 影响分值
-// ═══════════════════════════════════════════════════════════════
-
 interface SidePanelProps {
   node: PositionedNode | null;
   event: SystemEvent | null;
   parents: SystemEvent[];
-  children: SystemEvent[];
+  childEvents: SystemEvent[];
   topImpact: CausalGraphNode[];
   onSelectNode: (id: string) => void;
 }
 
-function SidePanel({ node, event, parents, children, topImpact, onSelectNode }: SidePanelProps) {
+function SidePanel({ node, event, parents, childEvents, topImpact, onSelectNode }: SidePanelProps) {
   if (!node || !event) {
     return (
-      <div className="flex-1 flex flex-col">
-        <PanelHeader title="事件详情" icon={CircleDot} />
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="text-center space-y-2">
-            <Crosshair size={28} className="mx-auto text-os-muted" />
-            <p className="text-xs text-os-subtle">点击图中的节点查看详情</p>
-          </div>
+      <div className="flex h-full min-h-[560px] flex-col">
+        <PanelHeader title="事件检查器" icon={CircleDot} />
+        <div className="flex flex-1 items-center justify-center p-5">
+          <EmptyState
+            icon={Crosshair}
+            title="选择节点查看详情"
+            description="点击画布中的任意事件节点，查看事件载荷、因果父子关系与影响分。"
+            className="min-h-[240px]"
+          />
         </div>
         <TopImpactList nodes={topImpact} onSelectNode={onSelectNode} />
       </div>
@@ -574,156 +559,140 @@ function SidePanel({ node, event, parents, children, topImpact, onSelectNode }: 
   }
 
   const cfg = SOURCE_CONFIG[node.source];
+  const impact = Math.min(100, Math.round((node.impact_score || 0) * 5));
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <PanelHeader title="事件详情" icon={CircleDot} onClose />
+    <div className="flex h-full min-h-[560px] flex-col">
+      <PanelHeader title="事件检查器" icon={CircleDot} hint="点击节点切换" />
       <div className="flex-1 overflow-y-auto">
-        {/* 节点基本信息 */}
-        <div className="p-3 border-b border-os-border space-y-2">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ background: cfg.color }}
-            />
-            <span className="text-xs font-medium" style={{ color: cfg.color }}>
-              {cfg.label}
-            </span>
-            <span className="text-2xs text-os-subtle font-mono">{node.type}</span>
-          </div>
-          <div className="text-2xs text-os-subtle font-mono break-all">
-            {node.event_id}
-          </div>
-          <div className="flex items-center gap-3 text-2xs text-os-subtle">
-            <span className="flex items-center gap-1">
-              <div className={cn("w-1.5 h-1.5 rounded-full", SEVERITY_DOT[node.severity])} />
-              {node.severity}
-            </span>
-            <span>{formatDate(node.timestamp)}</span>
-          </div>
-        </div>
+        <div className="space-y-4 p-4">
+          <OsCard padding="md" variant="inspector">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <OsBadge variant={cfg.badge}>{cfg.label}</OsBadge>
+                  <OsBadge variant={SEVERITY_CONFIG[node.severity].badge}>{SEVERITY_CONFIG[node.severity].label}</OsBadge>
+                </div>
+                <h2 className="mt-3 break-all font-mono text-sm font-semibold leading-6 text-os-text-high">{node.type}</h2>
+              </div>
+            </div>
+            <div className="mt-3 rounded-xl border border-os-border bg-os-surface-tinted p-3">
+              <p className="break-all font-mono text-xs leading-5 text-os-subtle">{node.event_id}</p>
+              <p className="mt-2 text-xs text-os-subtle">{formatDate(node.timestamp)}</p>
+            </div>
+          </OsCard>
 
-        {/* Impact Score */}
-        <div className="p-3 border-b border-os-border">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-2xs text-os-subtle uppercase tracking-wider flex items-center gap-1">
-              <Target size={10} /> Impact Score
-            </span>
-            <span className="text-sm font-semibold" style={{ color: cfg.color }}>
-              {Math.round(node.impact_score || 0)}
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full bg-os-base overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: cfg.color }}
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(100, (node.impact_score || 0) * 5)}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
-          <div className="flex items-center justify-between mt-1 text-2xs text-os-subtle">
-            <span>下游 {node.downstream_count || 0} 节点</span>
-            <span>权重 {cfg.label}</span>
-          </div>
-        </div>
+          <OsCard padding="md">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.08em] text-os-subtle">
+                <Target size={13} />
+                影响评分
+              </span>
+              <span className="font-mono text-lg font-semibold" style={{ color: cfg.color }}>
+                {Math.round(node.impact_score || 0)}
+              </span>
+            </div>
+            <ProgressBar value={impact} tone={node.severity === "critical" ? "danger" : node.severity === "warn" ? "warning" : "primary"} />
+            <div className="mt-2 flex items-center justify-between text-xs text-os-subtle">
+              <span>下游 {node.downstream_count || 0} 节点</span>
+              <span>{cfg.label} 层</span>
+            </div>
+          </OsCard>
 
-        {/* Payload 预览 */}
-        <div className="p-3 border-b border-os-border">
-          <div className="text-2xs text-os-subtle uppercase tracking-wider mb-1.5">Payload</div>
-          <pre className="text-2xs text-os-text font-mono bg-os-base/50 rounded p-2 overflow-x-auto max-h-32">
+          <OsCard padding="md">
+            <h3 className="mb-2 text-sm font-semibold text-os-text-high">事件载荷</h3>
+            <pre className="max-h-44 overflow-auto rounded-xl border border-os-border bg-os-surface-tinted p-3 font-mono text-xs leading-5 text-os-text">
 {JSON.stringify(event.payload, null, 2)}
-          </pre>
+            </pre>
+          </OsCard>
+
+          <CausalList
+            title={`父事件 (${parents.length})`}
+            iconDirection="up"
+            events={parents}
+            empty="根事件，没有父节点"
+            relation="caused_by"
+            onSelectNode={onSelectNode}
+          />
+
+          <CausalList
+            title={`子事件 (${childEvents.length})`}
+            iconDirection="down"
+            events={childEvents}
+            empty="叶节点，没有子事件"
+            onSelectNode={onSelectNode}
+          />
         </div>
 
-        {/* 因果链 — 父事件 */}
-        <div className="p-3 border-b border-os-border">
-          <div className="text-2xs text-os-subtle uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <ArrowRight size={10} className="rotate-180" /> 父事件（{parents.length}）
-          </div>
-          {parents.length === 0 ? (
-            <span className="text-2xs text-os-muted">根事件（无父节点）</span>
-          ) : (
-            <div className="space-y-1">
-              {parents.map((p) => (
-                <CausalChainItem
-                  key={p.event_id}
-                  event={p}
-                  relation="caused_by"
-                  onClick={() => onSelectNode(p.event_id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 因果链 — 子事件 */}
-        <div className="p-3 border-b border-os-border">
-          <div className="text-2xs text-os-subtle uppercase tracking-wider mb-1.5 flex items-center gap-1">
-            <ArrowRight size={10} /> 子事件（{children.length}）
-          </div>
-          {children.length === 0 ? (
-            <span className="text-2xs text-os-muted">叶节点（无子事件）</span>
-          ) : (
-            <div className="space-y-1">
-              {children.map((c) => (
-                <CausalChainItem
-                  key={c.event_id}
-                  event={c}
-                  onClick={() => onSelectNode(c.event_id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Top Impact 节点 */}
         <TopImpactList nodes={topImpact} onSelectNode={onSelectNode} />
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 子组件
-// ═══════════════════════════════════════════════════════════════
-
 function PanelHeader({
-  title, icon: Icon, onClose,
+  title,
+  icon: Icon,
+  hint,
 }: {
   title: string;
   icon: typeof CircleDot;
-  onClose?: boolean;
+  hint?: string;
 }) {
   return (
-    <div className="flex items-center justify-between h-10 px-3 border-b border-os-border shrink-0">
-      <div className="flex items-center gap-1.5">
-        <Icon size={13} className="text-os-subtle" />
-        <span className="text-2xs font-medium text-os-text uppercase tracking-wider">{title}</span>
+    <div className="flex h-12 shrink-0 items-center justify-between border-b border-os-border bg-white px-4">
+      <div className="flex items-center gap-2">
+        <Icon size={15} className="text-os-primary" />
+        <span className="text-sm font-semibold text-os-text-high">{title}</span>
       </div>
-      {onClose && (
-        <span className="text-2xs text-os-muted">点击节点切换</span>
-      )}
+      {hint && <span className="text-xs text-os-subtle">{hint}</span>}
     </div>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: "rose" }) {
+function CausalList({
+  title,
+  iconDirection,
+  events,
+  empty,
+  relation,
+  onSelectNode,
+}: {
+  title: string;
+  iconDirection: "up" | "down";
+  events: SystemEvent[];
+  empty: string;
+  relation?: CausalRelation;
+  onSelectNode: (id: string) => void;
+}) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-2xs text-os-subtle uppercase tracking-wider">{label}</span>
-      <span className={cn(
-        "text-xs font-semibold font-mono",
-        accent === "rose" ? "text-rose-400" : "text-os-text-high",
-      )}>
-        {value}
-      </span>
-    </div>
+    <OsCard padding="md">
+      <h3 className="mb-2 inline-flex items-center gap-1.5 text-sm font-semibold text-os-text-high">
+        <ArrowRight size={14} className={iconDirection === "up" ? "rotate-180" : undefined} />
+        {title}
+      </h3>
+      {events.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-os-border bg-os-surface-tinted p-3 text-sm text-os-subtle">{empty}</p>
+      ) : (
+        <div className="space-y-1.5">
+          {events.map((item) => (
+            <CausalChainItem
+              key={item.event_id}
+              event={item}
+              relation={relation}
+              onClick={() => onSelectNode(item.event_id)}
+            />
+          ))}
+        </div>
+      )}
+    </OsCard>
   );
 }
 
 function CausalChainItem({
-  event, relation, onClick,
+  event,
+  relation,
+  onClick,
 }: {
   event: SystemEvent;
   relation?: CausalRelation;
@@ -732,59 +701,42 @@ function CausalChainItem({
   const cfg = SOURCE_CONFIG[event.source];
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-2 p-1.5 rounded-md hover:bg-os-elevated transition-colors text-left group"
+      className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-os-surface-hover"
     >
-      <div
-        className="w-1.5 h-1.5 rounded-full shrink-0"
-        style={{ background: cfg.color }}
-      />
-      <span className="text-2xs text-os-text font-mono truncate flex-1">
-        {event.type.split(".").pop()}
-      </span>
-      {relation && (
-        <span className="text-2xs text-os-muted shrink-0">
-          {RELATION_LABEL[relation]}
-        </span>
-      )}
-      <ChevronRight size={10} className="text-os-muted group-hover:text-os-text shrink-0" />
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cfg.color }} />
+      <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{eventShortType(event.type)}</span>
+      {relation && <span className="shrink-0 text-xs text-os-subtle">{RELATION_LABEL[relation]}</span>}
+      <ChevronRight size={13} className="shrink-0 text-os-muted group-hover:text-os-primary" />
     </button>
   );
 }
 
-function TopImpactList({
-  nodes, onSelectNode,
-}: {
-  nodes: CausalGraphNode[];
-  onSelectNode: (id: string) => void;
-}) {
+function TopImpactList({ nodes, onSelectNode }: { nodes: CausalGraphNode[]; onSelectNode: (id: string) => void }) {
   if (nodes.length === 0) return null;
+  const maxImpact = Math.max(...nodes.map((node) => node.impact_score || 0), 1);
   return (
-    <div className="p-3">
-      <div className="text-2xs text-os-subtle uppercase tracking-wider mb-1.5 flex items-center gap-1">
-        <Flame size={10} /> 高影响节点 Top {nodes.length}
+    <div className="border-t border-os-border p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold text-os-text-high">
+          <Flame size={14} className="text-os-danger" />
+          高影响节点
+        </h3>
+        <OsBadge variant="muted">前 {nodes.length} 项</OsBadge>
       </div>
       <div className="space-y-1">
-        {nodes.map((n, i) => {
-          const cfg = SOURCE_CONFIG[n.source];
+        {nodes.map((node, index) => {
+          const impact = node.impact_score || 0;
           return (
-            <button
-              key={n.event_id}
-              onClick={() => onSelectNode(n.event_id)}
-              className="w-full flex items-center gap-2 p-1.5 rounded-md hover:bg-os-elevated transition-colors text-left group"
-            >
-              <span className="text-2xs text-os-muted font-mono w-3">{i + 1}</span>
-              <div
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: cfg.color }}
-              />
-              <span className="text-2xs text-os-text font-mono truncate flex-1">
-                {n.type.split(".").pop()}
-              </span>
-              <span className="text-2xs font-semibold shrink-0" style={{ color: cfg.color }}>
-                {Math.round(n.impact_score || 0)}
-              </span>
-            </button>
+            <RankRow
+              key={node.event_id}
+              rank={index + 1}
+              label={eventShortType(node.type)}
+              value={Math.round(impact)}
+              percent={Math.round((impact / maxImpact) * 100)}
+              onClick={() => onSelectNode(node.event_id)}
+            />
           );
         })}
       </div>
@@ -792,7 +744,7 @@ function TopImpactList({
   );
 }
 
-function EmptyState({
+function GraphEmptyState({
   state,
   hasTrace,
   onGenerate,
@@ -801,80 +753,63 @@ function EmptyState({
   hasTrace: boolean;
   onGenerate: () => void;
 }) {
-  // 状态 hydrating — 播种中 / graph 未水合
   if (state === "hydrating") {
     return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <div className="text-center space-y-3">
-          <RefreshCw size={32} className="mx-auto text-emerald-400 animate-spin" />
-          <div className="space-y-1">
-            <p className="text-sm text-os-text font-medium">正在生成默认 Trace…</p>
-            <p className="text-2xs text-os-subtle">Causal Kernel 正在播种示例因果链</p>
-          </div>
-        </div>
+      <div className="flex min-h-[520px] items-center justify-center p-6">
+        <EmptyState
+          icon={RefreshCw}
+          title="正在生成默认追踪记录"
+          description="因果内核正在生成示例因果链，完成后会自动挂载图谱。"
+          action={
+            <RefreshCw size={18} className="mx-auto animate-spin text-os-primary" />
+          }
+        />
       </div>
     );
   }
 
-  // 状态 invalid — selectedTrace 已失效，自动恢复中
   if (state === "invalid") {
     return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <div className="text-center space-y-3">
-          <AlertTriangle size={40} className="mx-auto text-amber-400" />
-          <div className="space-y-1">
-            <p className="text-sm text-os-text font-medium">Trace 已失效</p>
-            <p className="text-2xs text-os-subtle">所选 Trace 已从内核移除，正在自动切换到可用 Trace</p>
-          </div>
-          <button
-            onClick={onGenerate}
-            className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
-          >
-            <Zap size={11} />
-            生成新 Trace
-          </button>
-        </div>
+      <div className="flex min-h-[520px] items-center justify-center p-6">
+        <EmptyState
+          icon={AlertTriangle}
+          title="追踪记录已失效"
+          description="所选追踪记录已从内核中移除，可以生成新的演示数据继续查看因果图。"
+          action={
+            <OsButton type="button" variant="primary" size="md" onClick={onGenerate}>
+              <Zap size={14} />
+              生成新追踪记录
+            </OsButton>
+          }
+        />
       </div>
     );
   }
 
-  // 状态 empty — 细分两种语义：
-  //   1. 无 trace（hasTrace=false）→ "No trace available" + Generate first trace
-  //   2. 合法空图（hasTrace=true，trace 存在但已水合且无事件）→ "该 Trace 暂无事件" + 模拟因果图
-  const title = hasTrace ? "该 Trace 暂无事件" : "No trace available";
-  const hint = hasTrace
-    ? "该 Trace 已水合但不含任何因果事件，请选择其他 Trace 或生成新数据"
-    : "尚未生成任何 Trace，点击下方按钮生成首个因果图";
-  const cta = hasTrace ? "模拟因果图" : "Generate first trace";
-
   return (
-    <div className="flex items-center justify-center h-full min-h-[400px]">
-      <div className="text-center space-y-3">
-        <GitGraph size={40} className="mx-auto text-os-muted" />
-        <div className="space-y-1">
-          <p className="text-sm text-os-text font-medium">{title}</p>
-          <p className="text-2xs text-os-subtle">{hint}</p>
-        </div>
-        <button
-          onClick={onGenerate}
-          className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md border border-emerald-400/30 bg-emerald-400/10 text-2xs text-emerald-300 hover:bg-emerald-400/20 transition-colors"
-        >
-          <Zap size={11} />
-          {cta}
-        </button>
-      </div>
+    <div className="flex min-h-[520px] items-center justify-center p-6">
+      <EmptyState
+        icon={GitGraph}
+        title={hasTrace ? "该追踪记录暂无事件" : "暂无追踪记录"}
+        description={
+          hasTrace
+            ? "该追踪记录已水合但不包含可渲染事件，请切换追踪记录或生成新的因果图。"
+            : "还没有生成任何追踪记录，点击下方按钮创建第一条因果链。"
+        }
+        action={
+          <OsButton type="button" variant="primary" size="md" onClick={onGenerate}>
+            <Play size={14} />
+            {hasTrace ? "模拟因果图" : "生成第一条追踪记录"}
+          </OsButton>
+        }
+      />
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 模拟多父因果图 — 演示图结构（非树）
-// ═══════════════════════════════════════════════════════════════
-
 function simulateMultiCausalFlow() {
   const trace_id = newTraceId("graph");
 
-  // 1. Runtime: Kill Switch 触发（根事件）
   const killTriggered = createRootEvent(
     "runtime",
     "runtime.kill_switch.triggered",
@@ -890,7 +825,6 @@ function simulateMultiCausalFlow() {
     "system_policy",
   );
 
-  // 2. Agent: 决策（根事件，独立起点）
   const agentDecision = createRootEvent(
     "agent",
     "agent.decision.made",
@@ -899,14 +833,13 @@ function simulateMultiCausalFlow() {
     {
       agent_id: "agent-002",
       decision: "evaluate_risk",
-      reasoning: "检测到策略违规，评估风险等级",
+      reasoning: "检测到策略违规，开始评估风险等级。",
       confidence: 0.78,
       alternatives_considered: ["block", "warn", "allow"],
     },
     "agent_decision",
   );
 
-  // 3. Governance: 策略评估 — 单父（agent decision）
   const policyEval = createChildEvent(
     agentDecision,
     "governance",
@@ -923,14 +856,12 @@ function simulateMultiCausalFlow() {
     "system_policy",
   );
 
-  // 4. Runtime: Gate 拒绝 — 多父（killTriggered + policyEval）
-  //    演示图结构：一个事件由 runtime kill + governance policy 共同导致
   const gateDenied = createMultiCausalEvent(
     [
       { event: killTriggered, relation: "triggered_by", weight: 0.9 },
       { event: policyEval, relation: "caused_by", weight: 1.0 },
     ],
-    policyEval, // 主父
+    policyEval,
     "runtime",
     "runtime.gate.denied",
     "critical",
@@ -943,7 +874,6 @@ function simulateMultiCausalFlow() {
     "system_policy",
   );
 
-  // 5. Governance: 审计记录 — 子事件（gateDenied）
   const auditRecord = createChildEvent(
     gateDenied,
     "governance",
@@ -959,8 +889,6 @@ function simulateMultiCausalFlow() {
     "system_event",
   );
 
-  // 6. Memory: 写入 LTM — 多父（gateDenied + auditRecord）
-  //    演示：memory write 挂在 causal chain 上，且由多个 governance 事件共同触发
   const memoryWrite = createMultiCausalEvent(
     [
       { event: gateDenied, relation: "caused_by", weight: 1.0 },
@@ -982,7 +910,6 @@ function simulateMultiCausalFlow() {
     "system_event",
   );
 
-  // 7. Memory: 反思触发 — 子事件（memoryWrite）
   createChildEvent(
     memoryWrite,
     "memory",
@@ -995,7 +922,6 @@ function simulateMultiCausalFlow() {
     "system_event",
   );
 
-  // 8. Observability: Trace 完成（overlay）
   createChildEvent(
     killTriggered,
     "observability",

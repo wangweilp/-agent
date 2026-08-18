@@ -29,10 +29,10 @@ import type { MarketplaceAgent, MarketplaceAnalyticsSummary } from "@/types/mark
 type InstalledFilter = "all" | "installed" | "not_installed";
 
 const STATUS_BADGES = [
-  { label: "Internal Marketplace", hint: "企业内部智能体分发中心" },
-  { label: "Auth / RBAC Protected", hint: "租户级访问控制" },
-  { label: "Tenant Installed", hint: "按工作区安装隔离" },
-  { label: "Usage Metered", hint: "用量自动记录" },
+  { label: "内部智能体市场", hint: "企业内部智能体分发中心" },
+  { label: "鉴权 / RBAC 保护", hint: "租户级访问控制" },
+  { label: "租户级安装", hint: "按工作区安装隔离" },
+  { label: "用量计量", hint: "用量自动记录" },
 ];
 
 function LoadingGrid() {
@@ -121,7 +121,7 @@ export default function MarketplaceHomePage() {
       setInstalledIds(ids);
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "加载失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "加载失败"}`);
     } finally {
       setLoading(false);
     }
@@ -157,7 +157,7 @@ export default function MarketplaceHomePage() {
       if (apiErr.status === 409) {
         setInstalledIds((prev) => new Set(prev).add(marketplaceAgentId));
       } else {
-        setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "安装失败"}`);
+        setError(`[${apiErr.status || "错误"}] ${apiErr.message || "安装失败"}`);
       }
     } finally {
       setInstalling((prev) => {
@@ -194,14 +194,14 @@ export default function MarketplaceHomePage() {
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
             <ShoppingBag size={14} className="text-os-accent" />
-            企业内部 Agent 发现与安装中心
+            企业内部智能体发现与安装中心
           </div>
           <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">
             智能体市场
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
-            发现、安装、配置和治理企业内部 Agent，让组织智能体从可运行走向可分发。
-            <span className="mx-2 text-os-muted">|</span>
+            发现、安装、配置和治理企业内部智能体，让组织智能体从可运行走向可分发。
+            <span className="mx-2 text-os-subtle">|</span>
             <Link href="/agents" className="text-os-accent hover:underline">
               /agents
             </Link>
@@ -249,19 +249,19 @@ export default function MarketplaceHomePage() {
         <div className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">可安装智能体</p>
+              <p className="text-xs text-os-subtle">可安装智能体</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{stats.total}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-os-accent">
               <Bot size={18} />
             </div>
           </div>
-          <p className="mt-3 text-xs text-os-subtle">内置 + 平台已审核 Agent</p>
+          <p className="mt-3 text-xs text-os-subtle">内置 + 平台已审核智能体</p>
         </div>
         <div className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">免费智能体</p>
+              <p className="text-xs text-os-subtle">免费智能体</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{stats.freeCount}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-emerald-400">
@@ -273,7 +273,7 @@ export default function MarketplaceHomePage() {
         <div className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">部门智能体</p>
+              <p className="text-xs text-os-subtle">部门智能体</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{stats.withDept}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-violet-400">
@@ -288,47 +288,47 @@ export default function MarketplaceHomePage() {
       {analytics && (
         <section className="mb-6 os-card p-4">
           <h3 className="mb-3 text-xs font-semibold text-os-subtle">
-            Marketplace 使用概况
+            智能体市场使用概况
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">智能体总数</p>
+              <p className="text-2xs text-os-subtle">智能体总数</p>
               <p className="mt-0.5 text-sm font-semibold text-os-text-high">
                 {analytics.total_marketplace_agents}
               </p>
             </div>
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">已安装</p>
+              <p className="text-2xs text-os-subtle">已安装</p>
               <p className="mt-0.5 text-sm font-semibold text-os-accent">
                 {analytics.installed_agents}
               </p>
             </div>
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">已启用</p>
-              <p className="mt-0.5 text-sm font-semibold text-emerald-300">
+              <p className="text-2xs text-os-subtle">已启用</p>
+              <p className="mt-0.5 text-sm font-semibold text-os-success">
                 {analytics.enabled_installations}
               </p>
             </div>
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">已停用</p>
+              <p className="text-2xs text-os-subtle">已停用</p>
               <p className="mt-0.5 text-sm font-semibold text-os-subtle">
                 {analytics.disabled_installations}
               </p>
             </div>
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">安装事件</p>
+              <p className="text-2xs text-os-subtle">安装事件</p>
               <p className="mt-0.5 text-sm font-semibold text-os-text-high">
                 {analytics.install_events}
               </p>
             </div>
             <div className="rounded-md bg-os-elevated/30 px-3 py-2 text-center">
-              <p className="text-2xs text-os-muted">智能体执行</p>
+              <p className="text-2xs text-os-subtle">智能体执行</p>
               <p className="mt-0.5 text-sm font-semibold text-os-text-high">
                 {analytics.agent_runs}
               </p>
             </div>
           </div>
-          <p className="mt-3 text-2xs text-os-muted">
+          <p className="mt-3 text-2xs text-os-subtle">
             {analytics.billing_note}
           </p>
         </section>
@@ -345,7 +345,7 @@ export default function MarketplaceHomePage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="搜索名称、描述或能力"
-                className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+                className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
               />
             </label>
 
@@ -385,9 +385,9 @@ export default function MarketplaceHomePage() {
                 className="h-10 w-full appearance-none rounded-md border border-os-border bg-os-elevated pl-9 pr-8 text-sm text-os-text-high outline-none transition-colors focus:border-os-accent"
               >
                 <option value="">所有状态</option>
-                <option value="active">Active</option>
-                <option value="beta">Beta</option>
-                <option value="deprecated">Deprecated</option>
+                <option value="active">运行中</option>
+                <option value="beta">测试版</option>
+                <option value="deprecated">已弃用</option>
               </select>
             </label>
           </div>
@@ -418,12 +418,12 @@ export default function MarketplaceHomePage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-6 rounded-md border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-200">
+        <div className="mb-6 rounded-md border border-os-danger/20 bg-os-danger-soft p-4 text-sm leading-6 text-os-danger">
           {error}
           <button
             type="button"
             onClick={() => void fetchAgents()}
-            className="ml-3 text-xs text-red-300 underline hover:text-red-200"
+            className="ml-3 text-xs text-os-danger underline hover:text-os-danger/80"
           >
             重试
           </button>
@@ -431,7 +431,7 @@ export default function MarketplaceHomePage() {
       )}
 
       {/* Content */}
-      {loading ? (
+      {error && agents.length === 0 ? null : loading ? (
         <LoadingGrid />
       ) : filteredAgents.length > 0 ? (
         <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -453,9 +453,6 @@ export default function MarketplaceHomePage() {
           <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">
             调整筛选条件或搜索词后再试。分类和部门过滤是精确匹配。
           </p>
-          {error && (
-            <p className="mt-2 text-xs text-red-300">{error}</p>
-          )}
         </section>
       )}
     </main>

@@ -46,7 +46,7 @@ function PlaceholderPanel({ title, icon, desc }: { title: string; icon: React.Re
         <span className="ml-auto os-badge bg-os-accent/10 text-os-accent">即将上线</span>
       </div>
       <div className="flex-1 flex items-center justify-center text-center px-4">
-        <p className="text-2xs text-os-muted leading-relaxed">{desc}</p>
+        <p className="text-2xs text-os-subtle leading-relaxed">{desc}</p>
       </div>
     </div>
   );
@@ -73,8 +73,8 @@ export function TabCostAnalytics() {
 
       <div className={layout.grid.fourMd}>
         <KpiCard icon={Coins} label="区间总成本" value={formatCents(totalCost)} accent="rose" sub={`${days} 天`} />
-        <KpiCard icon={CalendarDays} label="日均成本" value={formatCents(dailyAvg)} accent="amber" sub="Daily Avg" />
-        <KpiCard icon={Flame} label="Burn Rate" value={formatCents(dailyAvg)} accent="rose" sub="每日烧录" />
+        <KpiCard icon={CalendarDays} label="日均成本" value={formatCents(dailyAvg)} accent="amber" sub="每日平均" />
+        <KpiCard icon={Flame} label="消耗速率" value={formatCents(dailyAvg)} accent="rose" sub="每日消耗" />
         <KpiCard icon={TrendingUp} label="月度预估" value={formatCents(monthlyEst)} accent="cyan" sub="30 天外推" />
       </div>
 
@@ -92,12 +92,12 @@ export function TabCostAnalytics() {
 
       <div className={layout.grid.twoLg}>
         <PlaceholderPanel
-          title="Forecast 预测"
+          title="成本预测"
           icon={<TrendingUp size={14} />}
           desc="基于历史 Token 消耗序列的成本预测（后端预测接口尚未实现，组件结构已预留）。"
         />
         <PlaceholderPanel
-          title="Budget 预算"
+          title="预算"
           icon={<PiggyBank size={14} />}
           desc="设置月度预算阈值并在接近上限时触发告警（后端预算接口尚未实现，组件结构已预留）。"
         />

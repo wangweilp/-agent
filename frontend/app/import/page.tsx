@@ -45,11 +45,11 @@ const ACCEPTED_TYPES = [
 ];
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string; dotClass: string }> = {
-  pending:    { color: "text-amber-400", bg: "bg-amber-400/10", label: "等待中", dotClass: "bg-amber-400" },
-  processing: { color: "text-blue-400",  bg: "bg-blue-400/10",  label: "处理中", dotClass: "bg-blue-400 animate-pulse" },
-  completed:  { color: "text-emerald-400", bg: "bg-emerald-400/10", label: "已完成", dotClass: "bg-emerald-400" },
-  failed:     { color: "text-red-400",    bg: "bg-red-400/10",    label: "失败",   dotClass: "bg-red-400" },
-  cancelled:  { color: "text-zinc-500",   bg: "bg-zinc-500/10",   label: "已取消", dotClass: "bg-zinc-500" },
+  pending:    { color: "text-amber-800", bg: "bg-amber-50", label: "等待中", dotClass: "bg-amber-600" },
+  processing: { color: "text-blue-700",  bg: "bg-blue-50",  label: "处理中", dotClass: "bg-blue-600 animate-pulse" },
+  completed:  { color: "text-emerald-700", bg: "bg-emerald-50", label: "已完成", dotClass: "bg-emerald-600" },
+  failed:     { color: "text-red-700",    bg: "bg-red-50",    label: "失败",   dotClass: "bg-red-600" },
+  cancelled:  { color: "text-zinc-600",   bg: "bg-zinc-100",  label: "已取消", dotClass: "bg-zinc-500" },
 };
 
 function getFileTypeIcon(filename: string) {
@@ -262,7 +262,7 @@ export default function ImportPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-2xs text-os-muted bg-os-surface border border-os-border rounded-full px-3 py-1">
+            <span className="rounded-full border border-os-border bg-os-surface px-3 py-1 text-2xs text-os-subtle">
               {jobsLoading ? "..." : `${jobs.length} 条记录`}
             </span>
           </div>
@@ -274,7 +274,7 @@ export default function ImportPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Upload size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">总导入</span>
+                <span className="text-2xs text-os-subtle">总导入</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {jobsLoading ? "..." : formatNumber(stats.total)}
@@ -285,12 +285,12 @@ export default function ImportPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">成功率</span>
+                <span className="text-2xs text-os-subtle">成功率</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {jobsLoading ? "..." : `${stats.successRate}%`}
               </p>
-              <p className="text-2xs text-os-muted mt-0.5">
+              <p className="mt-0.5 text-2xs text-os-subtle">
                 {stats.completed} 成功 / {stats.failed} 失败
               </p>
             </div>
@@ -299,7 +299,7 @@ export default function ImportPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Brain size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">生成记忆</span>
+                <span className="text-2xs text-os-subtle">生成记忆</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {jobsLoading ? "..." : formatNumber(stats.memories)}
@@ -310,7 +310,7 @@ export default function ImportPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Layers size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">处理 Chunks</span>
+                <span className="text-2xs text-os-subtle">处理分块（Chunks）</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {jobsLoading ? "..." : formatNumber(stats.chunks)}
@@ -361,7 +361,7 @@ export default function ImportPage() {
                   <p className="text-sm text-os-text-high font-medium">
                     {isDragging ? "松开以上传文件" : "拖拽文件到此处，或点击选择"}
                   </p>
-                  <p className="text-2xs text-os-muted mt-1">支持批量上传</p>
+                  <p className="mt-1 text-2xs text-os-subtle">支持批量上传</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap justify-center">
                   {ACCEPTED_TYPES.map((t) => {
@@ -369,7 +369,7 @@ export default function ImportPage() {
                     return (
                       <span
                         key={t.ext}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs bg-os-elevated text-os-muted border border-os-border"
+                        className="inline-flex items-center gap-1 rounded border border-os-border bg-os-elevated px-2 py-0.5 text-2xs text-os-subtle"
                       >
                         <Icon size={10} />
                         {t.label}
@@ -387,7 +387,7 @@ export default function ImportPage() {
                   </p>
                   <button
                     onClick={clearFiles}
-                    className="text-2xs text-os-muted hover:text-os-subtle transition-colors"
+                    className="text-2xs text-os-subtle transition-colors hover:text-os-text-high"
                   >
                     清除全部
                   </button>
@@ -398,7 +398,7 @@ export default function ImportPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="导入任务标题（可选）"
-                  className="w-full h-8 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                  className="w-full h-8 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                 />
 
                 {/* File list */}
@@ -412,7 +412,7 @@ export default function ImportPage() {
                       >
                         <Icon size={14} className="text-os-muted shrink-0" />
                         <span className="text-xs text-os-text-high truncate flex-1">{file.name}</span>
-                        <span className="text-2xs text-os-muted shrink-0">{formatFileSize(file.size)}</span>
+                        <span className="shrink-0 text-2xs text-os-subtle">{formatFileSize(file.size)}</span>
                         <button
                           onClick={() => removeFile(i)}
                           className="p-0.5 rounded hover:bg-os-surface transition-colors shrink-0"
@@ -456,7 +456,7 @@ export default function ImportPage() {
           <StaggerItem delay={0.15}>
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-4">
-                <Loader2 size={14} className="text-os-accent-cyan animate-spin drop-shadow-[0_0_10px_rgba(34,211,238,0.6)]" />
+                <Loader2 size={14} className="animate-spin text-os-accent" />
                 <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
                   管线运行中 ({activeJobs.length})
                 </h2>
@@ -464,9 +464,9 @@ export default function ImportPage() {
               <div className="space-y-4">
                 {activeJobs.map((job) => (
                   <div key={job.job_id} className="rounded-lg border border-os-border/50 bg-os-surface/40 p-3 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-os-text-high">{job.title}</span>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-xs font-medium text-os-text-high">{job.title}</span>
                         <span className={cn(
                           "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-medium",
                           STATUS_CONFIG[job.status]?.bg,
@@ -476,15 +476,15 @@ export default function ImportPage() {
                           {STATUS_CONFIG[job.status]?.label}
                         </span>
                       </div>
-                      <span className="text-2xs font-mono text-os-muted">
-                        {job.processed_chunks} / {job.total_chunks} chunks
+                      <span className="shrink-0 font-mono text-2xs text-os-subtle">
+                        {job.processed_chunks} / {job.total_chunks} 分块
                       </span>
                     </div>
 
                     {/* 流光进度条 — 赛博管线 */}
                     <div className="relative w-full h-2 bg-os-elevated rounded-full overflow-hidden">
                       <motion.div
-                        className="relative h-full rounded-full bg-gradient-to-r from-os-accent to-os-accent-cyan"
+                        className="relative h-full rounded-full bg-os-accent"
                         initial={{ width: 0 }}
                         animate={{ width: `${job.progress_pct}%` }}
                         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -500,12 +500,12 @@ export default function ImportPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-2xs text-os-muted">
+                    <div className="flex items-center justify-between text-2xs text-os-subtle">
                       <span className="inline-flex items-center gap-1">
                         <Clock size={10} />
                         已用: {formatElapsed(job.started_at)}
                       </span>
-                      <span className="font-mono text-os-accent-cyan">
+                      <span className="font-mono text-indigo-700">
                         {job.progress_pct}%
                       </span>
                       <span>剩余: {estimateRemaining(job)}</span>
@@ -518,8 +518,8 @@ export default function ImportPage() {
               <div className="mt-4 rounded-xl border border-os-border/50 bg-slate-50 overflow-hidden">
                 <div className="flex items-center justify-between px-3 py-2 border-b border-os-border/30">
                   <div className="flex items-center gap-1.5">
-                    <Terminal size={11} className="text-os-success" />
-                    <span className="font-mono text-2xs text-os-muted">pipeline.log</span>
+                    <Terminal size={11} className="text-emerald-700" />
+                    <span className="font-mono text-2xs text-os-subtle">pipeline.log</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 rounded-full bg-red-500/60" />
@@ -527,39 +527,39 @@ export default function ImportPage() {
                     <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
                   </div>
                 </div>
-                <div className="h-48 overflow-y-auto p-4 font-mono text-xs text-os-success space-y-0.5">
+                <div className="h-48 space-y-0.5 overflow-y-auto p-4 font-mono text-xs text-os-text">
                   {activeJobs.flatMap((job) => {
                     const logs: { ts: string; level: "OK" | "INFO" | "WARN" | "ERR"; msg: string }[] = [];
                     const now = new Date().toLocaleTimeString("en-US", { hour12: false });
-                    logs.push({ ts: now, level: "INFO", msg: `> Initializing pipeline for "${job.title}"` });
+                    logs.push({ ts: now, level: "INFO", msg: `> 正在初始化“${job.title}”导入管线` });
                     if (job.processed_chunks > 0) {
                       const step = Math.max(1, Math.floor(job.total_chunks / 5));
                       for (let i = step; i <= job.processed_chunks; i += step) {
                         logs.push({
                           ts: now,
                           level: "OK",
-                          msg: `> [OK] Chunk ${i}/${job.total_chunks} vectorized (${((i / job.total_chunks) * 100).toFixed(0)}%)`,
+                          msg: `> [OK] 分块 ${i}/${job.total_chunks} 已完成向量化（${((i / job.total_chunks) * 100).toFixed(0)}%）`,
                         });
                       }
                       if (job.processed_chunks < job.total_chunks) {
                         logs.push({
                           ts: now,
                           level: "INFO",
-                          msg: `> [..] Chunk ${job.processed_chunks + 1} embedding in progress...`,
+                          msg: `> [..] 分块 ${job.processed_chunks + 1} 正在生成嵌入...`,
                         });
                       }
                     }
                     if (job.status === "completed") {
-                      logs.push({ ts: now, level: "OK", msg: `> [OK] Pipeline complete — ${job.memories_created} memories created` });
+                      logs.push({ ts: now, level: "OK", msg: `> [OK] 管线处理完成 — 已生成 ${job.memories_created} 条记忆` });
                     }
                     return logs.map((log, i) => (
                       <div key={`${job.job_id}-${i}`} className="leading-5">
-                        <span className="text-os-muted">[{log.ts}]</span>{" "}
+                        <span className="text-os-subtle">[{log.ts}]</span>{" "}
                         <span className={cn(
-                          log.level === "OK" && "text-os-success",
-                          log.level === "INFO" && "text-os-accent-cyan",
-                          log.level === "WARN" && "text-amber-400",
-                          log.level === "ERR" && "text-red-400",
+                          log.level === "OK" && "text-emerald-700",
+                          log.level === "INFO" && "text-blue-700",
+                          log.level === "WARN" && "text-amber-800",
+                          log.level === "ERR" && "text-red-700",
                         )}>
                           {log.msg}
                         </span>
@@ -568,7 +568,7 @@ export default function ImportPage() {
                   })}
                   {/* 闪烁光标 */}
                   <div className="leading-5">
-                    <span className="text-os-muted">$</span>{" "}
+                    <span className="text-os-subtle">$</span>{" "}
                     <span className="inline-block w-1.5 h-3.5 bg-os-success animate-pulse align-middle" />
                   </div>
                 </div>
@@ -583,7 +583,7 @@ export default function ImportPage() {
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 size={14} className="text-os-accent" />
               <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">导入历史</h2>
-              <span className="text-2xs text-os-muted ml-auto">{jobs.length} 条记录</span>
+              <span className="ml-auto text-2xs text-os-subtle">{jobs.length} 条记录</span>
             </div>
 
             {jobsLoading ? (
@@ -593,23 +593,23 @@ export default function ImportPage() {
                 ))}
               </div>
             ) : jobs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-os-muted">
-                <Upload size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">暂无导入记录</p>
-                <p className="text-2xs mt-1">拖拽文件到上方区域开始你的第一次导入</p>
+              <div className="flex flex-col items-center justify-center py-16">
+                <Upload size={40} className="mb-3 text-slate-500" />
+                <p className="text-sm text-os-text-high">暂无导入记录</p>
+                <p className="mt-1 text-2xs text-os-subtle">拖拽文件到上方区域开始你的第一次导入</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs" role="table">
                   <thead>
                     <tr className="border-b border-os-border">
-                      <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider">标题</th>
-                      <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden sm:table-cell">类型</th>
-                      <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider">状态</th>
-                      <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden md:table-cell">进度</th>
-                      <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden md:table-cell">记忆数</th>
-                      <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden lg:table-cell">时间</th>
-                      <th className="text-right py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider">操作</th>
+                      <th className="px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle">标题</th>
+                      <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle sm:table-cell">类型</th>
+                      <th className="px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle">状态</th>
+                      <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle md:table-cell">进度</th>
+                      <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle md:table-cell">记忆数</th>
+                      <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle lg:table-cell">时间</th>
+                      <th className="px-3 py-2.5 text-right text-2xs font-medium uppercase tracking-wider text-os-subtle">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -623,7 +623,7 @@ export default function ImportPage() {
                             <span className="text-os-text-high font-medium truncate max-w-[160px] block">{job.title}</span>
                           </td>
                           <td className="py-2.5 px-3 hidden sm:table-cell">
-                            <span className="text-os-muted uppercase text-2xs">{job.file_type}</span>
+                            <span className="text-2xs uppercase text-os-subtle">{job.file_type}</span>
                           </td>
                           <td className="py-2.5 px-3">
                             <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs", cfg.bg, cfg.color)}>
@@ -637,14 +637,14 @@ export default function ImportPage() {
                                 <div
                                   className={cn(
                                     "h-full rounded-full transition-all duration-500",
-                                    job.status === "completed" ? "bg-emerald-400" :
-                                    job.status === "failed" ? "bg-red-400" :
-                                    isProcessing ? "bg-blue-400" : "bg-os-muted",
+                                    job.status === "completed" ? "bg-emerald-600" :
+                                    job.status === "failed" ? "bg-red-600" :
+                                    isProcessing ? "bg-blue-600" : "bg-os-muted",
                                   )}
                                   style={{ width: `${job.progress_pct}%` }}
                                 />
                               </div>
-                              <span className="text-2xs text-os-muted w-8 text-right">
+                              <span className="w-8 text-right text-2xs text-os-subtle">
                                 {job.processed_chunks}/{job.total_chunks}
                               </span>
                             </div>
@@ -653,7 +653,7 @@ export default function ImportPage() {
                             <span className="text-os-subtle">{formatNumber(job.memories_created)}</span>
                           </td>
                           <td className="py-2.5 px-3 hidden lg:table-cell">
-                            <span className="text-os-muted" title={job.started_at ?? undefined}>
+                            <span className="text-os-subtle" title={job.started_at ?? undefined}>
                               {formatTimeAgo(job.started_at)}
                             </span>
                           </td>
@@ -663,7 +663,7 @@ export default function ImportPage() {
                                 <button
                                   onClick={() => retryMutation.mutate(job.job_id)}
                                   disabled={retryMutation.isPending}
-                                  className="p-1.5 rounded hover:bg-os-elevated transition-colors text-os-muted hover:text-amber-400"
+                                  className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-amber-700"
                                   title="重试"
                                   aria-label={`重试 ${job.title}`}
                                 >
@@ -672,7 +672,7 @@ export default function ImportPage() {
                               )}
                               <button
                                 onClick={() => setDeleteConfirmId(job.job_id)}
-                                className="p-1.5 rounded hover:bg-os-elevated transition-colors text-os-muted hover:text-red-400"
+                                className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-red-700"
                                 title="删除"
                                 aria-label={`删除 ${job.title}`}
                               >
@@ -711,12 +711,12 @@ export default function ImportPage() {
                 aria-label="确认删除"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-full bg-red-400/10 flex items-center justify-center">
-                    <AlertTriangle size={18} className="text-red-400" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-50">
+                    <AlertTriangle size={18} className="text-red-700" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-os-text-high">确认删除</h3>
-                    <p className="text-2xs text-os-muted mt-0.5">此操作不可撤销，确定要删除这个导入任务吗？</p>
+                    <p className="mt-0.5 text-2xs text-os-subtle">此操作不可撤销，确定要删除这个导入任务吗？</p>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">

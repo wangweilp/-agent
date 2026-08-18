@@ -2,14 +2,14 @@
 
 import { motion } from "framer-motion";
 import { Clock, Zap, Tag, Eye, Check } from "lucide-react";
-import { cn, formatDate, importanceColor, importanceBg } from "@/lib/utils";
+import { cn, formatDate, importanceColor } from "@/lib/utils";
 import type { Memory } from "@/types";
 
 const sourceLabel: Record<string, string> = { user: "用户", agent: "智能体", reflect: "反思" };
 const sourceStyle: Record<string, string> = {
-  user: "bg-indigo-400/10 text-indigo-400",
-  agent: "bg-emerald-400/10 text-emerald-400",
-  reflect: "bg-amber-400/10 text-amber-400",
+  user: "bg-indigo-400/10 text-indigo-700",
+  agent: "bg-emerald-400/10 text-emerald-700",
+  reflect: "bg-amber-400/10 text-amber-800",
 };
 
 const typeLabel: Record<string, string> = {
@@ -20,11 +20,25 @@ const typeLabel: Record<string, string> = {
 };
 
 const statusStyle: Record<string, string> = {
-  active: "bg-emerald-400/10 text-emerald-400",
-  archived: "bg-amber-400/10 text-amber-400",
-  merged: "bg-zinc-400/10 text-zinc-400",
-  deleted: "bg-red-400/10 text-red-400",
+  active: "bg-os-success-soft text-os-success",
+  archived: "bg-os-warning-soft text-os-warning",
+  merged: "bg-os-surface-muted text-os-subtle",
+  deleted: "bg-os-danger-soft text-os-danger",
 };
+
+const statusLabel: Record<string, string> = {
+  active: "活跃",
+  archived: "已归档",
+  merged: "已合并",
+  deleted: "已删除",
+};
+
+function readableImportanceColor(score: number) {
+  return importanceColor(score)
+    .replace("text-emerald-400", "text-os-success")
+    .replace("text-amber-400", "text-os-warning")
+    .replace("text-zinc-500", "text-os-subtle");
+}
 
 interface MemoryCardProps {
   memory: Memory;
@@ -61,52 +75,52 @@ export function MemoryCard({ memory, selected, onToggleSelect, onClick }: Memory
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className={cn("os-badge", sourceStyle[memory.source])}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className={cn("os-badge max-w-full truncate", sourceStyle[memory.source])}>
             {sourceLabel[memory.source] || memory.source}
           </span>
-          <span className="text-2xs text-os-muted">{typeLabel[memory.memory_type] || memory.memory_type}</span>
+          <span className="max-w-full break-all text-2xs text-os-subtle">{typeLabel[memory.memory_type] || memory.memory_type}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {memory.status !== "active" && (
-            <span className={cn("os-badge text-2xs", statusStyle[memory.status] || "text-os-muted")}>
-              {memory.status === "archived" ? "已归档" : memory.status}
+            <span className={cn("os-badge text-2xs", statusStyle[memory.status] || "text-os-subtle")}>
+              {statusLabel[memory.status] || memory.status}
             </span>
           )}
-          <span className={cn("text-xs font-mono font-medium", importanceColor(memory.importance))}>
+          <span className={cn("text-xs font-mono font-medium", readableImportanceColor(memory.importance))}>
             {memory.importance}/10
           </span>
         </div>
       </div>
 
       {/* Content */}
-      <p className="text-sm text-os-text-high leading-relaxed line-clamp-3">
+      <p className="line-clamp-3 break-words text-sm leading-relaxed text-os-text-high [overflow-wrap:anywhere]">
         {memory.summary || memory.content}
       </p>
 
       {/* Entities */}
       {memory.entities.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <Tag size={11} className="text-os-muted" />
+          <Tag size={11} className="text-os-subtle" />
           {memory.entities.slice(0, 4).map((e) => (
-            <span key={e} className="text-2xs px-1.5 py-0.5 rounded bg-os-elevated text-os-subtle">
+            <span key={e} className="max-w-full break-all rounded bg-os-elevated px-1.5 py-0.5 text-2xs text-os-subtle">
               {e}
             </span>
           ))}
           {memory.entities.length > 4 && (
-            <span className="text-2xs text-os-muted">+{memory.entities.length - 4}</span>
+            <span className="text-2xs text-os-subtle">+{memory.entities.length - 4}</span>
           )}
         </div>
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-1 border-t border-os-border mt-auto">
-        <div className="flex items-center gap-1 text-2xs text-os-muted">
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-os-border pt-1">
+        <div className="flex items-center gap-1 text-2xs text-os-subtle">
           <Clock size={10} />
           {formatDate(memory.timestamp)}
         </div>
-        <div className="flex items-center gap-3 text-2xs text-os-muted">
+        <div className="flex items-center gap-3 text-2xs text-os-subtle">
           <span className="flex items-center gap-0.5">
             <Eye size={10} /> {memory.access_count}
           </span>

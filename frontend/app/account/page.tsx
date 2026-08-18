@@ -31,11 +31,11 @@ import type {
 // ── Label/color config maps ──
 
 const tierConfig: Record<string, { label: string; className: string }> = {
-  FREE:         { label: "免费版", className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400" },
-  PERSONAL:     { label: "个人版", className: "border-blue-500/20 bg-blue-500/10 text-blue-400" },
-  PROFESSIONAL: { label: "专业版", className: "border-purple-500/20 bg-purple-500/10 text-purple-400" },
-  TEAM:         { label: "团队版", className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" },
-  ENTERPRISE:   { label: "企业版", className: "border-amber-500/20 bg-amber-500/10 text-amber-400" },
+  FREE:         { label: "免费版", className: "border-os-border bg-os-elevated text-os-subtle" },
+  PERSONAL:     { label: "个人版", className: "border-os-accent/20 bg-os-accent-soft text-os-accent" },
+  PROFESSIONAL: { label: "专业版", className: "border-os-accent/20 bg-os-accent-soft text-os-accent" },
+  TEAM:         { label: "团队版", className: "border-os-success/20 bg-os-success-soft text-os-success" },
+  ENTERPRISE:   { label: "企业版", className: "border-os-warning/20 bg-os-warning-soft text-os-warning" },
 };
 
 tierConfig.free = tierConfig.FREE;
@@ -45,10 +45,10 @@ tierConfig.team = tierConfig.TEAM;
 tierConfig.enterprise = tierConfig.ENTERPRISE;
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  active:   { label: "活跃",   className: "bg-emerald-500/15 text-emerald-400" },
-  trial:    { label: "试用中", className: "bg-amber-500/15 text-amber-400" },
-  past_due: { label: "已逾期", className: "bg-red-500/15 text-red-400" },
-  canceled: { label: "已取消", className: "bg-zinc-500/15 text-zinc-400" },
+  active:   { label: "活跃",   className: "bg-os-success-soft text-os-success" },
+  trial:    { label: "试用中", className: "bg-os-warning-soft text-os-warning" },
+  past_due: { label: "已逾期", className: "bg-os-danger-soft text-os-danger" },
+  canceled: { label: "已取消", className: "bg-os-elevated text-os-subtle" },
 };
 
 const billingCycleLabel: Record<string, string> = {
@@ -285,7 +285,7 @@ export default function AccountPage() {
         <SectionHeader icon={Crown} title="当前套餐" />
 
         {subLoading ? (
-          <div className="flex items-center gap-2 text-sm text-os-muted py-4">
+          <div className="flex items-center gap-2 text-sm text-os-subtle py-4">
             <Loader2 size={14} className="animate-spin" />
             加载中...
           </div>
@@ -315,7 +315,7 @@ export default function AccountPage() {
             {/* Billing cycle */}
             {subscription.billing_cycle && (
               <div>
-                <span className="text-xs text-os-muted">计费周期</span>
+                <span className="text-xs text-os-subtle">计费周期</span>
                 <p className="text-sm text-os-text-high mt-0.5">
                   {billingCycleLabel[subscription.billing_cycle] ?? subscription.billing_cycle}
                 </p>
@@ -326,14 +326,14 @@ export default function AccountPage() {
             {subscription.current_period_start && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-xs text-os-muted">周期开始</span>
+                  <span className="text-xs text-os-subtle">周期开始</span>
                   <p className="text-sm text-os-text-high mt-0.5">
                     {new Date(subscription.current_period_start).toLocaleDateString("zh-CN")}
                   </p>
                 </div>
                 {subscription.current_period_end && (
                   <div>
-                    <span className="text-xs text-os-muted">周期结束</span>
+                    <span className="text-xs text-os-subtle">周期结束</span>
                     <p className="text-sm text-os-text-high mt-0.5">
                       {new Date(subscription.current_period_end).toLocaleDateString("zh-CN")}
                     </p>
@@ -345,7 +345,7 @@ export default function AccountPage() {
             {/* Auto-renew */}
             {subscription.auto_renew !== undefined && (
               <div>
-                <span className="text-xs text-os-muted">自动续费</span>
+                <span className="text-xs text-os-subtle">自动续费</span>
                 <p className="text-sm text-os-text-high mt-0.5">
                   {subscription.auto_renew ? "已开启" : "未开启"}
                 </p>
@@ -355,7 +355,7 @@ export default function AccountPage() {
             {/* Coupon applied */}
             {subscription.coupon_code && (
               <div>
-                <span className="text-xs text-os-muted">已使用优惠券</span>
+                <span className="text-xs text-os-subtle">已使用优惠券</span>
                 <p className="text-sm font-mono text-os-text-high mt-0.5">{subscription.coupon_code}</p>
               </div>
             )}
@@ -390,7 +390,7 @@ export default function AccountPage() {
                       </button>
                       <button
                         onClick={() => setCancelConfirm(false)}
-                        className="px-3 py-1 rounded text-xs text-os-muted hover:text-os-text transition-colors"
+                        className="px-3 py-1 rounded text-xs text-os-subtle hover:text-os-text transition-colors"
                       >
                         返回
                       </button>
@@ -401,7 +401,7 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-os-muted py-4">暂无订阅信息</p>
+          <p className="text-sm text-os-subtle py-4">暂无订阅信息</p>
         )}
       </div>
 
@@ -412,14 +412,14 @@ export default function AccountPage() {
         <SectionHeader icon={BarChart3} title="用量统计" />
 
         {usageLoading ? (
-          <div className="flex items-center gap-2 text-sm text-os-muted py-4">
+          <div className="flex items-center gap-2 text-sm text-os-subtle py-4">
             <Loader2 size={14} className="animate-spin" />
             加载中...
           </div>
         ) : usage ? (
           <div className="space-y-4">
             {/* Period label */}
-            <div className="text-xs text-os-muted">
+            <div className="text-xs text-os-subtle">
               {new Date(usage.period_start).toLocaleDateString("zh-CN")}
               {" — "}
               {new Date(usage.period_end).toLocaleDateString("zh-CN")}
@@ -442,7 +442,7 @@ export default function AccountPage() {
                         <span className="text-xs text-os-text-high font-mono tabular-nums">
                           {count.toLocaleString()} 次
                           {cost > 0 && (
-                            <span className="text-os-muted ml-1.5">
+                            <span className="text-os-subtle ml-1.5">
                               ¥{(cost / 100).toFixed(2)}
                             </span>
                           )}
@@ -459,19 +459,19 @@ export default function AccountPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-os-muted">本月暂无用量记录</p>
+              <p className="text-sm text-os-subtle">本月暂无用量记录</p>
             )}
 
             {/* Summary row */}
             <div className="grid grid-cols-2 gap-4 pt-3 border-t border-os-border">
               <div>
-                <span className="text-xs text-os-muted">总调用量</span>
+                <span className="text-xs text-os-subtle">总调用量</span>
                 <p className="text-lg font-semibold text-os-text-high mt-0.5 tabular-nums">
                   {usage.total_events.toLocaleString()}
                 </p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">预估费用</span>
+                <span className="text-xs text-os-subtle">预估费用</span>
                 <p className="text-lg font-semibold text-os-text-high mt-0.5 tabular-nums">
                   ¥{(usage.total_cost_cents / 100).toFixed(2)}
                 </p>
@@ -479,7 +479,7 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-os-muted py-4">暂无用量数据</p>
+          <p className="text-sm text-os-subtle py-4">暂无用量数据</p>
         )}
       </div>
 
@@ -492,9 +492,9 @@ export default function AccountPage() {
         <div className="space-y-5">
           {/* Referral code */}
           <div>
-            <span className="text-xs text-os-muted">邀请码</span>
+            <span className="text-xs text-os-subtle">邀请码</span>
             {refLoading ? (
-              <div className="flex items-center gap-2 mt-1 text-sm text-os-muted">
+              <div className="flex items-center gap-2 mt-1 text-sm text-os-subtle">
                 <Loader2 size={14} className="animate-spin" />
                 加载中...
               </div>
@@ -509,7 +509,7 @@ export default function AccountPage() {
                   title="复制邀请码"
                 >
                   {copiedCode === activeReferral.referral_code ? (
-                    <Check size={14} className="text-emerald-400" />
+                    <Check size={14} className="text-os-success" />
                   ) : (
                     <Copy size={14} />
                   )}
@@ -540,26 +540,26 @@ export default function AccountPage() {
                 <p className="text-lg font-semibold text-os-text-high tabular-nums">
                   {referralStats.total_referrals}
                 </p>
-                <span className="text-2xs text-os-muted">总邀请</span>
+                <span className="text-2xs text-os-subtle">总邀请</span>
               </div>
               <div className="bg-os-elevated rounded-lg p-3 text-center">
                 <p className="text-lg font-semibold text-os-text-high tabular-nums">
                   {referralStats.completed_referrals}
                 </p>
-                <span className="text-2xs text-os-muted">已完成</span>
+                <span className="text-2xs text-os-subtle">已完成</span>
               </div>
               <div className="bg-os-elevated rounded-lg p-3 text-center">
                 <p className="text-lg font-semibold text-os-text-high tabular-nums">
                   ¥{(referralStats.total_rewards_cents / 100).toFixed(2)}
                 </p>
-                <span className="text-2xs text-os-muted">奖励金额</span>
+                <span className="text-2xs text-os-subtle">奖励金额</span>
               </div>
             </div>
           )}
 
           {/* Send invite form */}
           <div className="border-t border-os-border pt-4">
-            <span className="text-xs text-os-muted">邀请好友加入</span>
+            <span className="text-xs text-os-subtle">邀请好友加入</span>
             <div className="flex items-center gap-2 mt-1.5">
               <input
                 type="email"
@@ -573,7 +573,7 @@ export default function AccountPage() {
                   if (e.key === "Enter") handleSendInvite();
                 }}
                 placeholder="输入好友邮箱"
-                className="flex-1 h-9 px-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                className="flex-1 h-9 px-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
               />
               <button
                 onClick={handleSendInvite}
@@ -595,7 +595,7 @@ export default function AccountPage() {
               </p>
             )}
             {inviteSuccess && (
-              <p className="text-2xs text-emerald-400 mt-1.5 flex items-center gap-1">
+              <p className="text-2xs text-os-success mt-1.5 flex items-center gap-1">
                 <Check size={11} />
                 邀请已发送
               </p>
@@ -605,7 +605,7 @@ export default function AccountPage() {
           {/* Sent invites history */}
           {invites.length > 0 && (
             <div className="border-t border-os-border pt-4">
-              <span className="text-xs text-os-muted">
+              <span className="text-xs text-os-subtle">
                 已发送邀请 ({invites.length})
               </span>
               <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto">
@@ -619,7 +619,7 @@ export default function AccountPage() {
                         {inv.invitee_email}
                       </span>
                       {inv.expires_at && (
-                        <span className="text-2xs text-os-muted">
+                        <span className="text-2xs text-os-subtle">
                           有效期至 {new Date(inv.expires_at).toLocaleDateString("zh-CN")}
                         </span>
                       )}
@@ -628,10 +628,10 @@ export default function AccountPage() {
                       className={cn(
                         "text-2xs px-1.5 py-0.5 rounded-full shrink-0 ml-2",
                         inv.status === "accepted"
-                          ? "bg-emerald-500/15 text-emerald-400"
+                          ? "bg-os-success-soft text-os-success"
                           : inv.status === "expired"
-                            ? "bg-zinc-500/15 text-zinc-400"
-                            : "bg-amber-500/15 text-amber-400",
+                            ? "bg-os-elevated text-os-subtle"
+                            : "bg-os-warning-soft text-os-warning",
                       )}
                     >
                       {inv.status === "accepted"
@@ -669,7 +669,7 @@ export default function AccountPage() {
                 if (e.key === "Enter") handleRedeemCoupon();
               }}
               placeholder="输入优惠券代码"
-              className="flex-1 h-9 px-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+              className="flex-1 h-9 px-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
             />
             <button
               onClick={handleRedeemCoupon}
@@ -692,7 +692,7 @@ export default function AccountPage() {
             </p>
           )}
           {couponSuccess && (
-            <p className="text-2xs text-emerald-400 flex items-center gap-1">
+            <p className="text-2xs text-os-success flex items-center gap-1">
               <Check size={11} />
               {couponSuccess}
             </p>
@@ -700,17 +700,17 @@ export default function AccountPage() {
 
           {/* Active coupons list */}
           <div className="border-t border-os-border pt-4">
-            <span className="text-xs text-os-muted">
+            <span className="text-xs text-os-subtle">
               已持有优惠券 ({coupons.filter((c) => c.status === "active").length})
             </span>
 
             {couponsLoading ? (
-              <div className="flex items-center gap-2 mt-2 text-sm text-os-muted">
+              <div className="flex items-center gap-2 mt-2 text-sm text-os-subtle">
                 <Loader2 size={14} className="animate-spin" />
                 加载中...
               </div>
             ) : coupons.length === 0 ? (
-              <p className="text-sm text-os-muted mt-2">暂无优惠券</p>
+              <p className="text-sm text-os-subtle mt-2">暂无优惠券</p>
             ) : (
               <div className="mt-2 space-y-1.5 max-h-56 overflow-y-auto">
                 {coupons.map((c) => (
@@ -727,7 +727,7 @@ export default function AccountPage() {
                       <span className="text-sm font-mono font-medium text-os-text-high">
                         {c.code}
                       </span>
-                      <span className="text-2xs text-os-muted ml-2">
+                      <span className="text-2xs text-os-subtle ml-2">
                         {c.coupon_type === "percentage"
                           ? `${c.value}% 折扣`
                           : `¥${c.value} 减免`}
@@ -737,7 +737,7 @@ export default function AccountPage() {
                     </div>
                     <div className="flex items-center gap-3 shrink-0 ml-2">
                       {c.valid_until && (
-                        <span className="text-2xs text-os-muted hidden sm:inline">
+                        <span className="text-2xs text-os-subtle hidden sm:inline">
                           有效期至 {new Date(c.valid_until).toLocaleDateString("zh-CN")}
                         </span>
                       )}
@@ -745,10 +745,10 @@ export default function AccountPage() {
                         className={cn(
                           "text-2xs px-1.5 py-0.5 rounded-full",
                           c.status === "active"
-                            ? "bg-emerald-500/15 text-emerald-400"
+                            ? "bg-os-success-soft text-os-success"
                             : c.status === "used"
-                              ? "bg-blue-500/15 text-blue-400"
-                              : "bg-zinc-500/15 text-zinc-400",
+                              ? "bg-os-accent-soft text-os-accent"
+                              : "bg-os-elevated text-os-subtle",
                         )}
                       >
                         {c.status === "active"
@@ -773,7 +773,7 @@ export default function AccountPage() {
         <SectionHeader icon={Building2} title="租户信息" />
 
         {tenantLoading ? (
-          <div className="flex items-center gap-2 text-sm text-os-muted py-4">
+          <div className="flex items-center gap-2 text-sm text-os-subtle py-4">
             <Loader2 size={14} className="animate-spin" />
             加载中...
           </div>
@@ -781,30 +781,30 @@ export default function AccountPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-xs text-os-muted">名称</span>
+                <span className="text-xs text-os-subtle">名称</span>
                 <p className="text-sm text-os-text-high mt-0.5">{tenant.name || "-"}</p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">邮箱</span>
+                <span className="text-xs text-os-subtle">邮箱</span>
                 <p className="text-sm text-os-text-high mt-0.5">{tenant.email || "-"}</p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">标识符</span>
+                <span className="text-xs text-os-subtle">标识符</span>
                 <p className="text-sm font-mono text-os-text-high mt-0.5">
                   {tenant.slug || "-"}
                 </p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">状态</span>
+                <span className="text-xs text-os-subtle">状态</span>
                 <p className="text-sm mt-0.5">
                   <span
                     className={cn(
                       "os-badge",
                       tenant.status === "active"
-                        ? "bg-emerald-500/15 text-emerald-400"
+                        ? "bg-os-success-soft text-os-success"
                         : tenant.status === "trial"
-                          ? "bg-amber-500/15 text-amber-400"
-                          : "bg-zinc-500/15 text-zinc-400",
+                          ? "bg-os-warning-soft text-os-warning"
+                          : "bg-os-elevated text-os-subtle",
                     )}
                   >
                     {tenant.status === "active"
@@ -816,25 +816,25 @@ export default function AccountPage() {
                 </p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">成员数量</span>
+                <span className="text-xs text-os-subtle">成员数量</span>
                 <p className="text-lg font-semibold text-os-text-high mt-0.5 tabular-nums">
                   {memberCount !== null ? memberCount : "-"}
                 </p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">规模</span>
+                <span className="text-xs text-os-subtle">规模</span>
                 <p className="text-sm text-os-text-high mt-0.5">
                   {tenant.org_size || "-"}
                 </p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">行业</span>
+                <span className="text-xs text-os-subtle">行业</span>
                 <p className="text-sm text-os-text-high mt-0.5">
                   {tenant.industry || "-"}
                 </p>
               </div>
               <div>
-                <span className="text-xs text-os-muted">网站</span>
+                <span className="text-xs text-os-subtle">网站</span>
                 <p className="text-sm mt-0.5 truncate">
                   {tenant.website ? (
                     <a
@@ -853,7 +853,7 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-os-muted py-4">暂无租户信息</p>
+          <p className="text-sm text-os-subtle py-4">暂无租户信息</p>
         )}
       </div>
     </div>

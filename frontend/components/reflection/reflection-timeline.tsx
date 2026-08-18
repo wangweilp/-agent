@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Lightbulb } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { ReflectionInsight } from "@/types";
 
@@ -11,7 +10,7 @@ export function ReflectionTimeline({ insights }: { insights: ReflectionInsight[]
   );
 
   if (sorted.length === 0) {
-    return <p className="text-xs text-os-muted text-center py-8">暂无反思记录</p>;
+    return <p className="text-xs text-os-subtle text-center py-8">暂无反思记录</p>;
   }
 
   return (
@@ -29,13 +28,13 @@ export function ReflectionTimeline({ insights }: { insights: ReflectionInsight[]
           >
             <div className="absolute -left-[22px] top-1 w-2 h-2 rounded-full bg-amber-400 border-2 border-os-base" />
             <div className="ml-2">
-              <p className="text-xs font-medium text-os-text-high">{insight.topic}</p>
-              <p className="text-2xs text-os-muted mt-0.5">{formatDate(insight.timestamp)}</p>
+              <p className="break-words text-xs font-medium text-os-text-high">{insight.topic}</p>
+              <p className="text-2xs text-os-subtle mt-0.5">{formatDate(insight.timestamp)}</p>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-2xs text-amber-400/80">
+                <span className="text-2xs text-amber-800">
                   {Math.round(insight.confidence * 100)}% 置信
                 </span>
-                <span className="text-2xs text-os-muted">
+                <span className="text-2xs text-os-subtle">
                   {insight.related_memories.length} 条关联
                 </span>
               </div>

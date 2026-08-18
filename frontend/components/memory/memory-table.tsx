@@ -19,11 +19,18 @@ const statusLabel: Record<string, string> = {
 };
 
 const statusStyle: Record<string, string> = {
-  active: "bg-emerald-400/10 text-emerald-400",
-  archived: "bg-amber-400/10 text-amber-400",
-  merged: "bg-zinc-400/10 text-zinc-400",
-  deleted: "bg-red-400/10 text-red-400",
+  active: "bg-os-success-soft text-os-success",
+  archived: "bg-os-warning-soft text-os-warning",
+  merged: "bg-os-surface-muted text-os-subtle",
+  deleted: "bg-os-danger-soft text-os-danger",
 };
+
+function readableImportanceColor(score: number) {
+  return importanceColor(score)
+    .replace("text-emerald-400", "text-os-success")
+    .replace("text-amber-400", "text-os-warning")
+    .replace("text-zinc-500", "text-os-subtle");
+}
 
 interface MemoryTableProps {
   memories: Memory[];
@@ -79,17 +86,17 @@ export function MemoryTable({
                   className="rounded border-os-border bg-os-surface accent-indigo-400"
                 />
               </td>
-              <td className="py-2.5 px-2 text-2xs text-os-muted whitespace-nowrap font-mono">
+              <td className="py-2.5 px-2 text-2xs text-os-subtle whitespace-nowrap font-mono">
                 {formatDate(mem.timestamp)}
               </td>
               <td className="py-2.5 px-2">
-                <p className="text-os-text-high line-clamp-1 max-w-[300px]">
+                <p className="max-w-[300px] break-words text-os-text-high [overflow-wrap:anywhere] line-clamp-1">
                   {mem.summary || mem.content.slice(0, 80)}
                 </p>
                 {mem.entities.length > 0 && (
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {mem.entities.slice(0, 3).map((e) => (
-                      <span key={e} className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-muted">
+                      <span key={e} className="inline-block max-w-[8rem] truncate rounded bg-os-elevated px-1 py-0.5 align-middle text-2xs text-os-subtle">
                         {e}
                       </span>
                     ))}
@@ -102,12 +109,12 @@ export function MemoryTable({
                 </span>
               </td>
               <td className="py-2.5 px-2 hidden md:table-cell">
-                <span className={cn("os-badge text-2xs", statusStyle[mem.status] || "text-os-muted")}>
+                <span className={cn("os-badge text-2xs", statusStyle[mem.status] || "text-os-subtle")}>
                   {statusLabel[mem.status] || mem.status}
                 </span>
               </td>
               <td className="py-2.5 px-2 text-right hidden lg:table-cell">
-                <span className={cn("font-mono font-medium", importanceColor(mem.importance))}>
+                <span className={cn("font-mono font-medium", readableImportanceColor(mem.importance))}>
                   {mem.importance}
                 </span>
               </td>

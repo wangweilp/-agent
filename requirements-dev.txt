@@ -1,0 +1,15 @@
+# 开发/测试依赖 — 在项目 .venv 中启用
+#
+# 安装（激活 venv 后）：
+#   python -m pip install -r requirements-dev.txt
+#
+# 说明：
+# - 通过 -r 先引入生产依赖 requirements.txt，再叠加测试框架依赖，
+#   保证新机器一条命令即可达到"能启动 + 能跑测试"的开发环境。
+# - 版本区间与 requirements.txt 风格一致（>=X,<Y），且已与 .venv 中
+#   验证通过的版本对齐（pytest 9.1.1 / pytest-asyncio 1.4.0）。
+-r requirements.txt
+
+# 测试框架
+pytest>=9,<10
+pytest-asyncio>=1.0,<2.0

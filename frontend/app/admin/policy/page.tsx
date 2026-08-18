@@ -51,7 +51,7 @@ interface Role {
 const DEFAULT_ROLES: { name: string; description: string; permissions: string[] }[] = [
   {
     name: "SuperAdmin",
-    description: "Complete system access across all organizations.",
+    description: "拥有跨组织的完整系统访问权限。",
     permissions: [
       "org:create", "org:delete", "org:manage",
       "user:create", "user:delete", "user:manage",
@@ -62,7 +62,7 @@ const DEFAULT_ROLES: { name: string; description: string; permissions: string[] 
   },
   {
     name: "OrgAdmin",
-    description: "Manage a single organization and its users.",
+    description: "管理单个组织及其用户。",
     permissions: [
       "org:manage", "user:create", "user:manage",
       "role:assign", "audit:view",
@@ -71,7 +71,7 @@ const DEFAULT_ROLES: { name: string; description: string; permissions: string[] 
   },
   {
     name: "DeptAdmin",
-    description: "Manage department members and resources.",
+    description: "管理部门成员与资源。",
     permissions: [
       "user:manage", "role:assign",
       "memory:dept_all",
@@ -79,7 +79,7 @@ const DEFAULT_ROLES: { name: string; description: string; permissions: string[] 
   },
   {
     name: "Manager",
-    description: "Manage team members and moderate content.",
+    description: "管理团队成员并审核内容。",
     permissions: [
       "user:view", "memory:team_write",
       "audit:view",
@@ -87,19 +87,56 @@ const DEFAULT_ROLES: { name: string; description: string; permissions: string[] 
   },
   {
     name: "Employee",
-    description: "Standard user with read/write access to own content.",
+    description: "可读写本人内容的标准用户。",
     permissions: [
       "memory:read", "memory:write",
     ],
   },
   {
     name: "Guest",
-    description: "Read-only access to shared resources.",
+    description: "仅可读取共享资源。",
     permissions: [
       "memory:read",
     ],
   },
 ];
+
+const ROLE_LABELS: Record<string, string> = {
+  SuperAdmin: "超级管理员",
+  OrgAdmin: "组织管理员",
+  DeptAdmin: "部门管理员",
+  Manager: "经理",
+  Employee: "员工",
+  Guest: "访客",
+};
+
+const RESOURCE_LABELS: Record<string, string> = {
+  memory: "记忆",
+  audit_log: "审计日志",
+  notification: "通知",
+  import_job: "导入任务",
+};
+
+const RETENTION_PERIOD_LABELS: Record<string, string> = {
+  "30d": "30 天",
+  "90d": "90 天",
+  "180d": "180 天",
+  "1y": "1 年",
+  "3y": "3 年",
+  "7y": "7 年",
+  forever: "永久保留",
+};
+
+const ARCHIVE_ACTION_LABELS: Record<string, string> = {
+  archive: "归档",
+  delete: "删除",
+  anonymize: "匿名化",
+};
+
+const EFFECT_LABELS: Record<string, string> = {
+  deny: "拒绝",
+  allow: "允许",
+};
 
 // ── Tab ──
 
@@ -172,7 +209,7 @@ export default function PolicyCenterPage() {
       const data = await apiFetch<RetentionPolicy[]>(`/api/compliance/policies${qs}`);
       setRetPolicies(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
-      setRetError(err instanceof Error ? err.message : "Failed to load retention policies");
+      setRetError(err instanceof Error ? err.message : "数据留存策略加载失败");
     } finally {
       setRetLoading(false);
     }
@@ -186,7 +223,7 @@ export default function PolicyCenterPage() {
       const data = await apiFetch<AbacPolicy[]>(`/api/rbac/policies${qs}`);
       setAbacPolicies(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
-      setAbacError(err instanceof Error ? err.message : "Failed to load ABAC policies");
+      setAbacError(err instanceof Error ? err.message : "ABAC 策略加载失败");
     } finally {
       setAbacLoading(false);
     }
@@ -245,7 +282,7 @@ export default function PolicyCenterPage() {
       setShowRetModal(false);
       await fetchRetention();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to save retention policy");
+      alert(err instanceof Error ? err.message : "数据留存策略保存失败");
     }
   };
 
@@ -257,17 +294,17 @@ export default function PolicyCenterPage() {
       });
       await fetchRetention();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to toggle policy");
+      alert(err instanceof Error ? err.message : "策略状态更新失败");
     }
   };
 
   const deleteRetention = async (id: string) => {
-    if (!confirm("Delete this retention policy?")) return;
+    if (!confirm("确认删除这条数据留存策略？")) return;
     try {
       await apiFetch(`/api/compliance/policies/${id}`, { method: "DELETE" });
       await fetchRetention();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete retention policy");
+      alert(err instanceof Error ? err.message : "数据留存策略删除失败");
     }
   };
 
@@ -294,7 +331,7 @@ export default function PolicyCenterPage() {
   const saveAbac = async () => {
     try {
       let conditions = {};
-      try { conditions = JSON.parse(abacForm.conditionsJson); } catch { alert("Invalid JSON in conditions"); return; }
+      try { conditions = JSON.parse(abacForm.conditionsJson); } catch { alert("条件中的 JSON 无效"); return; }
       const body = { ...abacForm, conditions, enabled: true, organization_id: orgId };
       if (editingAbac) {
         await apiFetch(`/api/rbac/policies/${editingAbac.id}`, {
@@ -310,32 +347,33 @@ export default function PolicyCenterPage() {
       setShowAbacModal(false);
       await fetchAbac();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to save ABAC policy");
+      alert(err instanceof Error ? err.message : "ABAC 策略保存失败");
     }
   };
 
   const deleteAbac = async (id: string) => {
-    if (!confirm("Delete this ABAC policy?")) return;
+    if (!confirm("确认删除这条 ABAC 策略？")) return;
     try {
       await apiFetch(`/api/rbac/policies/${id}`, { method: "DELETE" });
       await fetchAbac();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete ABAC policy");
+      alert(err instanceof Error ? err.message : "ABAC 策略删除失败");
     }
   };
 
   // ── Render ──
 
   const tabs = [
-    { key: "retention" as const, label: "Data Retention", icon: Database },
-    { key: "abac" as const, label: "ABAC Policies", icon: Key },
-    { key: "roles" as const, label: "Roles & Permissions", icon: Shield },
+    { key: "retention" as const, label: "数据留存", icon: Database },
+    { key: "abac" as const, label: "ABAC 策略", icon: Key },
+    { key: "roles" as const, label: "角色与权限", icon: Shield },
   ];
+  const activeError = tab === "retention" ? retError : tab === "abac" ? abacError : null;
 
   return (
     <div className="p-6 space-y-4 max-w-[1440px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">策略中心</h1>
           <p className="text-xs text-os-subtle mt-0.5">管理数据留存、访问控制与角色权限</p>
@@ -350,8 +388,9 @@ export default function PolicyCenterPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-0.5 bg-os-surface border border-os-border rounded-lg w-fit">
-        {tabs.map(({ key, label, icon: Icon }) => (
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-center gap-1 rounded-lg border border-os-border bg-os-surface p-0.5">
+          {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -365,29 +404,30 @@ export default function PolicyCenterPage() {
             <Icon size={12} />
             {label}
           </button>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Global error */}
-      {(retError || abacError) && (
-        <div className="os-card p-3 rounded-lg border border-red-400/20 bg-red-400/5 text-red-400 text-xs">
-          {retError || abacError}
+      {activeError && (
+        <div className="os-card rounded-lg border border-os-danger/20 bg-os-danger-soft p-3 text-xs text-os-danger">
+          {activeError}
         </div>
       )}
 
       {/* ── Retention Tab ── */}
       {tab === "retention" && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-os-muted">
-              {retPolicies.length} polic{retPolicies.length !== 1 ? "ies" : "y"}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-os-subtle">
+              {retPolicies.length} 条策略
             </p>
             <button
               onClick={openCreateRet}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs font-medium bg-os-accent text-white hover:bg-os-accent/90 transition-colors"
             >
               <Plus size={12} />
-              New Retention Policy
+              新建数据留存策略
             </button>
           </div>
 
@@ -397,24 +437,24 @@ export default function PolicyCenterPage() {
                 <div key={i} className="h-12 bg-os-elevated rounded-lg animate-pulse" />
               ))}
             </div>
-          ) : retPolicies.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-os-muted">
+          ) : retError && retPolicies.length === 0 ? null : retPolicies.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-os-subtle">
               <Database size={48} className="mb-4 opacity-30" />
-              <p className="text-sm">No retention policies configured</p>
-              <p className="text-2xs mt-1">Create a policy to manage data lifecycle</p>
+              <p className="text-sm">尚未配置数据留存策略</p>
+              <p className="text-2xs mt-1">创建策略以管理数据生命周期</p>
             </div>
           ) : (
             <div className="os-card rounded-lg border border-os-border/30 bg-os-surface overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/30">
-                      <th className="text-left py-2.5 px-3 font-medium">Name</th>
-                      <th className="text-left py-2.5 px-3 font-medium">Resource</th>
-                      <th className="text-left py-2.5 px-3 font-medium">Period</th>
-                      <th className="text-left py-2.5 px-3 font-medium">Action</th>
-                      <th className="text-center py-2.5 px-3 font-medium">Status</th>
-                      <th className="text-right py-2.5 px-3 font-medium">Actions</th>
+                    <tr className="text-os-subtle border-b border-os-border/30 bg-os-elevated/30">
+                      <th className="text-left py-2.5 px-3 font-medium">名称</th>
+                      <th className="text-left py-2.5 px-3 font-medium">资源</th>
+                      <th className="text-left py-2.5 px-3 font-medium">留存周期</th>
+                      <th className="text-left py-2.5 px-3 font-medium">到期操作</th>
+                      <th className="text-center py-2.5 px-3 font-medium">状态</th>
+                      <th className="text-right py-2.5 px-3 font-medium">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -426,16 +466,16 @@ export default function PolicyCenterPage() {
                             <br />
                           )}
                           {p.description && (
-                            <span className="text-2xs text-os-muted">{p.description}</span>
+                            <span className="text-2xs text-os-subtle">{p.description}</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-os-text">{p.resource_type}</td>
-                        <td className="py-2.5 px-3 text-os-text">{p.retention_period}</td>
-                        <td className="py-2.5 px-3 text-os-text capitalize">{p.archive_action}</td>
+                        <td className="py-2.5 px-3 text-os-text">{RESOURCE_LABELS[p.resource_type] || p.resource_type}</td>
+                        <td className="py-2.5 px-3 text-os-text">{RETENTION_PERIOD_LABELS[p.retention_period] || p.retention_period}</td>
+                        <td className="py-2.5 px-3 text-os-text">{ARCHIVE_ACTION_LABELS[p.archive_action] || p.archive_action}</td>
                         <td className="py-2.5 px-3 text-center">
                           <button onClick={() => toggleRetention(p)} className="transition-colors">
                             {p.enabled ? (
-                              <ToggleRight size={18} className="text-emerald-400" />
+                              <ToggleRight size={18} className="text-os-success" />
                             ) : (
                               <ToggleLeft size={18} className="text-os-muted" />
                             )}
@@ -446,7 +486,7 @@ export default function PolicyCenterPage() {
                             <button onClick={() => openEditRet(p)} className="p-1 rounded text-os-subtle hover:text-os-text transition-colors">
                               <Edit3 size={12} />
                             </button>
-                            <button onClick={() => deleteRetention(p.id)} className="p-1 rounded text-os-muted hover:text-red-400 transition-colors">
+                            <button onClick={() => deleteRetention(p.id)} className="p-1 rounded text-os-muted hover:text-os-danger transition-colors">
                               <Trash2 size={12} />
                             </button>
                           </div>
@@ -464,16 +504,16 @@ export default function PolicyCenterPage() {
       {/* ── ABAC Tab ── */}
       {tab === "abac" && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-os-muted">
-              {abacPolicies.length} polic{abacPolicies.length !== 1 ? "ies" : "y"}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-os-subtle">
+              {abacPolicies.length} 条策略
             </p>
             <button
               onClick={openCreateAbac}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs font-medium bg-os-accent text-white hover:bg-os-accent/90 transition-colors"
             >
               <Plus size={12} />
-              New ABAC Policy
+              新建 ABAC 策略
             </button>
           </div>
 
@@ -483,45 +523,45 @@ export default function PolicyCenterPage() {
                 <div key={i} className="h-24 bg-os-elevated rounded-lg animate-pulse" />
               ))}
             </div>
-          ) : abacPolicies.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-os-muted">
+          ) : abacError && abacPolicies.length === 0 ? null : abacPolicies.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-os-subtle">
               <Key size={48} className="mb-4 opacity-30" />
-              <p className="text-sm">No ABAC policies configured</p>
-              <p className="text-2xs mt-1">Create attribute-based access control rules</p>
+              <p className="text-sm">尚未配置 ABAC 策略</p>
+              <p className="text-2xs mt-1">创建基于属性的访问控制规则</p>
             </div>
           ) : (
             <div className="space-y-3">
               {abacPolicies.map((p) => (
                 <div key={p.id} className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-border/60 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-os-text-high">{p.name}</span>
+                  <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="break-words text-xs font-semibold text-os-text-high">{p.name}</span>
                       <span
                         className={cn(
                           "px-1.5 py-0.5 rounded text-2xs font-bold uppercase",
                           p.effect === "deny"
-                            ? "bg-red-400/10 text-red-400"
-                            : "bg-emerald-400/10 text-emerald-400"
+                            ? "bg-os-danger-soft text-os-danger"
+                            : "bg-os-success-soft text-os-success"
                         )}
                       >
-                        {p.effect}
+                        {EFFECT_LABELS[p.effect] || p.effect}
                       </span>
                       {!p.enabled && (
-                        <span className="px-1.5 py-0.5 rounded text-2xs bg-os-elevated text-os-muted">Disabled</span>
+                        <span className="px-1.5 py-0.5 rounded text-2xs bg-os-elevated text-os-subtle">已停用</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xs text-os-muted">Priority: {p.priority}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-2xs text-os-subtle">优先级：{p.priority}</span>
                       <button onClick={() => openEditAbac(p)} className="p-1 rounded text-os-subtle hover:text-os-text transition-colors">
                         <Edit3 size={12} />
                       </button>
-                      <button onClick={() => deleteAbac(p.id)} className="p-1 rounded text-os-muted hover:text-red-400 transition-colors">
+                      <button onClick={() => deleteAbac(p.id)} className="p-1 rounded text-os-muted hover:text-os-danger transition-colors">
                         <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
                   {p.description && (
-                    <p className="text-2xs text-os-muted mb-2">{p.description}</p>
+                    <p className="text-2xs text-os-subtle mb-2">{p.description}</p>
                   )}
                   <pre className="p-2 bg-os-elevated rounded text-2xs text-os-text overflow-x-auto border border-os-border/30">
                     {JSON.stringify(p.conditions, null, 2)}
@@ -542,12 +582,12 @@ export default function PolicyCenterPage() {
               <div key={role.name} className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface">
                 <div className="flex items-center gap-2 mb-3">
                   <Shield size={14} className="text-os-accent" />
-                  <h3 className="text-xs font-semibold text-os-text-high">{role.name}</h3>
+                  <h3 className="text-xs font-semibold text-os-text-high">{ROLE_LABELS[role.name] || role.name}</h3>
                 </div>
-                <p className="text-2xs text-os-muted mb-3 leading-relaxed">{role.description}</p>
+                <p className="text-2xs text-os-subtle mb-3 leading-relaxed">{role.description}</p>
                 <div>
-                  <p className="text-2xs text-os-subtle uppercase tracking-wider mb-1.5">
-                    Permissions ({role.permissions.length})
+                  <p className="text-2xs text-os-subtle tracking-wider mb-1.5">
+                    权限（{role.permissions.length}）
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {role.permissions.map((perm) => (
@@ -564,18 +604,18 @@ export default function PolicyCenterPage() {
           {/* Server-side roles if any */}
           {roles.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-os-text-high">Custom Roles</h3>
+              <h3 className="text-xs font-semibold text-os-text-high">自定义角色</h3>
               {roles.map((role) => (
                 <div key={role.id} className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <Shield size={14} className="text-os-accent" />
                       <span className="text-xs font-semibold text-os-text-high">{role.name}</span>
                       {role.is_system && (
-                        <span className="px-1.5 py-0.5 rounded text-2xs bg-os-accent/10 text-os-accent">System</span>
+                        <span className="px-1.5 py-0.5 rounded text-2xs bg-os-accent/10 text-os-accent">系统角色</span>
                       )}
                     </div>
-                    <span className="text-2xs text-os-muted">{role.permissions.length} permissions</span>
+                    <span className="text-2xs text-os-subtle">{role.permissions.length} 项权限</span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {role.permissions.map((p) => (
@@ -592,16 +632,16 @@ export default function PolicyCenterPage() {
           {/* Permissions Matrix */}
           <div className="os-card rounded-lg border border-os-border/30 bg-os-surface overflow-hidden">
             <div className="p-4 border-b border-os-border/30">
-              <h3 className="text-xs font-semibold text-os-text-high">Permissions Matrix</h3>
-              <p className="text-2xs text-os-muted mt-0.5">Role-to-permission mapping overview</p>
+              <h3 className="text-xs font-semibold text-os-text-high">权限矩阵</h3>
+              <p className="text-2xs text-os-subtle mt-0.5">角色与权限的对应关系</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/30">
-                    <th className="text-left py-2 px-3 font-medium sticky left-0 bg-os-elevated/30 z-10">Permission</th>
+                  <tr className="text-os-subtle border-b border-os-border/30 bg-os-elevated/30">
+                    <th className="text-left py-2 px-3 font-medium sticky left-0 bg-os-elevated/30 z-10">权限</th>
                     {DEFAULT_ROLES.map((r) => (
-                      <th key={r.name} className="text-center py-2 px-3 font-medium whitespace-nowrap">{r.name}</th>
+                      <th key={r.name} className="text-center py-2 px-3 font-medium whitespace-nowrap">{ROLE_LABELS[r.name] || r.name}</th>
                     ))}
                   </tr>
                 </thead>
@@ -614,7 +654,7 @@ export default function PolicyCenterPage() {
                         {DEFAULT_ROLES.map((role) => (
                           <td key={role.name} className="text-center py-1.5 px-3">
                             {role.permissions.includes(perm) ? (
-                              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+                              <span className="inline-block w-2 h-2 rounded-full bg-os-success" />
                             ) : (
                               <span className="inline-block w-2 h-2 rounded-full bg-os-border/50" />
                             )}
@@ -637,7 +677,7 @@ export default function PolicyCenterPage() {
           <div className="relative bg-os-surface border border-os-border rounded-lg shadow-os-lg w-full max-w-sm mx-4 p-5 z-10 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-os-text-high">
-                {editingRet ? "Edit" : "Create"} Retention Policy
+                {editingRet ? "编辑数据留存策略" : "新建数据留存策略"}
               </h3>
               <button onClick={() => setShowRetModal(false)} className="text-os-muted hover:text-os-text transition-colors">
                 <X size={16} />
@@ -645,8 +685,8 @@ export default function PolicyCenterPage() {
             </div>
             <div className="space-y-3">
               <input
-                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
-                placeholder="Name"
+                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
+                placeholder="名称"
                 value={retForm.name}
                 onChange={(e) => setRetForm({ ...retForm, name: e.target.value })}
               />
@@ -655,50 +695,50 @@ export default function PolicyCenterPage() {
                 value={retForm.resource_type}
                 onChange={(e) => setRetForm({ ...retForm, resource_type: e.target.value })}
               >
-                <option value="memory">memory</option>
-                <option value="audit_log">audit_log</option>
-                <option value="notification">notification</option>
-                <option value="import_job">import_job</option>
+                <option value="memory">记忆</option>
+                <option value="audit_log">审计日志</option>
+                <option value="notification">通知</option>
+                <option value="import_job">导入任务</option>
               </select>
               <select
                 className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high focus:outline-none focus:border-os-accent transition-colors"
                 value={retForm.retention_period}
                 onChange={(e) => setRetForm({ ...retForm, retention_period: e.target.value })}
               >
-                <option value="30d">30 days</option>
-                <option value="90d">90 days</option>
-                <option value="180d">180 days</option>
-                <option value="1y">1 year</option>
-                <option value="3y">3 years</option>
-                <option value="7y">7 years</option>
-                <option value="forever">Forever</option>
+                <option value="30d">30 天</option>
+                <option value="90d">90 天</option>
+                <option value="180d">180 天</option>
+                <option value="1y">1 年</option>
+                <option value="3y">3 年</option>
+                <option value="7y">7 年</option>
+                <option value="forever">永久保留</option>
               </select>
               <select
                 className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high focus:outline-none focus:border-os-accent transition-colors"
                 value={retForm.archive_action}
                 onChange={(e) => setRetForm({ ...retForm, archive_action: e.target.value })}
               >
-                <option value="archive">Archive</option>
-                <option value="delete">Delete</option>
-                <option value="anonymize">Anonymize</option>
+                <option value="archive">归档</option>
+                <option value="delete">删除</option>
+                <option value="anonymize">匿名化</option>
               </select>
               <textarea
-                className="w-full px-3 py-2 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors resize-none"
-                placeholder="Description (optional)"
+                className="w-full px-3 py-2 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors resize-none"
+                placeholder="描述（可选）"
                 value={retForm.description}
                 onChange={(e) => setRetForm({ ...retForm, description: e.target.value })}
                 rows={2}
               />
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowRetModal(false)} className="px-3 py-1.5 rounded-md text-xs text-os-subtle hover:text-os-text transition-colors">
-                  Cancel
+                  取消
                 </button>
                 <button
                   onClick={saveRetention}
                   disabled={!retForm.name.trim()}
                   className="px-3 py-1.5 rounded-md text-xs font-medium bg-os-accent text-white hover:bg-os-accent/90 transition-colors disabled:opacity-50"
                 >
-                  {editingRet ? "Update" : "Create"}
+                  {editingRet ? "更新" : "创建"}
                 </button>
               </div>
             </div>
@@ -713,7 +753,7 @@ export default function PolicyCenterPage() {
           <div className="relative bg-os-surface border border-os-border rounded-lg shadow-os-lg w-full max-w-sm mx-4 p-5 z-10 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-os-text-high">
-                {editingAbac ? "Edit" : "Create"} ABAC Policy
+                {editingAbac ? "编辑 ABAC 策略" : "新建 ABAC 策略"}
               </h3>
               <button onClick={() => setShowAbacModal(false)} className="text-os-muted hover:text-os-text transition-colors">
                 <X size={16} />
@@ -721,8 +761,8 @@ export default function PolicyCenterPage() {
             </div>
             <div className="space-y-3">
               <input
-                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
-                placeholder="Name"
+                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
+                placeholder="名称"
                 value={abacForm.name}
                 onChange={(e) => setAbacForm({ ...abacForm, name: e.target.value })}
               />
@@ -731,39 +771,39 @@ export default function PolicyCenterPage() {
                 value={abacForm.effect}
                 onChange={(e) => setAbacForm({ ...abacForm, effect: e.target.value })}
               >
-                <option value="deny">Deny</option>
-                <option value="allow">Allow</option>
+                <option value="deny">拒绝</option>
+                <option value="allow">允许</option>
               </select>
               <input
-                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                 type="number"
-                placeholder="Priority (lower = higher)"
+                placeholder="优先级（数值越小，优先级越高）"
                 value={abacForm.priority}
                 onChange={(e) => setAbacForm({ ...abacForm, priority: parseInt(e.target.value) || 100 })}
               />
               <textarea
-                className="w-full px-3 py-2 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors font-mono resize-none"
-                placeholder='Conditions JSON, e.g. {"subject.org_id":{"eq":"org-1"}}'
+                className="w-full px-3 py-2 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors font-mono resize-none"
+                placeholder='条件 JSON，例如 {"subject.org_id":{"eq":"org-1"}}'
                 value={abacForm.conditionsJson}
                 onChange={(e) => setAbacForm({ ...abacForm, conditionsJson: e.target.value })}
                 rows={4}
               />
               <input
-                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
-                placeholder="Description (optional)"
+                className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
+                placeholder="描述（可选）"
                 value={abacForm.description}
                 onChange={(e) => setAbacForm({ ...abacForm, description: e.target.value })}
               />
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowAbacModal(false)} className="px-3 py-1.5 rounded-md text-xs text-os-subtle hover:text-os-text transition-colors">
-                  Cancel
+                  取消
                 </button>
                 <button
                   onClick={saveAbac}
                   disabled={!abacForm.name.trim()}
                   className="px-3 py-1.5 rounded-md text-xs font-medium bg-os-accent text-white hover:bg-os-accent/90 transition-colors disabled:opacity-50"
                 >
-                  {editingAbac ? "Update" : "Create"}
+                  {editingAbac ? "更新" : "创建"}
                 </button>
               </div>
             </div>

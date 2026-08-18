@@ -140,6 +140,7 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
       />
 
       <button
+        type="button"
         onClick={() => inputRef.current?.click()}
         disabled={disabled || uploading}
         className={cn(
@@ -149,6 +150,7 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
             : "text-os-subtle hover:text-os-accent hover:bg-os-surface-hover disabled:opacity-30 disabled:cursor-not-allowed",
         )}
         title="上传图片（支持多选 / 拖拽）"
+        aria-label="上传图片"
       >
         {uploading ? (
           <motion.div
@@ -176,7 +178,7 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
             initial={{ opacity: 0, width: 0 }}
             animate={{ opacity: 1, width: "auto" }}
             exit={{ opacity: 0, width: 0 }}
-            className="flex items-center gap-1.5 overflow-hidden"
+            className="flex max-w-[8rem] items-center gap-1.5 overflow-x-auto overflow-y-hidden"
           >
             {items.map((it, i) => (
               <div
@@ -188,18 +190,18 @@ export function ImageUploadButton({ onUploaded, disabled }: Props) {
                   <img src={it.preview} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-os-surface-hover flex items-center justify-center">
-                    <Upload size={10} className="text-os-muted animate-pulse" />
+                    <Upload size={10} className="text-os-subtle animate-pulse" />
                   </div>
                 )}
                 {/* 状态角标 */}
                 <div className="absolute -top-1 -right-1">
-                  {it.status === "done" && <Check size={10} className="text-emerald-400 bg-os-surface rounded-full" />}
+                  {it.status === "done" && <Check size={10} className="text-emerald-700 bg-os-surface rounded-full" />}
                   {it.status === "uploading" && (
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}>
                       <Upload size={10} className="text-os-accent" />
                     </motion.div>
                   )}
-                  {it.status === "error" && <AlertTriangle size={10} className="text-red-400" />}
+                  {it.status === "error" && <AlertTriangle size={10} className="text-red-700" />}
                 </div>
               </div>
             ))}

@@ -31,12 +31,12 @@ const AVAILABLE_ROLES = [
 ];
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
-  SuperAdmin: "Full system access across all organizations",
-  OrgAdmin: "Manage a single organization and its users",
-  DeptAdmin: "Manage a department and its members",
-  Manager: "Manage team members and moderate content",
-  Employee: "Standard user with basic access",
-  Guest: "Read-only access to shared resources",
+  SuperAdmin: "可访问并管理系统内全部组织",
+  OrgAdmin: "可管理单个组织及其用户",
+  DeptAdmin: "可管理部门及其成员",
+  Manager: "可管理团队成员并审核内容",
+  Employee: "拥有标准用户基础权限",
+  Guest: "仅可读取共享资源",
 };
 
 // ── Page ──
@@ -144,7 +144,7 @@ export default function UserManagementPage() {
   };
 
   const handleRemoveRole = async (userId: string, role: string) => {
-    if (!confirm(`Remove role "${role}" from this user?`)) return;
+    if (!confirm(`确定从该用户移除角色“${role}”吗？`)) return;
     const user = users.find((u) => u.id === userId);
     if (!user) return;
     try {
@@ -202,7 +202,7 @@ export default function UserManagementPage() {
             className="os-card p-3.5 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-border/60 transition-colors"
           >
             <div className="flex items-start justify-between">
-              <p className="text-2xs text-os-muted uppercase tracking-wider">{s.label}</p>
+              <p className="text-2xs text-os-subtle uppercase tracking-wider">{s.label}</p>
               <s.icon size={14} className={
                 s.accent === "indigo" ? "text-indigo-400" :
                 s.accent === "emerald" ? "text-emerald-400" :
@@ -224,7 +224,7 @@ export default function UserManagementPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="按姓名或邮箱搜索..."
-            className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-lg text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/10 transition-all"
+            className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-lg text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/10 transition-all"
           />
         </div>
         <div className="relative">
@@ -256,7 +256,7 @@ export default function UserManagementPage() {
         {(search || orgFilter || roleFilter) && (
           <button
             onClick={() => { setSearch(""); setOrgFilter(""); setRoleFilter(""); }}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-2xs text-os-muted hover:text-os-text bg-os-elevated/50 hover:bg-os-elevated transition-all border border-os-border/30"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-2xs text-os-subtle hover:text-os-text bg-os-elevated/50 hover:bg-os-elevated transition-all border border-os-border/30"
           >
             <X size={12} />
             清除
@@ -266,14 +266,14 @@ export default function UserManagementPage() {
 
       {/* ── Error ── */}
       {error && (
-        <div className="flex items-start gap-3 rounded-lg border border-red-400/15 bg-red-400/5 p-3">
-          <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-lg border border-os-danger/20 bg-os-danger-soft p-3">
+          <AlertCircle size={14} className="text-os-danger shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs text-red-400 font-medium">请求失败</p>
-            <p className="text-2xs text-red-400/70 mt-0.5">{error}</p>
+            <p className="text-xs text-os-danger font-medium">请求失败</p>
+            <p className="mt-0.5 text-xs text-os-danger">{error}</p>
             <button
               onClick={handleRefresh}
-              className="text-2xs text-red-400 hover:text-red-300 underline mt-1"
+              className="mt-1 text-2xs text-os-danger underline hover:text-os-danger-hover"
             >
               点击重试
             </button>
@@ -292,14 +292,14 @@ export default function UserManagementPage() {
 
       {/* ── Empty ── */}
       {!loading && !error && filteredUsers.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-os-muted">
+        <div className="flex flex-col items-center justify-center py-20 text-os-subtle">
           <div className="w-16 h-16 rounded-2xl bg-os-elevated border border-os-border/40 flex items-center justify-center mb-4">
             <Users size={28} className="opacity-40" />
           </div>
           <p className="text-sm text-os-text-high/80 font-medium">
             {users.length === 0 ? "暂无用户" : "无匹配结果"}
           </p>
-          <p className="text-2xs text-os-muted mt-1.5 text-center max-w-xs">
+          <p className="mt-1.5 max-w-xs text-center text-xs leading-5 text-os-subtle">
             {users.length === 0
               ? "系统尚未注册任何用户。启动服务时将根据 .env 配置自动创建管理员账号。"
               : "尝试调整搜索条件或筛选器。"}
@@ -322,7 +322,7 @@ export default function UserManagementPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/20">
+                <tr className="border-b border-os-border/30 bg-os-elevated/20 text-os-subtle">
                   <th className="text-left py-2.5 px-4 font-medium">姓名</th>
                   <th className="text-left py-2.5 px-4 font-medium">邮箱</th>
                   <th className="text-left py-2.5 px-4 font-medium hidden md:table-cell">组织</th>
@@ -351,13 +351,13 @@ export default function UserManagementPage() {
                             {user.org_name || user.org_id}
                           </span>
                         ) : (
-                          <span className="text-os-muted">—</span>
+                          <span className="text-os-subtle">—</span>
                         )}
                       </td>
                       <td className="py-2.5 px-4">
                         <div className="flex flex-wrap gap-1">
                           {(user.roles || []).length === 0 ? (
-                            <span className="text-2xs text-os-muted">未分配</span>
+                            <span className="text-2xs text-os-subtle">未分配</span>
                           ) : (
                             (user.roles || []).map((role) => (
                               <span
@@ -430,8 +430,8 @@ export default function UserManagementPage() {
                                           ))}
                                         </div>
                                       ) : (
-                                        <span className="text-2xs text-os-muted">
-                                          {role} — View / Edit / Delete access in scope
+                                        <span className="text-2xs text-os-subtle">
+                                          {role} — 可在权限范围内查看、编辑和删除
                                         </span>
                                       )}
                                     </div>
@@ -439,7 +439,7 @@ export default function UserManagementPage() {
                                 })}
                               </div>
                             ) : (
-                              <span className="text-2xs text-os-muted">未分配角色 — 无权限。</span>
+                              <span className="text-2xs text-os-subtle">未分配角色 — 无权限。</span>
                             )}
                           </div>
                         </td>
@@ -473,7 +473,7 @@ export default function UserManagementPage() {
               <div className="flex items-center gap-2 text-xs text-os-text mb-2">
                 <span>当前角色：</span>
                 {(selectedUser.roles || []).length === 0 ? (
-                  <span className="text-os-muted">无</span>
+                   <span className="text-os-subtle">无</span>
                 ) : (
                   selectedUser.roles.map((r) => (
                     <span key={r} className="px-1.5 py-0.5 rounded text-2xs bg-os-accent/10 text-os-accent">{r}</span>
@@ -493,7 +493,7 @@ export default function UserManagementPage() {
                   ))}
                 </select>
                 {assigningRole && (
-                  <p className="text-2xs text-os-muted mt-1.5 leading-relaxed">
+                  <p className="mt-1.5 text-2xs leading-relaxed text-os-subtle">
                     {ROLE_DESCRIPTIONS[assigningRole]}
                   </p>
                 )}

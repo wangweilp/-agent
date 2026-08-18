@@ -5,6 +5,15 @@ import { useEffect, useState } from "react";
 import { getAgentStats, listExecutions } from "@/services/agents";
 import type { AgentStats, WorkflowExecution } from "@/types/agents";
 
+const EXECUTION_STATUS_LABELS: Record<string, string> = {
+  draft: "草稿",
+  running: "运行中",
+  paused: "等待人工",
+  completed: "已完成",
+  failed: "失败",
+  cancelled: "已取消",
+};
+
 export default function AgentDashboardPage() {
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
@@ -35,8 +44,8 @@ export default function AgentDashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-1">Agent Dashboard</h1>
-      <p className="text-gray-500 mb-8">Agent 运行状况全景</p>
+      <h1 className="text-3xl font-bold text-gray-900 mb-1">智能体运行看板</h1>
+      <p className="text-gray-500 mb-8">智能体运行状况全景</p>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -66,16 +75,19 @@ export default function AgentDashboardPage() {
             <h2 className="font-semibold text-gray-900">智能体列表</h2>
           </div>
           <div className="divide-y divide-gray-100">
-            {stats.agents.map((a) => (
-              <div key={a.agent_id} className="px-5 py-3 flex items-center justify-between">
-                <div>
+            {stats.agents.length === 0 ? (
+              <div className="px-5 py-8 text-center text-gray-600">暂无智能体数据</div>
+            ) : (
+              stats.agents.map((a) => (
+              <div key={a.agent_id} className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <div className="font-medium text-gray-900 text-sm">{a.name}</div>
-                  <div className="text-xs text-gray-500">{a.agent_id}</div>
+                  <div className="truncate text-xs text-gray-500">{a.agent_id}</div>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-4 text-sm">
                   <span className="text-gray-600">{a.usage_count} 次</span>
                   <span className="text-green-600">{(a.success_rate * 100).toFixed(0)}%</span>
-                  <span className="text-gray-400">
+                  <span className="text-gray-600">
                     {a.avg_duration_ms > 0 ? `${a.avg_duration_ms.toFixed(0)}ms` : "-"}
                   </span>
                   <span
@@ -89,7 +101,8 @@ export default function AgentDashboardPage() {
                   </span>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -100,7 +113,7 @@ export default function AgentDashboardPage() {
           </div>
           <div className="divide-y divide-gray-100">
             {recentExecs.length === 0 ? (
-              <div className="px-5 py-8 text-center text-gray-400">暂无执行记录</div>
+              <div className="px-5 py-8 text-center text-gray-600">暂无执行记录</div>
             ) : (
               recentExecs.map((ex) => (
                 <div key={ex.execution_id} className="px-5 py-3">
@@ -119,7 +132,7 @@ export default function AgentDashboardPage() {
                           : "bg-gray-50 text-gray-600"
                       }`}
                     >
-                      {ex.status}
+                      {EXECUTION_STATUS_LABELS[ex.status] ?? ex.status}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-500">

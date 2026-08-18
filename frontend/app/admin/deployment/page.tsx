@@ -58,29 +58,57 @@ interface ConfigSummary {
 // ── Helpers ──
 
 function formatUptime(seconds: number): string {
-  if (!seconds || seconds < 0) return "N/A";
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  if (!seconds || seconds < 0) return "暂无";
+  if (seconds < 60) return `${seconds} 秒`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${m}m`;
+  return `${h} 小时 ${m} 分`;
 }
 
 function StatusIcon({ status }: { status: ServiceStatus }) {
-  if (status === "healthy") return <CheckCircle2 size={16} className="text-emerald-400" />;
-  if (status === "unhealthy") return <XCircle size={16} className="text-red-400" />;
-  return <Clock size={16} className="text-amber-400 animate-pulse" />;
+  if (status === "healthy") return <CheckCircle2 size={16} className="text-os-success" />;
+  if (status === "unhealthy") return <XCircle size={16} className="text-os-danger" />;
+  return <Clock size={16} className="text-os-warning animate-pulse" />;
 }
 
 function statusBadgeStyle(status: ServiceStatus): string {
   switch (status) {
     case "healthy":
-      return "bg-emerald-400/10 text-emerald-400";
+      return "bg-os-success-soft text-os-success";
     case "unhealthy":
-      return "bg-red-400/10 text-red-400";
+      return "bg-os-danger-soft text-os-danger";
     default:
-      return "bg-amber-400/10 text-amber-400";
+      return "bg-os-warning-soft text-os-warning";
   }
+}
+
+const SERVICE_STATUS_LABELS: Record<ServiceStatus, string> = {
+  healthy: "健康",
+  unhealthy: "异常",
+  checking: "检查中",
+};
+
+const BACKEND_STATUS_LABELS: Record<string, string> = {
+  healthy: "健康",
+  ok: "正常",
+  pass: "正常",
+  unhealthy: "异常",
+  error: "异常",
+  fail: "失败",
+};
+
+const CHECK_LABELS: Record<string, string> = {
+  database: "数据库",
+  vector_db: "向量数据库",
+  vector_store: "向量存储",
+  redis: "Redis",
+  storage: "存储",
+  llm: "LLM",
+};
+
+function isHealthyBackendStatus(status: string): boolean {
+  return status === "healthy" || status === "ok" || status === "pass";
 }
 
 // ── Page ──
@@ -108,7 +136,7 @@ export default function DeploymentStatusPage() {
       setHealth((h) => ({ ...h, backend: "healthy" }));
     } catch {
       setHealth((h) => ({ ...h, backend: "unhealthy" }));
-      setError("Cannot reach backend. Is the server running?");
+      setError("无法连接后端服务，请确认服务器是否正在运行。");
     }
 
     // Check DB via dashboard endpoint
@@ -142,10 +170,10 @@ export default function DeploymentStatusPage() {
   }, [checkHealth, fetchConfig]);
 
   const services = [
-    { name: "Backend API", status: health.backend, url: `${BASE}/docs`, desc: "FastAPI application server" },
-    { name: "Frontend", status: health.frontend, url: "/", desc: "Next.js web interface" },
-    { name: "Database", status: health.database, url: null, desc: config?.db_type || "Primary data store" },
-    { name: "Vector DB", status: health.vectorDb, url: null, desc: config?.vector_store || "Embedding vector store" },
+    { name: "后端 API", status: health.backend, url: `${BASE}/docs`, desc: "FastAPI 应用服务" },
+    { name: "前端", status: health.frontend, url: "/", desc: "Next.js Web 界面" },
+    { name: "数据库", status: health.database, url: null, desc: config?.db_type || "主数据存储" },
+    { name: "向量数据库", status: health.vectorDb, url: null, desc: config?.vector_store || "向量嵌入存储" },
   ];
 
   // ── Render ──
@@ -153,7 +181,7 @@ export default function DeploymentStatusPage() {
   return (
     <div className="p-6 space-y-5 max-w-[1440px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
             部署状态
@@ -174,7 +202,7 @@ export default function DeploymentStatusPage() {
 
       {/* Error */}
       {error && (
-        <div className="os-card p-3 rounded-lg border border-red-400/20 bg-red-400/5 text-red-400 text-xs">
+        <div className="os-card rounded-lg border border-os-danger/20 bg-os-danger-soft p-3 text-xs text-os-danger">
           {error}
         </div>
       )}
@@ -187,10 +215,10 @@ export default function DeploymentStatusPage() {
               <span className="text-sm font-medium text-os-text-high">{svc.name}</span>
               <StatusIcon status={svc.status} />
             </div>
-            <p className="text-xs text-os-muted mb-2">{svc.desc}</p>
+            <p className="mb-2 break-words text-xs text-os-subtle">{svc.desc}</p>
             <div className="flex items-center justify-between">
-              <span className={cn("px-1.5 py-0.5 rounded text-2xs font-bold uppercase", statusBadgeStyle(svc.status))}>
-                {svc.status}
+              <span className={cn("px-1.5 py-0.5 rounded text-2xs font-bold", statusBadgeStyle(svc.status))}>
+                {SERVICE_STATUS_LABELS[svc.status]}
               </span>
               {svc.url && (
                 <a
@@ -199,7 +227,7 @@ export default function DeploymentStatusPage() {
                   rel="noopener noreferrer"
                   className="text-xs text-os-accent hover:underline flex items-center gap-1"
                 >
-                  <ExternalLink size={11} /> Open
+                  <ExternalLink size={11} /> 打开
                 </a>
               )}
             </div>
@@ -210,30 +238,30 @@ export default function DeploymentStatusPage() {
       {/* Backend Health Details */}
       {backendHealth && (
         <div>
-          <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider mb-3">
-            Backend Details
+          <h2 className="text-xs font-medium text-os-text-high tracking-wider mb-3">
+            后端详情
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface text-center">
-              <span className="text-2xs text-os-muted uppercase block mb-1">Version</span>
+              <span className="text-2xs text-os-subtle block mb-1">版本</span>
               <p className="text-sm font-mono font-semibold text-os-text-high">
-                {backendHealth.version || "N/A"}
+                {backendHealth.version || "暂无"}
               </p>
             </div>
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface text-center">
-              <span className="text-2xs text-os-muted uppercase block mb-1">Uptime</span>
+              <span className="text-2xs text-os-subtle block mb-1">运行时长</span>
               <p className="text-sm font-mono font-semibold text-os-text-high">
-                {backendHealth.uptime_seconds != null ? formatUptime(backendHealth.uptime_seconds) : "N/A"}
+                {backendHealth.uptime_seconds != null ? formatUptime(backendHealth.uptime_seconds) : "暂无"}
               </p>
             </div>
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface text-center">
-              <span className="text-2xs text-os-muted uppercase block mb-1">Status</span>
-              <p className={cn("text-sm font-semibold capitalize", backendHealth.status === "healthy" ? "text-emerald-400" : "text-red-400")}>
-                {backendHealth.status || "unknown"}
+              <span className="text-2xs text-os-subtle block mb-1">状态</span>
+              <p className={cn("text-sm font-semibold", isHealthyBackendStatus(backendHealth.status) ? "text-os-success" : "text-os-danger")}>
+                {BACKEND_STATUS_LABELS[backendHealth.status] || "未知"}
               </p>
             </div>
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface text-center">
-              <span className="text-2xs text-os-muted uppercase block mb-1">Checks</span>
+              <span className="text-2xs text-os-subtle block mb-1">检查项</span>
               <p className="text-sm font-mono font-semibold text-os-text-high">
                 {backendHealth.checks ? Object.keys(backendHealth.checks).length : 0}
               </p>
@@ -246,17 +274,17 @@ export default function DeploymentStatusPage() {
               {Object.entries(backendHealth.checks).map(([name, check]) => (
                 <div key={name} className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-os-text-high capitalize">{name.replace(/_/g, " ")}</span>
+                    <span className="text-xs text-os-text-high">{CHECK_LABELS[name] || name.replace(/_/g, " ")}</span>
                     {check.latency_ms != null && (
-                      <span className="text-2xs text-os-muted ml-2 font-mono">{check.latency_ms}ms</span>
+                      <span className="text-2xs text-os-subtle ml-2 font-mono">{check.latency_ms} ms</span>
                     )}
                   </div>
                   {check.status === "pass" ? (
-                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <CheckCircle2 size={14} className="text-os-success" />
                   ) : check.status === "warn" ? (
-                    <AlertTriangle size={14} className="text-amber-400" />
+                    <AlertTriangle size={14} className="text-os-warning" />
                   ) : (
-                    <XCircle size={14} className="text-red-400" />
+                    <XCircle size={14} className="text-os-danger" />
                   )}
                 </div>
               ))}
@@ -267,62 +295,62 @@ export default function DeploymentStatusPage() {
 
       {/* Configuration Summary */}
       <div>
-        <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider mb-3">
-          Configuration
+        <h2 className="text-xs font-medium text-os-text-high tracking-wider mb-3">
+          配置摘要
         </h2>
         {config ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
               <div className="flex items-center gap-2 mb-2">
                 <Database size={13} className="text-os-accent" />
-                <span className="text-2xs text-os-muted uppercase tracking-wider">Database</span>
+                <span className="text-2xs text-os-subtle tracking-wider">数据库</span>
               </div>
-              <p className="text-xs font-mono text-os-text-high">{config.db_type || "N/A"}</p>
+              <p className="text-xs font-mono text-os-text-high">{config.db_type || "暂无"}</p>
             </div>
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
               <div className="flex items-center gap-2 mb-2">
                 <Network size={13} className="text-os-accent" />
-                <span className="text-2xs text-os-muted uppercase tracking-wider">Vector Store</span>
+                <span className="text-2xs text-os-subtle tracking-wider">向量存储</span>
               </div>
-              <p className="text-xs font-mono text-os-text-high">{config.vector_store || "N/A"}</p>
+              <p className="text-xs font-mono text-os-text-high">{config.vector_store || "暂无"}</p>
             </div>
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
               <div className="flex items-center gap-2 mb-2">
                 <Cpu size={13} className="text-os-accent" />
-                <span className="text-2xs text-os-muted uppercase tracking-wider">LLM Provider</span>
+                <span className="text-2xs text-os-subtle tracking-wider">LLM 提供商</span>
               </div>
-              <p className="text-xs font-mono text-os-text-high">{config.llm_provider || "N/A"}</p>
+              <p className="text-xs font-mono text-os-text-high">{config.llm_provider || "暂无"}</p>
             </div>
             <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
               <div className="flex items-center gap-2 mb-2">
                 <HardDrive size={13} className="text-os-accent" />
-                <span className="text-2xs text-os-muted uppercase tracking-wider">Embedding Model</span>
+                <span className="text-2xs text-os-subtle tracking-wider">向量嵌入模型</span>
               </div>
-              <p className="text-xs font-mono text-os-text-high">{config.embedding_model || "N/A"}</p>
+              <p className="text-xs font-mono text-os-text-high">{config.embedding_model || "暂无"}</p>
             </div>
           </div>
         ) : (
           <div className="os-card rounded-lg border border-os-border/30 bg-os-surface overflow-hidden">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/30">
-                  <th className="text-left py-2.5 px-3 font-medium">Setting</th>
-                  <th className="text-left py-2.5 px-3 font-medium">Value</th>
-                  <th className="text-left py-2.5 px-3 font-medium hidden sm:table-cell">Description</th>
+                <tr className="text-os-subtle border-b border-os-border/30 bg-os-elevated/30">
+                  <th className="text-left py-2.5 px-3 font-medium">设置</th>
+                  <th className="text-left py-2.5 px-3 font-medium">值</th>
+                  <th className="text-left py-2.5 px-3 font-medium hidden sm:table-cell">说明</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ["API Base URL", BASE, "Backend API endpoint"],
-                  ["Database", "SQLite (embedded)", "Relational database"],
-                  ["Vector DB", "ChromaDB (embedded)", "Vector database for embeddings"],
-                  ["Embedding Model", "BAAI/bge-small-zh-v1.5", "Chinese-optimized embeddings"],
-                  ["LLM", "DeepSeek API", "Language model provider"],
+                  ["API 基础 URL", BASE, "后端 API 端点"],
+                  ["数据库", "SQLite（嵌入式）", "关系型数据库"],
+                  ["向量数据库", "ChromaDB（嵌入式）", "用于向量嵌入的数据库"],
+                  ["向量嵌入模型", "BAAI/bge-small-zh-v1.5", "针对中文优化的向量嵌入"],
+                  ["LLM", "DeepSeek API", "语言模型提供商"],
                 ].map(([key, value, desc]) => (
                   <tr key={key} className="border-b border-os-border/10 hover:bg-os-elevated/30 transition-colors">
                     <td className="py-2.5 px-3 font-medium text-os-text-high">{key}</td>
                     <td className="py-2.5 px-3 text-os-text font-mono text-2xs">{value}</td>
-                    <td className="py-2.5 px-3 text-os-muted hidden sm:table-cell">{desc}</td>
+                    <td className="py-2.5 px-3 text-os-subtle hidden sm:table-cell">{desc}</td>
                   </tr>
                 ))}
               </tbody>
@@ -333,8 +361,8 @@ export default function DeploymentStatusPage() {
 
       {/* Deployment Guide Quick Links */}
       <div>
-        <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider mb-3">
-          Deployment Guide
+        <h2 className="text-xs font-medium text-os-text-high tracking-wider mb-3">
+          部署指南
         </h2>
         <div className={layout.grid.threeMd}>
           <div className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-accent/30 transition-colors">
@@ -342,8 +370,8 @@ export default function DeploymentStatusPage() {
               <Terminal size={14} className="text-os-accent" />
               <span className="text-xs font-semibold text-os-text-high">Docker</span>
             </div>
-            <p className="text-2xs text-os-muted mb-3">
-              Single-container deployment. Ideal for development and small teams.
+            <p className="text-2xs text-os-subtle mb-3">
+              单容器部署，适合开发环境与小型团队。
             </p>
             <div className="space-y-1.5">
               <code className="block p-2 bg-os-elevated rounded text-2xs text-os-text overflow-x-auto">
@@ -359,7 +387,7 @@ export default function DeploymentStatusPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-2xs text-os-accent hover:underline mt-3"
             >
-              Docker Docs <ExternalLink size={10} />
+              Docker 文档 <ExternalLink size={10} />
             </a>
           </div>
 
@@ -368,8 +396,8 @@ export default function DeploymentStatusPage() {
               <Container size={14} className="text-os-accent" />
               <span className="text-xs font-semibold text-os-text-high">Docker Compose</span>
             </div>
-            <p className="text-2xs text-os-muted mb-3">
-              Multi-service deployment with frontend + backend. Recommended for production.
+            <p className="text-2xs text-os-subtle mb-3">
+              前后端多服务部署，推荐用于生产环境。
             </p>
             <div className="space-y-1.5">
               <code className="block p-2 bg-os-elevated rounded text-2xs text-os-text overflow-x-auto">
@@ -389,8 +417,8 @@ export default function DeploymentStatusPage() {
               <BookOpen size={14} className="text-os-accent" />
               <span className="text-xs font-semibold text-os-text-high">Kubernetes</span>
             </div>
-            <p className="text-2xs text-os-muted mb-3">
-              Helm-based deployment for Kubernetes clusters. Best for enterprise scale.
+            <p className="text-2xs text-os-subtle mb-3">
+              基于 Helm 部署到 Kubernetes 集群，适合企业级规模。
             </p>
             <div className="space-y-1.5">
               <code className="block p-2 bg-os-elevated rounded text-2xs text-os-text overflow-x-auto">
@@ -409,7 +437,7 @@ export default function DeploymentStatusPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-2xs text-os-accent hover:underline mt-3"
             >
-              K8s Docs <ExternalLink size={10} />
+              Kubernetes 文档 <ExternalLink size={10} />
             </a>
           </div>
         </div>
@@ -417,32 +445,32 @@ export default function DeploymentStatusPage() {
 
       {/* Deployment Files Reference */}
       <div>
-        <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider mb-3">
-          Deployment Files
+        <h2 className="text-xs font-medium text-os-text-high tracking-wider mb-3">
+          部署文件
         </h2>
         <div className="os-card rounded-lg border border-os-border/30 bg-os-surface overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/30">
-                <th className="text-left py-2.5 px-3 font-medium">File</th>
-                <th className="text-left py-2.5 px-3 font-medium hidden sm:table-cell">Purpose</th>
+              <tr className="text-os-subtle border-b border-os-border/30 bg-os-elevated/30">
+                <th className="text-left py-2.5 px-3 font-medium">文件</th>
+                <th className="text-left py-2.5 px-3 font-medium hidden sm:table-cell">用途</th>
               </tr>
             </thead>
             <tbody>
               {[
-                ["deployment/docker/Dockerfile", "Backend container image"],
-                ["deployment/docker/Dockerfile.frontend", "Frontend container image"],
-                ["deployment/docker/docker-compose.yml", "Multi-service orchestration"],
-                ["deployment/docker/docker-compose.offline.yml", "Offline/air-gapped deployment"],
-                ["deployment/docker/.env.docker", "Environment variable template"],
-                ["deployment/helm/Chart.yaml", "Helm chart metadata"],
-                ["deployment/helm/values.yaml", "Kubernetes configuration values"],
-                ["deployment/helm/templates/", "Kubernetes resource templates"],
-                ["deployment/README.md", "Full deployment documentation"],
+                ["deployment/docker/Dockerfile", "后端容器镜像"],
+                ["deployment/docker/Dockerfile.frontend", "前端容器镜像"],
+                ["deployment/docker/docker-compose.yml", "多服务编排"],
+                ["deployment/docker/docker-compose.offline.yml", "离线 / 隔离网络部署"],
+                ["deployment/docker/.env.docker", "环境变量模板"],
+                ["deployment/helm/Chart.yaml", "Helm Chart 元数据"],
+                ["deployment/helm/values.yaml", "Kubernetes 配置值"],
+                ["deployment/helm/templates/", "Kubernetes 资源模板"],
+                ["deployment/README.md", "完整部署文档"],
               ].map(([file, purpose]) => (
                 <tr key={file} className="border-b border-os-border/10 hover:bg-os-elevated/30 transition-colors">
                   <td className="py-2.5 px-3 text-os-text font-mono text-2xs">{file}</td>
-                  <td className="py-2.5 px-3 text-os-muted hidden sm:table-cell">{purpose}</td>
+                  <td className="py-2.5 px-3 text-os-subtle hidden sm:table-cell">{purpose}</td>
                 </tr>
               ))}
             </tbody>
@@ -452,17 +480,17 @@ export default function DeploymentStatusPage() {
 
       {/* Quick Links */}
       <div>
-        <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider mb-3">
-          Quick Links
+        <h2 className="text-xs font-medium text-os-text-high tracking-wider mb-3">
+          快捷链接
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {[
-            { label: "API Docs", url: `${BASE}/docs` },
+            { label: "API 文档", url: `${BASE}/docs` },
             { label: "Redoc", url: `${BASE}/redoc` },
-            { label: "Health", url: `${BASE}/health` },
-            { label: "Metrics", url: `${BASE}/metrics` },
+            { label: "健康检查", url: `${BASE}/health` },
+            { label: "监控指标", url: `${BASE}/metrics` },
             { label: "OpenAPI JSON", url: `${BASE}/openapi.json` },
-            { label: "Admin API", url: `${BASE}/api/admin/summary` },
+            { label: "管理 API", url: `${BASE}/api/admin/summary` },
           ].map((link) => (
             <a
               key={link.label}

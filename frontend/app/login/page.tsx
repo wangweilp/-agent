@@ -11,11 +11,11 @@ import { cn } from "@/lib/utils";
 // ── 终端启动日志序列 ──
 
 const BOOT_LOGS = [
-  "> INITIALIZING ZHIWEI OS KERNEL...",
-  "> [OK] causal-kernel mounted",
-  "> [OK] memory-store connected",
-  "> [OK] enforcement-layer ready",
-  "> AWAITING AUTHENTICATION...",
+  "> 正在初始化知维 OS 内核...",
+  "> [OK] 因果内核已挂载",
+  "> [OK] 记忆存储已连接",
+  "> [OK] 执行约束层已就绪",
+  "> AWAITING 身份验证...",
 ];
 
 export default function LoginPage() {
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-[400px] z-10">
         {/* 终端启动日志 */}
-        <div className="mb-6 font-mono text-2xs text-os-subtle/70 space-y-0.5 min-h-[88px]">
+        <div className="mb-6 min-h-[88px] space-y-0.5 font-mono text-2xs text-os-subtle">
           {visibleLogs.map((log, i) => (
             <motion.div
               key={i}
@@ -122,8 +122,8 @@ export default function LoginPage() {
               transition={{ duration: 0.2 }}
               className={cn(
                 "flex items-center gap-1",
-                (log ?? "").includes("[OK]") && "text-emerald-400/60",
-                (log ?? "").includes("AWAITING") && "text-os-accent/70",
+                (log ?? "").includes("[OK]") && "text-emerald-700",
+                (log ?? "").includes("AWAITING") && "text-indigo-700",
               )}
             >
               <span>{log ?? ""}</span>
@@ -180,7 +180,7 @@ export default function LoginPage() {
                     }}
                     placeholder="你的名字"
                     autoComplete="name"
-                    className="w-full h-10 pl-9 pr-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/20 transition-all"
+                    className="w-full h-10 pl-9 pr-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/20 transition-all"
                   />
                 </div>
               </div>
@@ -203,7 +203,7 @@ export default function LoginPage() {
                   }}
                   placeholder="your@email.com"
                   autoComplete="email"
-                  className="w-full h-10 pl-9 pr-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/20 transition-all"
+                  className="w-full h-10 pl-9 pr-3 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/20 transition-all"
                 />
               </div>
             </div>
@@ -227,7 +227,7 @@ export default function LoginPage() {
                   autoComplete={
                     mode === "register" ? "new-password" : "current-password"
                   }
-                  className="w-full h-10 pl-9 pr-10 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/20 transition-all"
+                  className="w-full h-10 pl-9 pr-10 rounded bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent/50 focus:ring-1 focus:ring-os-accent/20 transition-all"
                 />
                 <button
                   type="button"
@@ -242,7 +242,7 @@ export default function LoginPage() {
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 text-xs text-os-danger bg-os-danger/5 rounded px-3 py-2 border border-os-danger/10">
+              <div className="flex items-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                 <AlertCircle size={13} className="shrink-0" />
                 {error}
               </div>
@@ -256,7 +256,7 @@ export default function LoginPage() {
                 "w-full h-10 rounded text-sm font-medium transition-all flex items-center justify-center gap-2",
                 isValid && !loading
                   ? "bg-os-accent text-white hover:bg-os-accent/90 shadow-os-glow"
-                  : "bg-os-elevated text-os-muted cursor-not-allowed"
+                  : "cursor-not-allowed border border-os-border bg-os-surface-muted text-os-subtle"
               )}
             >
               {loading ? (

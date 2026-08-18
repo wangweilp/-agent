@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, Brain, Lightbulb, BookOpen } from "lucide-react";
+import { Brain, Lightbulb, BookOpen } from "lucide-react";
 import { cn, formatDate, importanceColor } from "@/lib/utils";
 import type { Memory } from "@/types";
 
@@ -42,20 +42,20 @@ export function MemoryTimeline({ memories }: { memories: Memory[] }) {
 
               {/* Content */}
               <div className="os-card p-4 ml-2 os-card-hover">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Icon size={13} className="text-os-subtle" />
                   <span className="text-xs font-medium text-os-text-high">
                     {m.memory_type === "reflect" ? "反思洞察" : m.memory_type === "semantic" ? "语义记忆" : "情景记忆"}
                   </span>
-                  <span className="text-2xs text-os-muted">{formatDate(m.timestamp)}</span>
+                  <span className="text-2xs text-os-subtle">{formatDate(m.timestamp)}</span>
                 </div>
-                <p className="text-sm text-os-text leading-relaxed">
+                <p className="break-words text-sm leading-relaxed text-os-text [overflow-wrap:anywhere]">
                   {m.summary || m.content.slice(0, 200)}
                 </p>
                 {m.entities.length > 0 && (
                   <div className="flex items-center gap-1 mt-2 flex-wrap">
                     {m.entities.map((e) => (
-                      <span key={e} className="text-2xs px-1.5 py-0.5 rounded bg-os-elevated text-os-subtle">
+                      <span key={e} className="max-w-full break-all rounded bg-os-elevated px-1.5 py-0.5 text-2xs text-os-subtle">
                         {e}
                       </span>
                     ))}

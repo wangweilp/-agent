@@ -99,7 +99,8 @@ class SQLitePackageValidationStore:
 
     def get_latest_by_submission(self, submission_id: str) -> PackageValidationResult | None:
         row = next(self._exec(
-            "SELECT * FROM package_validation_results WHERE submission_id=? ORDER BY created_at DESC LIMIT 1",
+            # created_at 相同（同一微秒）时按 rowid 递增序取最新，保证确定性
+            "SELECT * FROM package_validation_results WHERE submission_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1",
             [submission_id]), None)
         return self._row_to_result(dict(row)) if row else None
 

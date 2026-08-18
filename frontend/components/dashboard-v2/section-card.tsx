@@ -22,12 +22,12 @@ export function SectionCard({
 }: SectionCardProps) {
   return (
     <div className={cn("os-card p-6 rounded-xl h-full flex flex-col hover:border-os-accent/50 transition-colors", className)}>
-      <div className="flex items-center gap-2.5 mb-5">
+      <div className="mb-5 flex flex-wrap items-center gap-2.5">
         {icon && <span className="text-os-accent">{icon}</span>}
         <h2 className="text-sm font-medium text-os-text-high uppercase tracking-wider">
           {title}
         </h2>
-        {action && <div className="ml-auto">{action}</div>}
+        {action && <div className="ml-auto shrink-0">{action}</div>}
       </div>
       <div className={cn("flex-1 min-w-0", bodyClassName)}>{children}</div>
     </div>

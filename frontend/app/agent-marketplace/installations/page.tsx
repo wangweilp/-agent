@@ -32,7 +32,7 @@ import type { MarketplaceConfigRequest, TenantAgentInstallation } from "@/types/
 function statusBadge(status: string, enabled: boolean) {
   if (enabled && status === "active") {
     return (
-      <span className="os-badge bg-emerald-400/10 text-emerald-300">
+      <span className="os-badge bg-os-success-soft text-os-success">
         <CheckCircle2 size={11} />
         运行中
       </span>
@@ -40,7 +40,7 @@ function statusBadge(status: string, enabled: boolean) {
   }
   if (status === "disabled") {
     return (
-      <span className="os-badge bg-zinc-500/10 text-os-muted">
+      <span className="os-badge bg-os-elevated text-os-subtle">
         <XCircle size={11} />
         已停用
       </span>
@@ -48,13 +48,13 @@ function statusBadge(status: string, enabled: boolean) {
   }
   if (status === "error") {
     return (
-      <span className="os-badge bg-red-400/10 text-red-300">
+      <span className="os-badge bg-os-danger-soft text-os-danger">
         <AlertTriangle size={11} />
         异常
       </span>
     );
   }
-  return <span className="os-badge bg-zinc-500/10 text-os-muted">{status}</span>;
+  return <span className="os-badge bg-os-elevated text-os-subtle">未知状态</span>;
 }
 
 export default function InstallationsPage() {
@@ -77,7 +77,7 @@ export default function InstallationsPage() {
       setInstallations(res.installations);
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "加载失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "加载失败"}`);
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ export default function InstallationsPage() {
       }
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "操作失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "操作失败"}`);
     } finally {
       setToggling((prev) => {
         const next = new Set(prev);
@@ -118,7 +118,7 @@ export default function InstallationsPage() {
       setInstallations((prev) => prev.filter((i) => i.installation_id !== inst.installation_id));
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "卸载失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "卸载失败"}`);
     } finally {
       setUninstalling((prev) => {
         const next = new Set(prev);
@@ -142,7 +142,7 @@ export default function InstallationsPage() {
       setConfigDialogInst(null);
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "配置保存失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "配置保存失败"}`);
     } finally {
       setSavingConfig(null);
     }
@@ -164,13 +164,13 @@ export default function InstallationsPage() {
             className="mb-2 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"
           >
             <ArrowLeft size={14} />
-            返回 Marketplace
+            返回智能体市场
           </Link>
           <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">
-            已安装 Agent
+            已安装智能体
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
-            管理当前工作区已安装的 Agent。启用、停用、更新配置或卸载。
+            管理当前工作区已安装的智能体。启用、停用、更新配置或卸载。
           </p>
         </div>
 
@@ -187,7 +187,7 @@ export default function InstallationsPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
+        <div className="mb-4 rounded-md border border-os-danger/20 bg-os-danger-soft p-3 text-sm text-os-danger">
           {error}
         </div>
       )}
@@ -217,7 +217,7 @@ export default function InstallationsPage() {
             <Link href="/agent-marketplace" className="text-os-accent hover:underline">
               智能体市场
             </Link>
-            {" "}浏览并安装 Agent。
+            {" "}浏览并安装智能体。
           </p>
         </section>
       )}
@@ -235,13 +235,13 @@ export default function InstallationsPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/agent-marketplace/${inst.marketplace_agent_id}`}
-                      className="text-sm font-semibold text-os-text-high hover:text-os-accent"
+                      className="min-w-0 break-words text-sm font-semibold text-os-text-high hover:text-os-accent"
                     >
                       {inst.agent_id}
                     </Link>
                     {statusBadge(inst.status, inst.enabled)}
                   </div>
-                  <p className="mt-1 font-mono text-2xs text-os-muted">
+                  <p className="mt-1 break-all font-mono text-2xs text-os-subtle">
                     {inst.installation_id}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-2xs text-os-subtle">
@@ -250,8 +250,8 @@ export default function InstallationsPage() {
                       {inst.installed_at ? new Date(inst.installed_at).toLocaleString("zh-CN") : "-"}
                     </span>
                     {inst.version_pinned && (
-                      <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-amber-300">
-                        锁定: {inst.version_pinned}
+                      <span className="rounded bg-os-warning-soft px-1.5 py-0.5 text-os-warning">
+                        锁定：{inst.version_pinned}
                       </span>
                     )}
                   </div>
@@ -265,8 +265,8 @@ export default function InstallationsPage() {
                     disabled={isToggling}
                     className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       inst.enabled
-                        ? "bg-red-400/10 text-red-300 hover:bg-red-400/15"
-                        : "bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15"
+                        ? "bg-os-danger-soft text-os-danger hover:bg-os-danger/15"
+                        : "bg-os-success-soft text-os-success hover:bg-os-success/15"
                     }`}
                   >
                     {isToggling ? (
@@ -300,13 +300,13 @@ export default function InstallationsPage() {
 
                   {/* Uninstall */}
                   {confirmUninstall === inst.installation_id ? (
-                    <div className="inline-flex items-center gap-1.5 rounded-md border border-red-400/20 bg-red-400/5 px-2 py-1">
-                      <span className="text-xs text-red-300">确认卸载？</span>
+                    <div className="inline-flex items-center gap-1.5 rounded-md border border-os-danger/20 bg-os-danger-soft px-2 py-1">
+                      <span className="text-xs text-os-danger">确认卸载？</span>
                       <button
                         type="button"
                         onClick={() => handleUninstall(inst)}
                         disabled={isUninstalling}
-                        className="rounded bg-red-400/20 px-2 py-0.5 text-xs text-red-200 hover:bg-red-400/30 disabled:opacity-50"
+                        className="rounded bg-os-danger px-2 py-0.5 text-xs text-white hover:bg-os-danger/90 disabled:opacity-50"
                       >
                         {isUninstalling ? "..." : "确认"}
                       </button>
@@ -322,7 +322,7 @@ export default function InstallationsPage() {
                     <button
                       type="button"
                       onClick={() => setConfirmUninstall(inst.installation_id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-os-border px-2.5 text-xs font-medium text-os-subtle transition-colors hover:border-red-400/30 hover:text-red-300"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border border-os-border px-2.5 text-xs font-medium text-os-subtle transition-colors hover:border-os-danger/30 hover:text-os-danger"
                     >
                       <Trash2 size={12} />
                       卸载

@@ -84,26 +84,26 @@ export function KillSwitchPanel({ governance }: Props) {
     <div className="space-y-4">
       {/* ── Kill readiness grid ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-        <ReadinessTile label="Kill Switch" ok={readiness?.kill_switch} />
-        <ReadinessTile label="Kill Policy" ok={readiness?.kill_policy} />
-        <ReadinessTile label="Active Handles" ok={readiness?.active_execution_handles} />
-        <ReadinessTile label="Queue Cancel" ok={readiness?.queue_cancel} />
-        <ReadinessTile label="Worker Checkpoints" ok={readiness?.worker_cancel_checkpoints} />
-        <ReadinessTile label="Provider Cancel" ok={readiness?.provider_cancel_interface} />
+        <ReadinessTile label="终止开关" ok={readiness?.kill_switch} />
+        <ReadinessTile label="终止策略" ok={readiness?.kill_policy} />
+        <ReadinessTile label="活跃句柄" ok={readiness?.active_execution_handles} />
+        <ReadinessTile label="队列取消" ok={readiness?.queue_cancel} />
+        <ReadinessTile label="工作进程检查点" ok={readiness?.worker_cancel_checkpoints} />
+        <ReadinessTile label="提供方取消" ok={readiness?.provider_cancel_interface} />
       </div>
 
       {/* ── Kill trigger ── */}
       <div className="os-card p-4 scanline">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded bg-rose-400/10 flex items-center justify-center">
-            <Power size={14} className="text-rose-400" />
+            <Power size={14} className="text-rose-700" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Kill Trigger</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-os-text-high">终止触发器</h3>
             <p className="text-2xs text-os-subtle">实时终止运行中的沙箱任务、执行计划或容器</p>
           </div>
-          <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-400/10 text-rose-300 text-2xs font-mono">
-            <span className="w-1 h-1 rounded-full bg-rose-400 animate-status-breathe" /> LIVE CONTROL
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-rose-400/10 px-2 py-0.5 font-mono text-2xs text-rose-700">
+            <span className="w-1 h-1 rounded-full bg-rose-400 animate-status-breathe" /> 实时控制
           </span>
         </div>
 
@@ -113,35 +113,35 @@ export function KillSwitchPanel({ governance }: Props) {
             onChange={(e) => setKillType(e.target.value as typeof killType)}
             className="h-9 rounded-md border border-os-border bg-os-elevated px-2 text-xs text-os-text-high outline-none focus:border-os-accent"
           >
-            <option value="job">Job</option>
-            <option value="execution-plan">Execution Plan</option>
-            <option value="container-plan">Container Plan</option>
+            <option value="job">任务</option>
+            <option value="execution-plan">执行计划</option>
+            <option value="container-plan">容器计划</option>
           </select>
           <input
             value={killTarget}
             onChange={(e) => setKillTarget(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !killMutation.isPending && killMutation.mutate()}
-            placeholder={`${killType} ID...`}
-            className="flex-1 h-9 px-3 rounded-md border border-os-border bg-os-elevated text-xs text-os-text-high font-mono placeholder:text-os-muted outline-none focus:border-rose-400/50"
+            placeholder="输入目标 ID…"
+            className="h-9 flex-1 rounded-md border border-os-border bg-os-elevated px-3 font-mono text-xs text-os-text-high outline-none placeholder:text-os-subtle focus:border-rose-400/50"
           />
           <button
             onClick={() => killMutation.mutate()}
             disabled={!killTarget.trim() || killMutation.isPending}
-            className="h-9 px-4 rounded-md bg-rose-500/90 text-white text-xs font-medium hover:bg-rose-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            className="flex h-9 items-center gap-1.5 rounded-md bg-rose-700 px-4 text-xs font-medium text-white transition-colors hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {killMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Ban size={12} />}
-            TERMINATE
+            终止
           </button>
         </div>
 
         {killMutation.isError && (
-          <p className="mt-2 text-2xs text-rose-300 flex items-center gap-1">
-            <AlertTriangle size={10} /> {(killMutation.error as Error)?.message || "Kill request failed"}
+          <p className="mt-2 flex items-center gap-1 text-2xs text-rose-700">
+            <AlertTriangle size={10} /> {(killMutation.error as Error)?.message || "终止请求失败"}
           </p>
         )}
         {killMutation.isSuccess && (
-          <p className="mt-2 text-2xs text-emerald-300 flex items-center gap-1">
-            <CheckCircle2 size={10} /> Kill request dispatched
+          <p className="mt-2 flex items-center gap-1 text-2xs text-emerald-700">
+            <CheckCircle2 size={10} /> 终止请求已发送
           </p>
         )}
       </div>
@@ -150,21 +150,21 @@ export function KillSwitchPanel({ governance }: Props) {
       <div className="os-card">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-os-border">
           <div className="flex items-center gap-2">
-            <Crosshair size={13} className="text-amber-400" />
-            <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Active Handles</h3>
-            <span className="text-2xs text-os-muted font-mono">{activeHandles.length}</span>
+            <Crosshair size={13} className="text-amber-700" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-os-text-high">活跃执行句柄</h3>
+            <span className="font-mono text-2xs text-os-subtle">{activeHandles.length}</span>
           </div>
           <span className={cn(
             "text-2xs px-2 py-0.5 rounded-full font-mono",
-            activeHandles.length > 0 ? "bg-amber-400/10 text-amber-300" : "bg-emerald-400/10 text-emerald-300"
+            activeHandles.length > 0 ? "bg-amber-400/10 text-amber-700" : "bg-emerald-400/10 text-emerald-700"
           )}>
-            {activeHandles.length > 0 ? "EXECUTING" : "IDLE"}
+            {activeHandles.length > 0 ? "执行中" : "空闲"}
           </span>
         </div>
         {activeHandles.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <CheckCircle2 size={20} className="mx-auto text-emerald-400/50 mb-2" />
-            <p className="text-xs text-os-muted">无活跃执行句柄</p>
+            <CheckCircle2 size={20} className="mx-auto mb-2 text-emerald-700" />
+            <p className="text-xs text-os-subtle">无活跃执行句柄</p>
           </div>
         ) : (
           <div className="divide-y divide-os-border">
@@ -174,23 +174,23 @@ export function KillSwitchPanel({ governance }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono text-os-text-high truncate">{h.handle_id.slice(0, 20)}</span>
-                    <span className="text-2xs text-os-muted">{h.target_type}</span>
+                    <span className="text-2xs text-os-subtle">{h.target_type}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-2xs text-os-muted mt-0.5">
+                  <div className="mt-0.5 flex items-center gap-3 text-2xs text-os-subtle">
                     <span className="font-mono">{h.provider}</span>
                     <span className="flex items-center gap-1"><Clock size={9} />{formatDate(h.started_at)}</span>
-                    {h.timeout_at && <span className="text-amber-300">timeout {formatDate(h.timeout_at)}</span>}
+                    {h.timeout_at && <span className="text-amber-700">超时 {formatDate(h.timeout_at)}</span>}
                   </div>
                 </div>
                 {h.cancel_requested ? (
-                  <span className="text-2xs text-amber-300 px-2 py-0.5 rounded bg-amber-400/10">cancel pending</span>
+                  <span className="rounded bg-amber-400/10 px-2 py-0.5 text-2xs text-amber-700">等待取消</span>
                 ) : (
                   <button
                     onClick={() => cancelHandleMutation.mutate(h.handle_id)}
                     disabled={cancelHandleMutation.isPending}
-                    className="text-2xs text-rose-300 px-2 py-1 rounded bg-rose-400/10 hover:bg-rose-400/20 transition-colors disabled:opacity-50"
+                    className="rounded bg-rose-400/10 px-2 py-1 text-2xs text-rose-700 transition-colors hover:bg-rose-400/20 disabled:opacity-50"
                   >
-                    Cancel
+                    取消
                   </button>
                 )}
               </div>
@@ -209,20 +209,20 @@ export function KillSwitchPanel({ governance }: Props) {
       {killModule && (
         <div className="os-card p-4">
           <div className="flex items-center gap-2 mb-2">
-            <ShieldAlert size={12} className="text-os-muted" />
-            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">治理 Metadata</h4>
+            <ShieldAlert size={12} className="text-os-subtle" />
+            <h4 className="text-2xs font-medium uppercase tracking-wider text-os-subtle">治理元数据</h4>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-2xs">
-            <MetaItem label="Status" value={killModule.status} />
-            <MetaItem label="Mode" value={killModule.mode} />
-            <MetaItem label="Risk" value={killModule.risk_level} />
-            <MetaItem label="Enabled" value={killModule.enabled ? "true" : "false"} />
+            <MetaItem label="状态" value={killModule.status} />
+            <MetaItem label="模式" value={killModule.mode} />
+            <MetaItem label="风险" value={killModule.risk_level} />
+            <MetaItem label="是否启用" value={killModule.enabled ? "true" : "false"} />
           </div>
           {killModule.evidence.length > 0 && (
             <div className="mt-2 space-y-1">
               {killModule.evidence.slice(0, 3).map((e, i) => (
                 <p key={i} className="text-2xs text-os-subtle flex items-start gap-1.5">
-                  <CheckCircle2 size={10} className="text-emerald-400/60 mt-0.5 shrink-0" />
+                  <CheckCircle2 size={10} className="mt-0.5 shrink-0 text-emerald-700" />
                   {e}
                 </p>
               ))}
@@ -241,7 +241,7 @@ function ReadinessTile({ label, ok }: { label: string; ok?: boolean }) {
       ok ? "border-emerald-400/20" : "border-os-border"
     )}>
       <div className="flex items-center justify-between">
-        <span className="text-2xs text-os-muted truncate">{label}</span>
+        <span className="truncate text-2xs text-os-subtle">{label}</span>
         <div className={cn(
           "w-1.5 h-1.5 rounded-full",
           ok ? "bg-emerald-400" : "bg-os-muted"
@@ -249,9 +249,9 @@ function ReadinessTile({ label, ok }: { label: string; ok?: boolean }) {
       </div>
       <span className={cn(
         "text-2xs font-mono",
-        ok ? "text-emerald-300" : "text-os-subtle"
+        ok ? "text-emerald-700" : "text-os-subtle"
       )}>
-        {ok ? "ready" : "off"}
+        {ok ? "就绪" : "关闭"}
       </span>
     </div>
   );
@@ -261,12 +261,12 @@ function KillRequestList({ requests }: { requests: SandboxV2KillRequest[] }) {
   return (
     <div className="os-card">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-os-border">
-        <Zap size={12} className="text-amber-400" />
-        <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Kill Requests</h3>
-        <span className="text-2xs text-os-muted font-mono ml-auto">{requests.length}</span>
+        <Zap size={12} className="text-amber-700" />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-os-text-high">终止请求</h3>
+        <span className="ml-auto font-mono text-2xs text-os-subtle">{requests.length}</span>
       </div>
       {requests.length === 0 ? (
-        <p className="px-4 py-6 text-center text-2xs text-os-muted">无 kill 请求记录</p>
+        <p className="px-4 py-6 text-center text-2xs text-os-subtle">无终止请求记录</p>
       ) : (
         <div className="divide-y divide-os-border max-h-64 overflow-y-auto">
           {requests.map((r, i) => (
@@ -275,13 +275,13 @@ function KillRequestList({ requests }: { requests: SandboxV2KillRequest[] }) {
                 <span className="font-mono text-os-text-high">{String(r.target_type || "-")}</span>
                 <span className={cn(
                   "px-1.5 py-0.5 rounded text-2xs font-mono",
-                  String(r.status) === "completed" ? "bg-emerald-400/10 text-emerald-300"
-                    : String(r.status) === "pending" ? "bg-amber-400/10 text-amber-300"
+                  String(r.status) === "completed" ? "bg-emerald-400/10 text-emerald-700"
+                    : String(r.status) === "pending" ? "bg-amber-400/10 text-amber-700"
                     : "bg-os-muted/10 text-os-subtle"
                 )}>{String(r.status)}</span>
-                {r.force && <span className="text-rose-300">force</span>}
+                {r.force && <span className="text-rose-700">强制</span>}
               </div>
-              <p className="text-os-muted mt-0.5 truncate font-mono">{String(r.target_id || r.job_id || "-")}</p>
+              <p className="mt-0.5 truncate font-mono text-os-subtle">{String(r.target_id || r.job_id || "-")}</p>
             </div>
           ))}
         </div>
@@ -295,11 +295,11 @@ function KillRecordList({ records }: { records: SandboxV2KillRecord[] }) {
     <div className="os-card">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-os-border">
         <Activity size={12} className="text-os-accent" />
-        <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Kill Records</h3>
-        <span className="text-2xs text-os-muted font-mono ml-auto">{records.length}</span>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-os-text-high">终止记录</h3>
+        <span className="ml-auto font-mono text-2xs text-os-subtle">{records.length}</span>
       </div>
       {records.length === 0 ? (
-        <p className="px-4 py-6 text-center text-2xs text-os-muted">无 kill 执行记录</p>
+        <p className="px-4 py-6 text-center text-2xs text-os-subtle">无终止执行记录</p>
       ) : (
         <div className="divide-y divide-os-border max-h-64 overflow-y-auto">
           {records.map((r, i) => (
@@ -309,11 +309,11 @@ function KillRecordList({ records }: { records: SandboxV2KillRecord[] }) {
                 <span className={cn(
                   "px-1.5 py-0.5 rounded font-mono",
                   String(r.status_after) === "killed" || String(r.status_after) === "canceled"
-                    ? "bg-emerald-400/10 text-emerald-300"
-                    : "bg-rose-400/10 text-rose-300"
+                    ? "bg-emerald-400/10 text-emerald-700"
+                    : "bg-rose-400/10 text-rose-700"
                 )}>{String(r.status_after)}</span>
               </div>
-              <p className="text-os-muted mt-0.5 truncate font-mono">{String(r.target_id || "-")}</p>
+              <p className="mt-0.5 truncate font-mono text-os-subtle">{String(r.target_id || "-")}</p>
             </div>
           ))}
         </div>
@@ -325,7 +325,7 @@ function KillRecordList({ records }: { records: SandboxV2KillRecord[] }) {
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-os-border bg-os-elevated/40 px-2 py-1.5">
-      <p className="text-os-muted">{label}</p>
+      <p className="text-os-subtle">{label}</p>
       <p className="text-os-text-high font-mono mt-0.5 truncate">{value}</p>
     </div>
   );

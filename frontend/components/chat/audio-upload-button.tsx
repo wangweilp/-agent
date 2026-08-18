@@ -63,6 +63,7 @@ export function AudioUploadButton({ onUploadComplete }: AudioUploadButtonProps) 
       />
 
       <button
+        type="button"
         onClick={handleSelect}
         disabled={uploading}
         className={cn(
@@ -71,6 +72,7 @@ export function AudioUploadButton({ onUploadComplete }: AudioUploadButtonProps) 
           "disabled:opacity-50"
         )}
         title="上传音频"
+        aria-label="上传音频"
       >
         {uploading ? (
           <Loader2 size={14} className="animate-spin text-os-accent" />
@@ -96,9 +98,9 @@ export function AudioUploadButton({ onUploadComplete }: AudioUploadButtonProps) 
               )}
             >
               {r.ok ? (
-                <CheckCircle2 size={13} className="text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircle2 size={13} className="text-emerald-700 shrink-0 mt-0.5" />
               ) : (
-                <XCircle size={13} className="text-red-400 shrink-0 mt-0.5" />
+                <XCircle size={13} className="text-red-700 shrink-0 mt-0.5" />
               )}
               <div className="min-w-0">
                 <p className="text-os-text-high truncate font-medium">{r.filename}</p>

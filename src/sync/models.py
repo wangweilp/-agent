@@ -38,6 +38,7 @@ class SyncConnectorConfig:
     version_map: dict[str, str] = field(default_factory=dict)
     created_at: datetime = field(default_factory=_utcnow)
     updated_at: datetime = field(default_factory=_utcnow)
+    workspace_id: str = "default"
 
 
 @dataclass
@@ -50,19 +51,48 @@ class SyncRule:
     enabled: bool = True
     webhook_url: str = ""
     webhook_secret: str = ""
+    workspace_id: str = "default"
+
+
+# Job 生命周期状态
+#   非终止（active）：queued | running | cancel_requested
+#   终止（可物理删除）：pending | completed | failed | partial | cancelled
+JOB_STATUS_ACTIVE = frozenset({"queued", "running", "cancel_requested"})
+JOB_STATUS_TERMINAL = frozenset({"pending", "completed", "failed", "partial", "cancelled"})
+
+# Execution 生命周期状态
+#   非终止（active）：pending | running
+#   终止：completed | failed | partial | cancelled
+EXECUTION_STATUS_ACTIVE = frozenset({"pending", "running"})
 
 
 @dataclass
 class SyncJob:
-    """A sync job binds a connector to a schedule."""
+    """A sync job binds a connector to a schedule.
+
+    status 生命周期：
+        pending → queued → running → completed | failed | partial
+                              ↘ cancel_requested → cancelled
+
+    P1 稳健性字段：
+        started_at     — Worker 领取该 Job 的时间（用于崩溃恢复判定）
+        heartbeat_at   — Worker 周期性刷新的心跳（判定 stale）
+        worker_id      — 当前认领该 Job 的 Worker 标识
+        attempt_count  — 已运行次数（恢复策略：标记 failed，不自动重试）
+    """
 
     id: str = field(default_factory=_new_id)
     connector_config_id: str = ""
     rule_id: str = ""
     name: str = ""
-    status: str = "pending"  # pending | running | completed | failed | cancelled
+    status: str = "pending"  # 见 JOB_STATUS_* 集合
     enabled: bool = True
     created_at: datetime = field(default_factory=_utcnow)
+    workspace_id: str = "default"
+    started_at: datetime | None = None
+    heartbeat_at: datetime | None = None
+    worker_id: str = ""
+    attempt_count: int = 0
 
 
 @dataclass
@@ -83,6 +113,7 @@ class SyncExecution:
     errors_count: int = 0
     error: str | None = None
     elapsed_ms: int = 0
+    workspace_id: str = "default"
 
 
 @dataclass
@@ -102,6 +133,7 @@ class ChangeRecord:
     processed: bool = False
     process_error: str | None = None
     detected_at: datetime = field(default_factory=_utcnow)
+    workspace_id: str = "default"
 
 
 @dataclass

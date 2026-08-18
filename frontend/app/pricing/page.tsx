@@ -34,12 +34,12 @@ const FEATURE_DEFS: {
   { key: "import_per_day", label: "每日导入", icon: TrendingUp, format: (v) => formatNumeric(v) },
   { key: "sync_connectors", label: "同步连接器", icon: Users, format: (v) => formatNumeric(v) },
   { key: "knowledge_graph", label: "知识图谱", icon: TrendingUp, format: (v) => formatBool(v) },
-  { key: "ai_coach", label: "AI Coach", icon: Zap, format: (v) => formatBool(v) },
+  { key: "ai_coach", label: "AI 助手", icon: Zap, format: (v) => formatBool(v) },
   { key: "team_members", label: "团队成员", icon: Users, format: (v) => formatNumeric(v) },
   { key: "api_access", label: "API 访问", icon: Shield, format: (v) => formatBool(v) },
   { key: "priority_support", label: "优先支持", icon: Shield, format: (v) => formatBool(v) },
   { key: "llm_calls_per_day", label: "LLM 调用/日", icon: Zap, format: (v) => formatNumeric(v) },
-  { key: "embedding_calls_per_day", label: "Embedding/日", icon: TrendingUp, format: (v) => formatNumeric(v) },
+  { key: "embedding_calls_per_day", label: "向量嵌入/日", icon: TrendingUp, format: (v) => formatNumeric(v) },
 ];
 
 // ── 3 阶套餐映射 ──
@@ -57,20 +57,20 @@ interface TierMeta {
 const TIER_META: Record<TierKind, TierMeta> = {
   hobby: {
     kind: "hobby",
-    display: "Hobby",
+    display: "入门版",
     tagline: "免费开始体验个人知识管理",
     cta: "免费开始",
   },
   pro: {
     kind: "pro",
-    display: "Pro",
+    display: "专业版",
     tagline: "专业用户首选，解锁全部能力",
-    cta: "升级到 Pro",
-    badge: "MOST POPULAR",
+    cta: "升级到专业版",
+    badge: "最受欢迎",
   },
   enterprise: {
     kind: "enterprise",
-    display: "Enterprise",
+    display: "企业版",
     tagline: "团队协作与企业级部署",
     cta: "联系销售",
   },
@@ -129,8 +129,8 @@ const FAQ_ITEMS = [
     a: "在账户设置中选择升级即可立即生效。升级时按比例折算剩余时间费用，降级在下个计费周期生效。",
   },
   {
-    q: "Hobby 套餐有什么限制？",
-    a: "Hobby 套餐提供基础的记忆存储和搜索功能，适合个人试用。记忆条数、搜索次数和存储空间均有上限。",
+    q: "入门版套餐有什么限制？",
+    a: "入门版套餐提供基础的记忆存储和搜索功能，适合个人试用。记忆条数、搜索次数和存储空间均有上限。",
   },
   {
     q: "年付能省多少？",
@@ -251,7 +251,7 @@ function TierCard({
   const priceCents = isYearly ? yearlyCents : monthlyCents;
   const savings = isYearly ? computeSavings(monthlyCents, yearlyCents) : 0;
   const savingsPct = isYearly ? computeSavingsPercent(monthlyCents, yearlyCents) : 0;
-  const periodLabel = isYearly ? "/年" : "/month";
+  const periodLabel = isYearly ? "/年" : "/月";
   const features = TIER_FEATURE_MATRIX[kind];
 
   return (
@@ -302,25 +302,25 @@ function TierCard({
             </span>
           )}
         </div>
-        <p className="mt-1 text-xs text-os-muted">{meta.tagline}</p>
+        <p className="mt-1 text-xs text-os-subtle">{meta.tagline}</p>
       </div>
 
       {/* 价格 — 巨大且极具冲击力 */}
       <div className="mb-5">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl font-semibold text-os-muted">¥</span>
+          <span className="text-2xl font-semibold text-os-subtle">¥</span>
           <span className="text-5xl font-mono font-bold tracking-tight text-os-text-high tabular-nums">
             {formatPrice(priceCents)}
           </span>
-          <span className="text-xs text-os-muted font-mono">{periodLabel}</span>
+          <span className="text-xs text-os-subtle font-mono">{periodLabel}</span>
         </div>
         {isYearly && savings > 0 && (
-          <p className="mt-2 text-xs text-emerald-400 font-mono">
+          <p className="mt-2 text-xs text-os-success font-mono">
             节省 ¥{formatPrice(savings)}（{savingsPct}%）
           </p>
         )}
         {!isYearly && kind !== "hobby" && (
-          <p className="mt-2 text-xs text-os-muted font-mono">
+          <p className="mt-2 text-xs text-os-subtle font-mono">
             或 ¥{formatPrice(yearlyCents)}/年
           </p>
         )}
@@ -332,11 +332,11 @@ function TierCard({
         className={cn(
           "mb-6 w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200",
           isCurrent
-            ? "cursor-default bg-os-muted/30 text-os-muted"
+            ? "cursor-default bg-os-muted/30 text-os-subtle"
             : isPro
               ? "bg-os-accent text-white hover:bg-os-accent/85 shadow-[0_0_20px_rgba(129,140,248,0.3)]"
               : kind === "enterprise"
-                ? "bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30"
+                ? "bg-os-warning-soft text-os-warning hover:bg-os-warning/15 border border-os-warning/30"
                 : "bg-os-elevated text-os-text-high hover:bg-os-muted/30 border border-os-border"
         )}
       >
@@ -362,14 +362,14 @@ function TierCard({
               )}
             >
               {positive ? (
-                <Check className="h-4 w-4 shrink-0 text-cyan-400" />
+                <Check className="h-4 w-4 shrink-0 text-os-success" />
               ) : (
-                <X className="h-4 w-4 shrink-0 text-os-border" />
+                <X className="h-4 w-4 shrink-0 text-os-subtle" />
               )}
               <span
                 className={cn(
                   "flex-1",
-                  negative ? "text-os-border line-through" : "text-os-text"
+                  negative ? "text-os-subtle line-through" : "text-os-text"
                 )}
               >
                 {def.label}
@@ -377,9 +377,9 @@ function TierCard({
               <span
                 className={cn(
                   "flex items-center gap-1.5 text-right font-medium tabular-nums font-mono text-xs",
-                  positive && f.value && valueLabel !== "支持" && "text-cyan-400",
+                  positive && f.value && valueLabel !== "支持" && "text-os-accent",
                   positive && (!f.value || valueLabel === "支持") && "text-os-text-high",
-                  negative && "text-os-border line-through"
+                  negative && "text-os-subtle line-through"
                 )}
               >
                 {valueLabel}
@@ -428,7 +428,7 @@ function FaqAccordion({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <p className="pb-4 text-sm leading-relaxed text-os-muted">{answer}</p>
+            <p className="pb-4 text-sm leading-relaxed text-os-subtle">{answer}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -543,7 +543,7 @@ export default function PricingPage() {
             <h1 className="text-3xl font-bold tracking-tight text-os-text-high sm:text-4xl lg:text-5xl">
               选择适合你的套餐
             </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-sm text-os-muted sm:text-base">
+            <p className="mx-auto mt-4 max-w-2xl text-sm text-os-subtle sm:text-base">
               从个人探索到企业部署，灵活的定价满足不同规模需求。
               所有套餐均可随时升级或取消。
             </p>
@@ -559,7 +559,7 @@ export default function PricingPage() {
             <span
               className={cn(
                 "text-sm font-medium transition-colors",
-                billingCycle === "monthly" ? "text-os-text-high" : "text-os-muted"
+                billingCycle === "monthly" ? "text-os-text-high" : "text-os-subtle"
               )}
             >
               月付
@@ -571,13 +571,13 @@ export default function PricingPage() {
             <span
               className={cn(
                 "text-sm font-medium transition-colors",
-                billingCycle === "yearly" ? "text-os-text-high" : "text-os-muted"
+                billingCycle === "yearly" ? "text-os-text-high" : "text-os-subtle"
               )}
             >
               年付
             </span>
             {billingCycle === "yearly" && (
-              <span className="ml-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-2xs font-semibold text-emerald-400">
+              <span className="ml-1 rounded-full bg-os-success-soft px-2 py-0.5 text-2xs font-semibold text-os-success">
                 省 ~17%
               </span>
             )}
@@ -591,10 +591,10 @@ export default function PricingPage() {
           <LoadingSkeleton />
         ) : error ? (
           <div className="flex flex-col items-center gap-4 py-20 text-center">
-            <div className="rounded-full bg-red-500/10 p-3">
-              <X className="h-6 w-6 text-red-400" />
+            <div className="rounded-full bg-os-danger-soft p-3">
+              <X className="h-6 w-6 text-os-danger" />
             </div>
-            <p className="text-sm text-os-muted">{error}</p>
+            <p className="text-sm text-os-danger">{error}</p>
             <button
               type="button"
               onClick={fetchPlans}
@@ -643,7 +643,7 @@ export default function PricingPage() {
             className="mb-10 text-center"
           >
             <h2 className="text-2xl font-bold text-os-text-high sm:text-3xl">常见问题</h2>
-            <p className="mt-3 text-sm text-os-muted">关于套餐和计费的常见疑问</p>
+            <p className="mt-3 text-sm text-os-subtle">关于套餐和计费的常见疑问</p>
           </motion.div>
 
           <motion.div

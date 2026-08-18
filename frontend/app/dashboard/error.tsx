@@ -28,7 +28,7 @@ export default function DashboardError({
     <main className="p-6 max-w-3xl mx-auto">
       <div className="rounded-2xl border border-red-500/20 bg-os-surface/60 backdrop-blur-md p-6">
         <div className="flex items-start gap-4 mb-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-red-400">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-red-600">
             <AlertTriangle size={20} />
           </div>
           <div className="flex-1 min-w-0">
@@ -43,13 +43,13 @@ export default function DashboardError({
 
         {isDev && (
           <details className="mb-5 rounded-lg border border-os-border/60 bg-slate-50 p-3">
-            <summary className="flex cursor-pointer items-center gap-2 text-2xs font-mono text-os-muted hover:text-os-subtle">
+            <summary className="flex cursor-pointer items-center gap-2 text-2xs font-mono text-os-subtle hover:text-os-text-high">
               <span>错误详情（仅开发环境）</span>
             </summary>
             <div className="mt-2 space-y-1.5 font-mono text-2xs text-os-subtle">
-              <p className="text-red-300 break-all">{error?.message || "Unknown error"}</p>
+              <p className="text-red-700 break-all">{error?.message || "未知错误"}</p>
               {error?.digest && (
-                <p className="text-os-muted">digest: {error.digest}</p>
+                <p className="text-os-subtle">digest: {error.digest}</p>
               )}
             </div>
           </details>

@@ -23,15 +23,15 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
     <div className="group relative my-3 overflow-hidden rounded-xl border border-os-border bg-slate-50">
       {/* Header: 语言标签 + Copy 按钮 */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-os-border/50 bg-os-elevated/40">
-        <span className="text-2xs text-os-muted font-mono">{language || "text"}</span>
+        <span className="text-2xs text-os-subtle font-mono">{language || "text"}</span>
         <button
           onClick={handleCopy}
           className="flex items-center gap-1 text-2xs text-os-subtle hover:text-os-text-high transition-colors"
         >
           {copied ? (
             <>
-              <Check size={11} className="text-emerald-400" />
-              <span className="text-emerald-400">已复制</span>
+              <Check size={11} className="text-emerald-700" />
+              <span className="text-emerald-700">已复制</span>
             </>
           ) : (
             <>
@@ -55,7 +55,7 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
               const lineProps = getLineProps({ line });
               return (
                 <div key={i} {...lineProps} className={cn(lineProps.className, "table-row")}>
-                  <span className="table-cell select-none pr-3 text-right text-os-border text-xs w-8">
+                  <span className="table-cell w-8 select-none pr-3 text-right text-xs text-os-subtle">
                     {i + 1}
                   </span>
                   <span className="table-cell">
@@ -105,7 +105,7 @@ const markdownComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["compon
   },
   blockquote({ children }) {
     return (
-      <blockquote className="border-l-2 border-os-accent/40 pl-3 text-os-muted italic my-2">
+      <blockquote className="border-l-2 border-os-accent/40 pl-3 text-os-subtle italic my-2">
         {children}
       </blockquote>
     );
@@ -142,7 +142,7 @@ const markdownComponents: ComponentPropsWithoutRef<typeof ReactMarkdown>["compon
     );
   },
   th({ children }) {
-    return <th className="border border-os-border/50 px-3 py-1.5 text-left text-os-muted font-medium bg-os-elevated/30">{children}</th>;
+    return <th className="border border-os-border/50 px-3 py-1.5 text-left text-os-subtle font-medium bg-os-elevated/30">{children}</th>;
   },
   td({ children }) {
     return <td className="border border-os-border/50 px-3 py-1.5 text-os-text">{children}</td>;
@@ -205,7 +205,7 @@ export function MessageBubble({
           )}
         </div>
         {message.timestamp && (
-          <p className="text-2xs text-os-muted mt-1 px-1">{formatDate(message.timestamp)}</p>
+          <p className="text-2xs text-os-subtle mt-1 px-1">{formatDate(message.timestamp)}</p>
         )}
       </div>
     </motion.div>

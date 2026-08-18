@@ -4,11 +4,10 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  X, Clock, Tag, Eye, Zap, Archive, Trash2, Save, Edit3, GitMerge,
+  X, Clock, Tag, Eye, Zap, Archive, Trash2, Save, Edit3,
 } from "lucide-react";
 import { api } from "@/services/api";
 import { cn, formatDate, importanceColor } from "@/lib/utils";
-import type { Memory } from "@/types";
 
 const typeLabel: Record<string, string> = {
   episodic: "情景记忆",
@@ -20,6 +19,27 @@ const typeLabel: Record<string, string> = {
 const sourceLabel: Record<string, string> = {
   user: "用户", agent: "智能体", reflect: "反思",
 };
+
+const statusLabel: Record<string, string> = {
+  active: "活跃",
+  archived: "已归档",
+  merged: "已合并",
+  deleted: "已删除",
+};
+
+const statusStyle: Record<string, string> = {
+  active: "text-os-success",
+  archived: "text-os-warning",
+  merged: "text-os-subtle",
+  deleted: "text-os-danger",
+};
+
+function readableImportanceColor(score: number) {
+  return importanceColor(score)
+    .replace("text-emerald-400", "text-os-success")
+    .replace("text-amber-400", "text-os-warning")
+    .replace("text-zinc-500", "text-os-subtle");
+}
 
 interface MemoryDrawerProps {
   memoryId: string | null;
@@ -120,10 +140,10 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
               ) : memory ? (
                 <>
                   {/* Edit toggle */}
-                  <div className="flex items-center justify-between">
-                    <span className={cn("os-badge", memory.source === "user" ? "bg-indigo-400/10 text-indigo-400" :
-                      memory.source === "reflect" ? "bg-amber-400/10 text-amber-400" : "bg-emerald-400/10 text-emerald-400")}>
-                      {sourceLabel[memory.source]}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={cn("os-badge min-w-0 max-w-[70%] truncate", memory.source === "user" ? "bg-indigo-400/10 text-indigo-700" :
+                      memory.source === "reflect" ? "bg-amber-400/10 text-amber-800" : "bg-emerald-400/10 text-emerald-700")}>
+                      {sourceLabel[memory.source] || memory.source}
                     </span>
                     <button
                       onClick={() => setEditing(!editing)}
@@ -176,47 +196,47 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <p className="text-sm text-os-text-high leading-relaxed whitespace-pre-wrap">
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-os-text-high [overflow-wrap:anywhere]">
                         {memory.content}
                       </p>
                       {memory.summary && (
                         <div className="border-l-2 border-os-accent/30 pl-3 py-1">
-                          <p className="text-xs text-os-subtle">{memory.summary}</p>
+                          <p className="break-words text-xs text-os-subtle [overflow-wrap:anywhere]">{memory.summary}</p>
                         </div>
                       )}
                     </div>
                   )}
 
                   {/* Metadata */}
-                  <div className="grid grid-cols-2 gap-3 text-2xs">
-                    <div className="os-card p-2.5 flex items-center gap-2">
-                      <Clock size={12} className="text-os-muted" />
-                      <div>
-                        <p className="text-os-muted">时间</p>
-                        <p className="text-os-text-high">{formatDate(memory.timestamp)}</p>
+                  <div className="grid grid-cols-1 gap-3 text-2xs sm:grid-cols-2">
+                    <div className="os-card flex min-w-0 items-center gap-2 p-2.5">
+                      <Clock size={12} className="text-os-subtle" />
+                      <div className="min-w-0">
+                        <p className="text-os-subtle">时间</p>
+                        <p className="break-words text-os-text-high">{formatDate(memory.timestamp)}</p>
                       </div>
                     </div>
-                    <div className="os-card p-2.5 flex items-center gap-2">
-                      <Zap size={12} className={importanceColor(memory.importance)} />
-                      <div>
-                        <p className="text-os-muted">重要性</p>
-                        <p className={cn("font-mono", importanceColor(memory.importance))}>
+                    <div className="os-card flex min-w-0 items-center gap-2 p-2.5">
+                      <Zap size={12} className={readableImportanceColor(memory.importance)} />
+                      <div className="min-w-0">
+                        <p className="text-os-subtle">重要性</p>
+                        <p className={cn("font-mono", readableImportanceColor(memory.importance))}>
                           {memory.importance}/10
                         </p>
                       </div>
                     </div>
-                    <div className="os-card p-2.5 flex items-center gap-2">
-                      <Eye size={12} className="text-os-muted" />
-                      <div>
-                        <p className="text-os-muted">访问次数</p>
+                    <div className="os-card flex min-w-0 items-center gap-2 p-2.5">
+                      <Eye size={12} className="text-os-subtle" />
+                      <div className="min-w-0">
+                        <p className="text-os-subtle">访问次数</p>
                         <p className="text-os-text-high font-mono">{memory.access_count}</p>
                       </div>
                     </div>
-                    <div className="os-card p-2.5 flex items-center gap-2">
-                      <Tag size={12} className="text-os-muted" />
-                      <div>
-                        <p className="text-os-muted">类型</p>
-                        <p className="text-os-text-high">
+                    <div className="os-card flex min-w-0 items-center gap-2 p-2.5">
+                      <Tag size={12} className="text-os-subtle" />
+                      <div className="min-w-0">
+                        <p className="text-os-subtle">类型</p>
+                        <p className="break-all text-os-text-high">
                           {typeLabel[memory.memory_type] || memory.memory_type}
                         </p>
                       </div>
@@ -229,7 +249,7 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
                       <h3 className="text-2xs text-os-subtle uppercase tracking-wider mb-2">实体</h3>
                       <div className="flex flex-wrap gap-1.5">
                         {memory.entities.map((e) => (
-                          <span key={e} className="text-2xs px-2 py-1 rounded-full bg-os-elevated text-os-subtle">
+                          <span key={e} className="max-w-full break-all rounded-full bg-os-elevated px-2 py-1 text-2xs text-os-subtle">
                             {e}
                           </span>
                         ))}
@@ -243,10 +263,10 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
                       <h3 className="text-2xs text-os-subtle uppercase tracking-wider mb-2">关系</h3>
                       <div className="space-y-1">
                         {memory.relations.map((rel, i) => (
-                          <div key={i} className="text-2xs text-os-subtle flex items-center gap-1.5">
-                            <span className="text-os-accent">{rel.s}</span>
-                            <span className="text-os-muted">→ {rel.p} →</span>
-                            <span className="text-os-accent">{rel.o}</span>
+                          <div key={i} className="flex min-w-0 flex-wrap items-center gap-1.5 text-2xs text-os-subtle">
+                            <span className="max-w-full break-all text-os-accent">{rel.s}</span>
+                            <span className="max-w-full break-all text-os-subtle">→ {rel.p} →</span>
+                            <span className="max-w-full break-all text-os-accent">{rel.o}</span>
                           </div>
                         ))}
                       </div>
@@ -254,13 +274,13 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
                   )}
 
                   {/* Status */}
-                  <div className="text-2xs text-os-muted">
-                    <span>状态: </span>
+                  <div className="text-2xs text-os-subtle">
+                    <span>状态：</span>
                     <span className={cn(
                       "font-medium",
-                      memory.status === "archived" ? "text-amber-400" : "text-emerald-400"
+                      statusStyle[memory.status] || "text-os-subtle"
                     )}>
-                      {memory.status}
+                      {statusLabel[memory.status] || memory.status}
                     </span>
                     {memory.archived_at && (
                       <span className="ml-2">归档于 {formatDate(memory.archived_at)}</span>
@@ -268,12 +288,12 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 pt-3 border-t border-os-border">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-os-border pt-3">
                     {memory.status === "active" && (
                       <button
                         onClick={() => archiveMutation.mutate()}
                         disabled={archiveMutation.isPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-2xs text-amber-400 hover:bg-amber-400/10 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-2xs text-amber-800 hover:bg-amber-400/10 transition-colors disabled:opacity-50"
                       >
                         <Archive size={12} />
                         {archiveMutation.isPending ? "归档中..." : "归档"}
@@ -283,19 +303,19 @@ export function MemoryDrawer({ memoryId, onClose, onArchived, onDeleted }: Memor
                       <button
                         onClick={() => deleteMutation.mutate()}
                         disabled={deleteMutation.isPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-2xs text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded text-2xs text-red-700 hover:bg-red-400/10 transition-colors disabled:opacity-50"
                       >
                         <Trash2 size={12} />
                         {deleteMutation.isPending ? "删除中..." : "删除"}
                       </button>
                     )}
-                    <span className="text-2xs text-os-muted ml-auto">
-                      ID: {memory.id.slice(0, 8)}...
+                    <span className="text-2xs text-os-subtle ml-auto">
+                      ID：{memory.id.slice(0, 8)}...
                     </span>
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-os-muted text-center py-8">记忆数据加载失败</p>
+                <p className="py-8 text-center text-xs text-os-danger">记忆数据加载失败</p>
               )}
             </div>
           </motion.div>

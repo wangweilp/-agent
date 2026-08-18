@@ -86,24 +86,24 @@ export default function VideoPage() {
           {uploadResults && (
             <motion.div
               initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="os-card p-4 border-emerald-400/20 bg-emerald-400/5"
+              className="os-card border-emerald-200 bg-emerald-50 p-4"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-emerald-400">
+                <span className="text-xs font-medium text-emerald-700">
                   上传完成 — {uploadResults.total_tasks_enqueued} 个记忆任务
                 </span>
                 <button onClick={() => setUploadResults(null)}
-                  className="text-2xs text-os-muted hover:text-os-text">关闭</button>
+                  className="text-2xs text-os-subtle hover:text-os-text">关闭</button>
               </div>
               <div className="space-y-2">
                 {uploadResults.items.map((item) => (
                   <div key={item.file_id}
                     className="flex items-start gap-3 p-3 rounded bg-os-elevated/50 text-2xs">
-                    <FileVideo size={14} className="text-violet-400 mt-0.5 shrink-0" />
+                    <FileVideo size={14} className="mt-0.5 shrink-0 text-violet-700" />
                     <div className="min-w-0 flex-1">
                       <p className="text-os-text-high font-medium truncate">{item.filename}</p>
                       <p className="text-os-subtle">{item.analysis.summary}</p>
-                      <div className="flex items-center gap-2 mt-0.5 text-os-muted">
+                      <div className="mt-0.5 flex items-center gap-2 text-os-subtle">
                         <span>{item.analysis.topic}</span>
                         <span>|</span>
                         <span>{item.analysis.duration_seconds > 0
@@ -124,7 +124,7 @@ export default function VideoPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-os-muted" />
           <input value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="搜索视频记忆..."
-            className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent" />
+            className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent" />
         </div>
 
         {/* Content */}
@@ -133,10 +133,14 @@ export default function VideoPage() {
             {Array.from({ length: 4 }).map((_, i) => (<CardSkeleton key={i} />))}
           </div>
         ) : !memories || memories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-os-muted">
-            <Video size={48} className="mb-4 opacity-30" />
-            <p className="text-sm">暂无视频记忆</p>
-            <p className="text-2xs mt-1">上传视频文件开始分析</p>
+          <div className="flex flex-col items-center justify-center py-24">
+            <Video size={48} className="mb-4 text-slate-500" />
+            <p className="text-sm text-os-text-high">
+              {query.trim() ? "未找到匹配的视频记忆" : "暂无视频记忆"}
+            </p>
+            <p className="mt-1 text-2xs text-os-subtle">
+              {query.trim() ? "请尝试调整搜索关键词" : "上传视频文件开始分析"}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -144,13 +148,13 @@ export default function VideoPage() {
               <motion.div key={mem.id}
                 initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.02 }}
-                className={cn("os-card p-4 os-card-hover", mem.status === "archived" && "opacity-60")}>
+                className={cn("os-card p-4 os-card-hover", mem.status === "archived" && "bg-os-surface-muted")}>
                 <div className="flex items-start gap-3">
                   <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                    mem.memory_type === "reflect" ? "bg-amber-400/10" :
-                    mem.memory_type === "semantic" ? "bg-emerald-400/10" : "bg-violet-400/10")}>
-                    <Film size={14} className={mem.memory_type === "reflect" ? "text-amber-400" :
-                      mem.memory_type === "semantic" ? "text-emerald-400" : "text-violet-400"} />
+                    mem.memory_type === "reflect" ? "bg-amber-50" :
+                    mem.memory_type === "semantic" ? "bg-emerald-50" : "bg-violet-50")}>
+                    <Film size={14} className={mem.memory_type === "reflect" ? "text-amber-700" :
+                      mem.memory_type === "semantic" ? "text-emerald-700" : "text-violet-700"} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -158,7 +162,7 @@ export default function VideoPage() {
                         {typeLabel[mem.memory_type] || mem.memory_type}
                       </span>
                       {mem.status === "archived" && (
-                        <span className="text-2xs px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400">已归档</span>
+                        <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-2xs text-amber-800">已归档</span>
                       )}
                     </div>
                     <p className="text-xs text-os-text line-clamp-3">
@@ -167,11 +171,11 @@ export default function VideoPage() {
                     {mem.entities.length > 0 && (
                       <div className="flex gap-1 mt-1.5 flex-wrap">
                         {mem.entities.slice(0, 5).map((e) => (
-                          <span key={e} className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-muted">{e}</span>
+                          <span key={e} className="rounded bg-os-elevated px-1 py-0.5 text-2xs text-os-subtle">{e}</span>
                         ))}
                       </div>
                     )}
-                    <div className="flex items-center gap-3 mt-2 text-2xs text-os-muted">
+                    <div className="mt-2 flex items-center gap-3 text-2xs text-os-subtle">
                       <span className="flex items-center gap-1"><Clock size={10} />{formatDate(mem.timestamp)}</span>
                       <span className="flex items-center gap-1"><Eye size={10} />{mem.access_count}</span>
                       <span className={cn("font-mono", importanceColor(mem.importance))}>
@@ -184,11 +188,11 @@ export default function VideoPage() {
                       <>
                         <button onClick={() => archiveMutation.mutate(mem.id)}
                           disabled={archiveMutation.isPending}
-                          className="p-1.5 rounded hover:bg-os-elevated text-os-muted hover:text-amber-400"
+                          className="p-1.5 rounded text-os-muted hover:bg-os-elevated hover:text-amber-700"
                           title="归档"><Archive size={13} /></button>
                         <button onClick={() => deleteMutation.mutate(mem.id)}
                           disabled={deleteMutation.isPending}
-                          className="p-1.5 rounded hover:bg-os-elevated text-os-muted hover:text-red-400"
+                          className="p-1.5 rounded text-os-muted hover:bg-os-elevated hover:text-red-700"
                           title="删除"><Trash2 size={13} /></button>
                       </>
                     )}

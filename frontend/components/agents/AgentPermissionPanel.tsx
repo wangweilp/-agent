@@ -12,7 +12,7 @@ interface AgentPermissionPanelProps {
 function permissionLabel(perm: string): string {
   if (perm.startsWith("agent:")) return `智能体 — ${perm.replace("agent:", "")}`;
   if (perm.startsWith("memory:")) return `记忆 — ${perm.replace("memory:", "")}`;
-  if (perm.startsWith("kg:")) return `Knowledge Graph — ${perm.replace("kg:", "")}`;
+  if (perm.startsWith("kg:")) return `知识图谱（Knowledge Graph）— ${perm.replace("kg:", "")}`;
   return perm;
 }
 
@@ -46,55 +46,59 @@ export function AgentPermissionPanel({
         {/* Required */}
         <div className="rounded-md border border-os-border bg-os-elevated/30 p-3">
           <p className="flex items-center gap-1.5 text-xs font-medium text-os-subtle">
-            <ShieldAlert size={13} className="text-amber-400" />
-            需要 ({required.length})
+            <ShieldAlert size={13} className="text-amber-800" />
+            需要（{required.length}）
           </p>
           <ul className="mt-2 space-y-1">
-            {required.map((perm) => (
-              <li key={perm} className="flex items-start gap-1.5 text-xs text-os-text-high">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-                {permissionLabel(perm)}
-              </li>
-            ))}
+            {required.length > 0 ? (
+              required.map((perm) => (
+                <li key={perm} className="flex min-w-0 items-start gap-1.5 text-xs text-os-text-high">
+                  <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                  <span className="min-w-0 break-all">{permissionLabel(perm)}</span>
+                </li>
+              ))
+            ) : (
+              <li className="text-xs text-os-subtle">暂无必需权限</li>
+            )}
           </ul>
         </div>
 
         {/* Granted */}
         <div className="rounded-md border border-emerald-400/20 bg-emerald-400/5 p-3">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-300">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
             <ShieldCheck size={13} />
-            已授权 ({granted.length})
+            已授权（{granted.length}）
           </p>
           <ul className="mt-2 space-y-1">
             {granted.length > 0 ? (
               granted.map((perm) => (
-                <li key={perm} className="flex items-start gap-1.5 text-xs text-emerald-200">
+                <li key={perm} className="flex min-w-0 items-start gap-1.5 text-xs text-emerald-700">
                   <CheckCircle2 size={12} className="mt-0.5 shrink-0" />
-                  {permissionLabel(perm)}
+                  <span className="min-w-0 break-all">{permissionLabel(perm)}</span>
                 </li>
               ))
             ) : (
-              <li className="text-xs text-os-muted">-</li>
+              <li className="text-xs text-os-subtle">暂无已授权权限</li>
             )}
           </ul>
         </div>
 
         {/* Missing */}
         <div className="rounded-md border border-red-400/10 bg-red-400/5 p-3">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-red-300">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-red-700">
             <XCircle size={13} />
-            缺失 ({missing.length})
+            缺失（{missing.length}）
           </p>
           <ul className="mt-2 space-y-1">
             {missing.length > 0 ? (
               missing.map((perm) => (
-                <li key={perm} className="flex items-start gap-1.5 text-xs text-red-200">
+                <li key={perm} className="flex min-w-0 items-start gap-1.5 text-xs text-red-700">
                   <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                  {permissionLabel(perm)}
+                  <span className="min-w-0 break-all">{permissionLabel(perm)}</span>
                 </li>
               ))
             ) : (
-              <li className="flex items-center gap-1 text-xs text-emerald-300">
+              <li className="flex items-center gap-1 text-xs text-emerald-700">
                 <CheckCircle2 size={12} />
                 所有权限已授予
               </li>

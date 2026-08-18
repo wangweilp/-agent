@@ -31,11 +31,11 @@ export const shadow = {
 
 export const typeScale = {
   pageTitle: "text-2xl font-semibold leading-tight tracking-normal text-os-text-high md:text-[1.75rem]",
-  pageSubtitle: "text-sm leading-6 text-os-muted",
+  pageSubtitle: "text-sm leading-6 text-os-subtle",
   sectionTitle: "text-sm font-semibold tracking-normal text-os-text-high",
-  cardLabel: "text-[11px] font-medium uppercase tracking-[0.08em] text-os-muted",
+  cardLabel: "text-[11px] font-medium uppercase tracking-[0.08em] text-os-subtle",
   metricValue: "font-mono text-2xl font-semibold leading-none tracking-normal text-os-text-high",
-  monoCaption: "font-mono text-[11px] leading-4 text-os-muted",
+  monoCaption: "font-mono text-[11px] leading-4 text-os-subtle",
 } as const;
 
 export const spacing = {

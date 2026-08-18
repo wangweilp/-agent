@@ -37,7 +37,7 @@ const toneStyles: Record<NodeTone, { shell: string; icon: string; dot: string }>
   },
   observe: {
     shell: "border-os-success/20 bg-os-success-soft text-[#11755A]",
-    icon: "border-os-success/20 bg-white text-os-success",
+    icon: "border-os-success/20 bg-white text-emerald-700",
     dot: "bg-os-success",
   },
   runtime: {
@@ -49,25 +49,25 @@ const toneStyles: Record<NodeTone, { shell: string; icon: string; dot: string }>
 
 const nodes: RuntimeNode[] = [
   {
-    title: "Causal Kernel",
-    eyebrow: "Reasoning",
-    detail: "Decision Trace",
+    title: "因果内核",
+    eyebrow: "推理",
+    detail: "决策链路",
     icon: GitBranch,
     tone: "causal",
     className: "left-0 top-6 sm:left-8 sm:top-10 lg:left-2 lg:top-16",
   },
   {
-    title: "Memory Engine",
-    eyebrow: "Long-term",
-    detail: "Semantic + Episodic",
+    title: "记忆引擎",
+    eyebrow: "长期记忆",
+    detail: "语义 + 情景",
     icon: Database,
     tone: "memory",
     className: "right-0 top-8 sm:right-8 sm:top-12 lg:right-1 lg:top-14",
   },
   {
-    title: "Observability",
-    eyebrow: "Timeline",
-    detail: "Audit + Runtime",
+    title: "可观测性",
+    eyebrow: "时间线",
+    detail: "审计 + 运行时",
     icon: Eye,
     tone: "observe",
     className: "bottom-5 left-1/2 -translate-x-1/2 sm:bottom-8 lg:bottom-14",
@@ -103,7 +103,7 @@ function ArchitectureNode({ node }: { node: RuntimeNode }) {
           <span className="block truncate text-[10px] leading-4 text-os-subtle sm:text-[11px]">
             {node.eyebrow}
           </span>
-          <span className="mt-1 hidden items-center gap-1.5 text-[10px] leading-3 text-os-muted sm:flex">
+          <span className="mt-1 hidden items-center gap-1.5 text-[10px] leading-3 text-os-subtle sm:flex">
             <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
             {node.detail}
           </span>
@@ -151,18 +151,18 @@ export function CognitiveRuntimeVisual({ className }: { className?: string }) {
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-os-success/20 bg-os-success-soft px-2 py-1 text-[10px] font-medium text-[#11755A]">
             <span className="runtime-status-pulse h-1.5 w-1.5 rounded-full bg-os-success" />
-            Ready
+            就绪
           </span>
         </div>
         <div className="mt-3">
-          <p className="text-[13px] font-semibold leading-5 text-os-text-high sm:text-sm">Cognitive Runtime</p>
-          <p className="text-[11px] leading-5 text-os-subtle">Separation Kernel</p>
+          <p className="text-[13px] font-semibold leading-5 text-os-text-high sm:text-sm">认知运行时</p>
+          <p className="text-[11px] leading-5 text-os-subtle">分离内核</p>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-1.5">
-          {["Trace", "Memory", "Audit"].map((item) => (
+          {["链路", "记忆", "审计"].map((item) => (
             <span
               key={item}
-              className="rounded-[7px] border border-slate-900/[0.06] bg-os-surface-muted px-1.5 py-1 text-center text-[9px] font-medium text-os-muted sm:text-[10px]"
+              className="rounded-[7px] border border-slate-900/[0.06] bg-os-surface-muted px-1.5 py-1 text-center text-[9px] font-medium text-os-subtle sm:text-[10px]"
             >
               {item}
             </span>
@@ -175,9 +175,9 @@ export function CognitiveRuntimeVisual({ className }: { className?: string }) {
       ))}
 
       <div className="absolute bottom-6 right-3 hidden w-[190px] rounded-[12px] border border-slate-900/[0.065] bg-white/86 p-3 shadow-[0_1px_2px_rgba(16,24,40,0.035)] backdrop-blur-sm md:block lg:bottom-20 lg:right-14">
-        <div className="mb-2 flex items-center justify-between text-[10px] font-medium text-os-muted">
-          <span>Event Stream</span>
-          <Activity className="h-3 w-3 text-os-success" />
+        <div className="mb-2 flex items-center justify-between text-[10px] font-medium text-os-subtle">
+          <span>事件流</span>
+          <Activity className="h-3 w-3 text-emerald-700" />
         </div>
         <div className="space-y-2">
           {eventRows.map((row) => (
@@ -190,12 +190,12 @@ export function CognitiveRuntimeVisual({ className }: { className?: string }) {
         </div>
       </div>
 
-      <div className="absolute left-4 bottom-14 hidden items-center gap-2 rounded-full border border-slate-900/[0.065] bg-white/80 px-3 py-1.5 text-[10px] text-os-muted shadow-[0_1px_2px_rgba(16,24,40,0.035)] md:flex lg:left-16 lg:bottom-24">
+      <div className="absolute left-4 bottom-14 hidden items-center gap-2 rounded-full border border-slate-900/[0.065] bg-white/80 px-3 py-1.5 text-[10px] text-os-subtle shadow-[0_1px_2px_rgba(16,24,40,0.035)] md:flex lg:left-16 lg:bottom-24">
         <Workflow className="h-3 w-3 text-os-data-cyan" />
-        Directed causal links
+        有向因果链路
       </div>
 
-      <div className="absolute right-4 top-24 hidden h-8 w-8 items-center justify-center rounded-[9px] border border-os-success/20 bg-os-success-soft text-os-success sm:flex lg:right-20 lg:top-32">
+      <div className="absolute right-4 top-24 hidden h-8 w-8 items-center justify-center rounded-[9px] border border-os-success/20 bg-os-success-soft text-emerald-700 sm:flex lg:right-20 lg:top-32">
         <ShieldCheck className="h-4 w-4" />
       </div>
     </motion.div>

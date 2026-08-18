@@ -25,7 +25,7 @@ const accentMap = {
 export function StatusCard({ icon, label, value, change, changeLabel, accent, isLoading }: StatusCardProps) {
   const trend =
     change !== undefined ? (
-      <span className={cn("inline-flex items-center gap-1", change >= 0 ? "text-os-success" : "text-os-danger")}>
+      <span className={cn("inline-flex items-center gap-1", change >= 0 ? "text-emerald-700" : "text-red-700")}>
         {change >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
         {change > 0 ? "+" : ""}
         {change}% {changeLabel}

@@ -31,6 +31,7 @@ from pydantic import BaseModel
 from src.api.middleware import require_auth, require_manage
 from src.core.auth import TokenPayload
 from src.sync.models import (
+    JOB_STATUS_ACTIVE,
     SyncConnectionResult,
     SyncConnectorConfig,
     SyncExecution,
@@ -110,7 +111,7 @@ def create_sync_router(
     @router.post("/connectors")
     async def create_connector(
         body: CreateConnectorRequest,
-        _payload: TokenPayload = Depends(require_manage),
+        payload: TokenPayload = Depends(require_manage),
     ):
         """Create a new connector configuration."""
         if not body.name.strip():
@@ -123,7 +124,7 @@ def create_sync_router(
             connector_type=body.connector_type.strip(),
             credentials=body.credentials,
         )
-        sync_store.save_connector(config)
+        sync_store.save_connector(config, workspace_id=payload.workspace_id)
 
         logger.info(
             "sync_connector_created",
@@ -137,10 +138,10 @@ def create_sync_router(
 
     @router.get("/connectors")
     async def list_connectors(
-        _payload: TokenPayload = Depends(require_auth),
+        payload: TokenPayload = Depends(require_auth),
     ):
         """List all connector configurations (credentials redacted)."""
-        connectors = sync_store.list_connectors()
+        connectors = sync_store.list_connectors(workspace_id=payload.workspace_id)
         return {
             "status": "ok",
             "connectors": [_connector_to_response(c) for c in connectors],
@@ -150,14 +151,14 @@ def create_sync_router(
     @router.delete("/connectors/{connector_id}")
     async def delete_connector(
         connector_id: str,
-        _payload: TokenPayload = Depends(require_manage),
+        payload: TokenPayload = Depends(require_manage),
     ):
         """Delete a connector and cascade-delete its jobs and rules."""
-        config = sync_store.get_connector(connector_id)
+        config = sync_store.get_connector(connector_id, workspace_id=payload.workspace_id)
         if config is None:
             raise HTTPException(404, f"Connector {connector_id} not found")
 
-        deleted = sync_store.delete_connector(connector_id)
+        deleted = sync_store.delete_connector(connector_id, workspace_id=payload.workspace_id)
 
         logger.info(
             "sync_connector_deleted",
@@ -173,10 +174,10 @@ def create_sync_router(
     @router.post("/connectors/{connector_id}/test")
     async def test_connector(
         connector_id: str,
-        _payload: TokenPayload = Depends(require_manage),
+        payload: TokenPayload = Depends(require_manage),
     ):
         """Test connectivity by instantiating the connector and calling test_connection()."""
-        config = sync_store.get_connector(connector_id)
+        config = sync_store.get_connector(connector_id, workspace_id=payload.workspace_id)
         if config is None:
             raise HTTPException(404, f"Connector {connector_id} not found")
 
@@ -220,14 +221,14 @@ def create_sync_router(
     @router.post("/jobs")
     async def create_job(
         body: CreateJobRequest,
-        _payload: TokenPayload = Depends(require_manage),
+        payload: TokenPayload = Depends(require_manage),
     ):
         """Create a sync job with a scheduling rule.
 
         Validates the connector exists, creates a SyncRule, then binds the SyncJob
         to it. Cron jobs trigger a scheduler refresh so the new timer is picked up.
         """
-        config = sync_store.get_connector(body.connector_config_id)
+        config = sync_store.get_connector(body.connector_config_id, workspace_id=payload.workspace_id)
         if config is None:
             raise HTTPException(404, f"Connector config {body.connector_config_id} not found")
 
@@ -248,14 +249,14 @@ def create_sync_router(
             rule_type=rule_type,
             cron_expression=body.cron_expression or "",
         )
-        sync_store.save_rule(rule)
+        sync_store.save_rule(rule, workspace_id=payload.workspace_id)
 
         job = SyncJob(
             connector_config_id=body.connector_config_id,
             rule_id=rule.id,
             name=body.name.strip(),
         )
-        sync_store.save_job(job)
+        sync_store.save_job(job, workspace_id=payload.workspace_id)
 
         if rule_type == "cron":
             sync_scheduler.refresh_timers()
@@ -264,7 +265,7 @@ def create_sync_router(
             "sync_job_created",
             extra={
                 "job_id": job.id,
-                "name": job.name,
+                "job_name": job.name,
                 "rule_type": rule_type,
                 "connector_id": body.connector_config_id,
             },
@@ -277,13 +278,13 @@ def create_sync_router(
 
     @router.get("/jobs")
     async def list_jobs(
-        _payload: TokenPayload = Depends(require_auth),
+        payload: TokenPayload = Depends(require_auth),
     ):
         """List all sync jobs with their scheduling rules."""
-        jobs = sync_store.list_jobs()
+        jobs = sync_store.list_jobs(workspace_id=payload.workspace_id)
         result: list[dict[str, Any]] = []
         for job in jobs:
-            rule = sync_store.get_rule_for_job(job.id)
+            rule = sync_store.get_rule_for_job(job.id, workspace_id=payload.workspace_id)
             result.append(_job_to_response(job, rule))
 
         return {
@@ -300,14 +301,14 @@ def create_sync_router(
         }
 
     @router.get("/jobs/{job_id}")
-    async def get_job(job_id: str, _payload: TokenPayload = Depends(require_auth)):
+    async def get_job(job_id: str, payload: TokenPayload = Depends(require_auth)):
         """Get a single job with its rule and most recent executions."""
-        job = sync_store.get_job(job_id)
+        job = sync_store.get_job(job_id, workspace_id=payload.workspace_id)
         if job is None:
             raise HTTPException(404, f"Job {job_id} not found")
 
-        rule = sync_store.get_rule_for_job(job_id)
-        executions = sync_store.list_executions(job_id=job_id, limit=20)
+        rule = sync_store.get_rule_for_job(job_id, workspace_id=payload.workspace_id)
+        executions = sync_store.list_executions(job_id=job_id, limit=20, workspace_id=payload.workspace_id)
 
         return {
             "status": "ok",
@@ -316,22 +317,44 @@ def create_sync_router(
         }
 
     @router.post("/jobs/{job_id}/run")
-    async def trigger_job(job_id: str, _payload: TokenPayload = Depends(require_manage)):
-        """Manually trigger a sync job. Creates a pending execution and enqueues it."""
-        job = sync_store.get_job(job_id)
+    async def trigger_job(job_id: str, payload: TokenPayload = Depends(require_manage)):
+        """Manually trigger a sync job. Creates a pending execution and enqueues it.
+
+        幂等：同一 Job 只能有 1 个 active（pending/running）execution。
+        若已存在 active execution，返回 409。并发保护由 Store 层
+        create_execution_if_idle 的原子 INSERT...WHERE NOT EXISTS 保证。
+        """
+        job = sync_store.get_job(job_id, workspace_id=payload.workspace_id)
         if job is None:
             raise HTTPException(404, f"Job {job_id} not found")
 
         if not job.enabled:
             raise HTTPException(409, f"Job {job_id} is disabled")
 
-        if job.status == "running":
-            raise HTTPException(409, f"Job {job_id} is already running")
+        # 预检（仅供参考清晰返回；真正的并发保护在 DB 层）
+        existing = sync_store.get_active_execution(job_id, workspace_id=payload.workspace_id)
+        if existing is not None:
+            raise HTTPException(
+                409,
+                f"Job {job_id} already has an active execution ({existing.status})",
+            )
 
         t0 = time.monotonic()
 
-        execution = SyncExecution(job_id=job_id)
-        sync_store.save_execution(execution)
+        job.status = "queued"
+        sync_store.update_job(job, workspace_id=payload.workspace_id)
+
+        execution = SyncExecution(job_id=job_id, workspace_id=payload.workspace_id)
+        created = sync_store.create_execution_if_idle(
+            execution, workspace_id=payload.workspace_id
+        )
+        if created is None:
+            # 并发请求已创建 active execution
+            raise HTTPException(
+                409,
+                f"Job {job_id} already has an active execution (concurrent)",
+            )
+
         sync_worker.enqueue(job, execution)
 
         t_ms = int((time.monotonic() - t0) * 1000)
@@ -349,19 +372,19 @@ def create_sync_router(
     async def retry_job(
         job_id: str,
         execution_id: str | None = Body(None, embed=True),
-        _payload: TokenPayload = Depends(require_manage),
+        payload: TokenPayload = Depends(require_manage),
     ):
         """Retry a failed execution.
 
         If execution_id is given, retry that specific execution.
         Otherwise retry the most recently failed execution for this job.
         """
-        job = sync_store.get_job(job_id)
+        job = sync_store.get_job(job_id, workspace_id=payload.workspace_id)
         if job is None:
             raise HTTPException(404, f"Job {job_id} not found")
 
         if execution_id:
-            prev_exec = sync_store.get_execution(execution_id)
+            prev_exec = sync_store.get_execution(execution_id, workspace_id=payload.workspace_id)
             if prev_exec is None:
                 raise HTTPException(404, f"Execution {execution_id} not found")
             if prev_exec.job_id != job_id:
@@ -370,7 +393,7 @@ def create_sync_router(
                     f"Execution {execution_id} does not belong to job {job_id}",
                 )
         else:
-            executions = sync_store.list_executions(job_id=job_id, limit=50)
+            executions = sync_store.list_executions(job_id=job_id, limit=50, workspace_id=payload.workspace_id)
             failed_execs = [e for e in executions if e.status == "failed"]
             if not failed_execs:
                 raise HTTPException(404, f"No failed execution found for job {job_id}")
@@ -378,8 +401,26 @@ def create_sync_router(
 
         t0 = time.monotonic()
 
-        execution = SyncExecution(job_id=job_id)
-        sync_store.save_execution(execution)
+        # 幂等：同一 Job 只能有 1 个 active execution
+        existing = sync_store.get_active_execution(job_id, workspace_id=payload.workspace_id)
+        if existing is not None:
+            raise HTTPException(
+                409,
+                f"Job {job_id} already has an active execution ({existing.status})",
+            )
+
+        job.status = "queued"
+        sync_store.update_job(job, workspace_id=payload.workspace_id)
+
+        execution = SyncExecution(job_id=job_id, workspace_id=payload.workspace_id)
+        created = sync_store.create_execution_if_idle(
+            execution, workspace_id=payload.workspace_id
+        )
+        if created is None:
+            raise HTTPException(
+                409,
+                f"Job {job_id} already has an active execution (concurrent)",
+            )
         sync_worker.enqueue(job, execution)
 
         t_ms = int((time.monotonic() - t0) * 1000)
@@ -395,15 +436,39 @@ def create_sync_router(
         }
 
     @router.delete("/jobs/{job_id}")
-    async def delete_job(job_id: str, _payload: TokenPayload = Depends(require_manage)):
-        """Delete a job and its associated scheduling rule."""
-        job = sync_store.get_job(job_id)
+    async def delete_job(job_id: str, payload: TokenPayload = Depends(require_manage)):
+        """Delete a job and its associated scheduling rule.
+
+        生命周期：
+        - 终止 Job（pending/completed/failed/partial/cancelled）：直接物理删除。
+        - active Job（queued/running/cancel_requested）：先标记 cancel_requested，
+          Worker 感知后停止执行，再删除。如果 Worker 已标记 cancelled，则立即删除。
+        - 已删除/不存在的 Job：404。
+        """
+        job = sync_store.get_job(job_id, workspace_id=payload.workspace_id)
         if job is None:
             raise HTTPException(404, f"Job {job_id} not found")
 
         rule_id = job.rule_id
-        job_deleted = sync_store.delete_job(job_id)
-        rule_deleted = sync_store.delete_rule(rule_id) if rule_id else False
+
+        # P1-2: active Job → cancel_requested，等待 Worker 收敛
+        if job.status in JOB_STATUS_ACTIVE:
+            job.status = "cancel_requested"
+            sync_store.update_job(job, workspace_id=payload.workspace_id)
+            logger.info(
+                "sync_job_cancel_requested",
+                extra={"job_id": job_id, "status": job.status},
+            )
+            return {
+                "status": "cancel_requested",
+                "job_id": job_id,
+                "message": f"Job {job_id} is {job.status}; cancel_requested has been set. "
+                           f"It will be deleted once the worker stops.",
+            }
+
+        # 终止 Job → 直接物理删除
+        job_deleted = sync_store.delete_job(job_id, workspace_id=payload.workspace_id)
+        rule_deleted = sync_store.delete_rule(rule_id, workspace_id=payload.workspace_id) if rule_id else False
 
         sync_scheduler.refresh_timers()
 
@@ -431,12 +496,13 @@ def create_sync_router(
     async def list_history(
         connector_id: str = Query(default=""),
         limit: int = Query(default=50, ge=1, le=500),
-        _payload: TokenPayload = Depends(require_auth),
+        payload: TokenPayload = Depends(require_auth),
     ):
         """List execution history, optionally filtered by connector."""
         executions = sync_store.list_executions(
             connector_id=connector_id,
             limit=limit,
+            workspace_id=payload.workspace_id,
         )
 
         return {
@@ -447,16 +513,16 @@ def create_sync_router(
 
     @router.get("/stats")
     async def get_stats(
-        _payload: TokenPayload = Depends(require_auth),
+        payload: TokenPayload = Depends(require_auth),
     ):
         """Aggregate sync stats: connectors, jobs, queue, recent activity."""
-        connectors = sync_store.list_connectors()
-        jobs = sync_store.list_jobs()
+        connectors = sync_store.list_connectors(workspace_id=payload.workspace_id)
+        jobs = sync_store.list_jobs(workspace_id=payload.workspace_id)
 
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(hours=1)
 
-        all_executions = sync_store.list_executions(limit=500)
+        all_executions = sync_store.list_executions(limit=500, workspace_id=payload.workspace_id)
         last_hour_executions = 0
         last_hour_failures = 0
         for e in all_executions:

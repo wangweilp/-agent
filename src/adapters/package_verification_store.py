@@ -109,7 +109,8 @@ class SQLitePackageVerificationStore:
 
     def get_latest_run_for_artifact(self, artifact_id: str) -> PackageVerificationRun | None:
         row = next(self._exec(
-            "SELECT * FROM package_verification_runs WHERE artifact_id=? ORDER BY created_at DESC LIMIT 1",
+            # created_at 相同（同一微秒）时按 rowid 取最新，保证确定性
+            "SELECT * FROM package_verification_runs WHERE artifact_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1",
             [artifact_id]), None)
         return self._row_to_run(dict(row)) if row else None
 

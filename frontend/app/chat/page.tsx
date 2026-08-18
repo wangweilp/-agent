@@ -135,7 +135,7 @@ export default function ChatPage() {
         setStatus("idle");
       },
       (err) => {
-        addMessage({ role: "assistant", content: `错误: ${err}` });
+        addMessage({ role: "assistant", content: `错误：${err}` });
         setStreaming(false);
         setThinking(false);
         setAgentPhase("idle");
@@ -208,7 +208,7 @@ export default function ChatPage() {
             <div className="flex-1" />
             <div className="flex items-center gap-1.5">
               <Cpu size={11} className="text-emerald-400/60" />
-              <span className="text-2xs text-os-muted">知维 OS v0.1</span>
+              <span className="text-2xs text-os-subtle">知维 OS v0.1</span>
             </div>
             <button
               onClick={() => setShowActivity(!showActivity)}
@@ -234,14 +234,14 @@ export default function ChatPage() {
                       <div className="w-16 h-16 rounded-2xl bg-os-accent-grad border border-os-accent/15 flex items-center justify-center shadow-os-glow">
                         <Brain size={30} className="text-os-accent" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-400/20 border border-emerald-400/30 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-status-breathe" />
+                      <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50">
+                        <div className="h-2 w-2 rounded-full bg-emerald-600 animate-status-breathe" />
                       </div>
                     </div>
-                    <h2 className="text-lg font-semibold text-os-text-high tracking-tight">Agent Memory OS</h2>
+                    <h2 className="text-lg font-semibold text-os-text-high tracking-tight">智能体记忆操作系统（Agent Memory OS）</h2>
                     <p className="text-xs text-os-subtle max-w-sm mx-auto leading-relaxed">
                       具备长期记忆与自我反思能力的 AI 认知工作台<br />
-                      每一次对话都会被记住，Agent 会主动发现洞察
+                      每一次对话都会被记住，智能体（Agent）会主动发现洞察
                     </p>
                   </div>
 
@@ -254,14 +254,14 @@ export default function ChatPage() {
                       >
                         <cap.icon size={16} className="text-os-accent/60 group-hover:text-os-accent mx-auto transition-colors" />
                         <p className="text-2xs text-os-text-high font-medium">{cap.label}</p>
-                        <p className="text-2xs text-os-muted hidden sm:block">{cap.desc}</p>
+                        <p className="hidden text-2xs text-os-subtle sm:block">{cap.desc}</p>
                       </div>
                     ))}
                   </div>
 
                   {/* 快捷指令 */}
                   <div className="space-y-2">
-                    <p className="text-2xs text-os-muted text-center uppercase tracking-wider">快捷指令</p>
+                    <p className="text-center text-2xs uppercase tracking-wider text-os-subtle">快捷指令</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                       {quickActions.map((action) => (
                         <button
@@ -313,9 +313,9 @@ export default function ChatPage() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
+                  placeholder="输入消息...（Enter 发送，Shift+Enter 换行）"
                   rows={1}
-                  className="flex-1 bg-transparent resize-none text-sm text-os-text-high placeholder-os-muted py-2 px-2.5 outline-none max-h-32"
+                  className="max-h-32 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm text-os-text-high outline-none placeholder:text-os-subtle"
                 />
                 <ImageUploadButton
                   disabled={streaming}
@@ -328,7 +328,7 @@ export default function ChatPage() {
                     "shrink-0 w-9 h-9 rounded-xl transition-all flex items-center justify-center",
                     input.trim() && !streaming
                       ? "bg-os-accent/15 text-os-accent hover:bg-os-accent/25 hover:shadow-[0_0_12px_rgba(129,140,248,0.3)]"
-                      : "bg-os-elevated text-os-muted cursor-not-allowed",
+                      : "bg-os-elevated text-os-subtle cursor-not-allowed",
                   )}
                 >
                   {streaming ? (
@@ -338,8 +338,8 @@ export default function ChatPage() {
                   )}
                 </button>
               </div>
-              <p className="text-2xs text-os-muted/60 text-center mt-2 select-none">
-                Agent Memory OS — 具备长期记忆与自我反思能力
+              <p className="mt-2 select-none text-center text-2xs text-os-subtle">
+                智能体记忆操作系统——具备长期记忆与自我反思能力
               </p>
             </div>
           </div>

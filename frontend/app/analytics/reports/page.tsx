@@ -12,9 +12,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  generating: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  ready: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  failed: "bg-red-400/10 text-red-400 border-red-400/20",
+  generating: "bg-os-warning-soft text-os-warning border-os-warning/20",
+  ready: "bg-os-success-soft text-os-success border-os-success/20",
+  failed: "bg-os-danger-soft text-os-danger border-os-danger/20",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -26,17 +26,20 @@ const STATUS_LABELS: Record<string, string> = {
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [reportType, setReportType] = useState("monthly");
   const [reportFormat, setReportFormat] = useState("json");
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const r = await api.reports.list(undefined, 50);
       setReports(r);
     } catch (err) {
       console.error("Failed to fetch reports:", err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -141,12 +144,19 @@ export default function ReportsPage() {
           <h2 className="text-sm font-semibold">报告列表 ({reports.length})</h2>
         </div>
         <div className="divide-y">
-          {reports.length === 0 && (
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              正在加载报告...
+            </div>
+          ) : loadError ? (
+            <div className="p-8 text-center text-sm text-os-danger">
+              报告加载失败，请稍后重试
+            </div>
+          ) : reports.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
               暂无报告，点击「生成报告」创建
             </div>
-          )}
-          {reports.map((report) => (
+          ) : reports.map((report) => (
             <div key={report.id} className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-muted-foreground" />

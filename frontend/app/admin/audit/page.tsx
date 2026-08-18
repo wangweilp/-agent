@@ -77,18 +77,30 @@ function formatDateTime(iso: string): string {
 function severityBadgeStyle(severity: string): string {
   switch (severity?.toLowerCase()) {
     case "critical":
-      return "bg-red-400/10 text-red-400 border-red-400/20";
+      return "bg-os-danger-soft text-os-danger border-os-danger/20";
     case "high":
-      return "bg-red-400/10 text-red-400 border-red-400/20";
+      return "bg-os-danger-soft text-os-danger border-os-danger/20";
     case "medium":
     case "warning":
-      return "bg-amber-400/10 text-amber-400 border-amber-400/20";
+      return "bg-os-warning-soft text-os-warning border-os-warning/20";
     case "low":
     case "info":
-      return "bg-emerald-400/10 text-emerald-400 border-emerald-400/20";
+      return "bg-os-success-soft text-os-success border-os-success/20";
     default:
       return "bg-os-elevated text-os-subtle border-os-border/30";
   }
+}
+
+function severityLabel(severity: string): string {
+  const labels: Record<string, string> = {
+    critical: "严重",
+    high: "高",
+    medium: "中",
+    warning: "警告",
+    low: "低",
+    info: "信息",
+  };
+  return labels[severity?.toLowerCase()] || "未知";
 }
 
 function severityIcon(severity: string) {
@@ -187,7 +199,7 @@ export default function AuditCenterPage() {
       });
       setEvents(filtered);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load audit events");
+      setError(err instanceof Error ? err.message : "审计事件加载失败");
     } finally {
       setLoading(false);
     }
@@ -238,7 +250,7 @@ export default function AuditCenterPage() {
   return (
     <div className="p-6 space-y-4 max-w-[1440px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
             审计中心
@@ -247,7 +259,7 @@ export default function AuditCenterPage() {
             安全与合规审计追踪
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleExport}
             disabled={events.length === 0}
@@ -275,7 +287,7 @@ export default function AuditCenterPage() {
         <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
           <div className="flex items-center gap-2 mb-1">
             <Clock size={12} className="text-os-accent" />
-            <span className="text-2xs text-os-muted uppercase tracking-wider">Last 24h</span>
+            <span className="text-2xs text-os-subtle tracking-wider">过去 24 小时</span>
           </div>
           {summaryLoading ? (
             <div className="h-6 w-8 bg-os-elevated rounded animate-pulse mt-1" />
@@ -288,7 +300,7 @@ export default function AuditCenterPage() {
         <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
           <div className="flex items-center gap-2 mb-1">
             <Calendar size={12} className="text-os-accent" />
-            <span className="text-2xs text-os-muted uppercase tracking-wider">Last 7 Days</span>
+            <span className="text-2xs text-os-subtle tracking-wider">过去 7 天</span>
           </div>
           {summaryLoading ? (
             <div className="h-6 w-8 bg-os-elevated rounded animate-pulse mt-1" />
@@ -301,7 +313,7 @@ export default function AuditCenterPage() {
         <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
           <div className="flex items-center gap-2 mb-1">
             <Calendar size={12} className="text-os-accent" />
-            <span className="text-2xs text-os-muted uppercase tracking-wider">Last 30 Days</span>
+            <span className="text-2xs text-os-subtle tracking-wider">过去 30 天</span>
           </div>
           {summaryLoading ? (
             <div className="h-6 w-8 bg-os-elevated rounded animate-pulse mt-1" />
@@ -314,12 +326,12 @@ export default function AuditCenterPage() {
         <div className="os-card p-3 rounded-lg border border-os-border/30 bg-os-surface">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={12} className="text-os-accent" />
-            <span className="text-2xs text-os-muted uppercase tracking-wider">Critical/High</span>
+            <span className="text-2xs text-os-subtle tracking-wider">严重 / 高风险</span>
           </div>
           {summaryLoading ? (
             <div className="h-6 w-8 bg-os-elevated rounded animate-pulse mt-1" />
           ) : (
-            <p className="text-lg font-mono font-semibold text-red-400">
+            <p className="text-lg font-mono font-semibold text-os-danger">
               {(summary?.by_severity?.critical || 0) + (summary?.by_severity?.high || 0) || "-"}
             </p>
           )}
@@ -338,21 +350,21 @@ export default function AuditCenterPage() {
           )}
         >
           <Filter size={12} />
-          Filters
+          筛选
           {hasFilters && (
             <span className="w-1.5 h-1.5 rounded-full bg-os-accent" />
           )}
         </button>
-        <div className="text-2xs text-os-muted">
-          {events.length} event{events.length !== 1 ? "s" : ""} found
+        <div className="text-2xs text-os-subtle">
+          共 {events.length} 条事件
         </div>
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-muted hover:text-os-text transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-subtle hover:text-os-text transition-colors"
           >
             <X size={12} />
-            Clear filters
+            清除筛选
           </button>
         )}
       </div>
@@ -361,41 +373,41 @@ export default function AuditCenterPage() {
       {showFilters && (
         <div className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-slide-up">
           <div>
-            <label className="text-2xs text-os-subtle block mb-1">Action</label>
+            <label className="text-2xs text-os-subtle block mb-1">操作</label>
             <input
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
-              placeholder="e.g. login, delete"
-              className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+              placeholder="例如：login、delete"
+              className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
             />
           </div>
           <div>
-            <label className="text-2xs text-os-subtle block mb-1">User</label>
+            <label className="text-2xs text-os-subtle block mb-1">用户</label>
             <input
               value={userFilter}
               onChange={(e) => setUserFilter(e.target.value)}
-              placeholder="e.g. user@example.com"
-              className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+              placeholder="例如：user@example.com"
+              className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
             />
           </div>
           <div>
-            <label className="text-2xs text-os-subtle block mb-1">Severity</label>
+            <label className="text-2xs text-os-subtle block mb-1">风险级别</label>
             <select
               value={severityFilter}
               onChange={(e) => setSeverityFilter(e.target.value)}
               className="w-full h-9 px-3 bg-os-base border border-os-border rounded-md text-xs text-os-text-high focus:outline-none focus:border-os-accent transition-colors"
             >
-              <option value="">All</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-              <option value="info">Info</option>
+              <option value="">全部</option>
+              <option value="critical">严重</option>
+              <option value="high">高</option>
+              <option value="medium">中</option>
+              <option value="low">低</option>
+              <option value="info">信息</option>
             </select>
           </div>
           <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-2xs text-os-subtle block mb-1">From</label>
+              <label className="text-2xs text-os-subtle block mb-1">开始日期</label>
               <input
                 type="date"
                 value={dateFrom}
@@ -404,7 +416,7 @@ export default function AuditCenterPage() {
               />
             </div>
             <div className="flex-1">
-              <label className="text-2xs text-os-subtle block mb-1">To</label>
+              <label className="text-2xs text-os-subtle block mb-1">结束日期</label>
               <input
                 type="date"
                 value={dateTo}
@@ -418,7 +430,7 @@ export default function AuditCenterPage() {
 
       {/* Error */}
       {error && (
-        <div className="os-card p-3 rounded-lg border border-red-400/20 bg-red-400/5 text-red-400 text-xs">
+        <div className="os-card rounded-lg border border-os-danger/20 bg-os-danger-soft p-3 text-xs text-os-danger">
           {error}
         </div>
       )}
@@ -433,12 +445,12 @@ export default function AuditCenterPage() {
       )}
 
       {/* Empty */}
-      {!loading && events.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-os-muted">
+      {!loading && !error && events.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 text-os-subtle">
           <Shield size={48} className="mb-4 opacity-30" />
-          <p className="text-sm">No audit events found</p>
+          <p className="text-sm">未找到审计事件</p>
           <p className="text-2xs mt-1">
-            {hasFilters ? "Try adjusting your filters" : "Events will appear here as users interact with the system"}
+            {hasFilters ? "请调整筛选条件后重试" : "用户与系统交互后，事件将显示在这里"}
           </p>
         </div>
       )}
@@ -449,13 +461,13 @@ export default function AuditCenterPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-os-muted border-b border-os-border/30 bg-os-elevated/30">
-                  <th className="text-left py-2.5 px-3 font-medium">Timestamp</th>
-                  <th className="text-left py-2.5 px-3 font-medium">Action</th>
-                  <th className="text-left py-2.5 px-3 font-medium">User</th>
-                  <th className="text-left py-2.5 px-3 font-medium hidden md:table-cell">Resource</th>
-                  <th className="text-left py-2.5 px-3 font-medium">Severity</th>
-                  <th className="text-left py-2.5 px-3 font-medium hidden lg:table-cell">Detail</th>
+                <tr className="text-os-subtle border-b border-os-border/30 bg-os-elevated/30">
+                  <th className="text-left py-2.5 px-3 font-medium">时间</th>
+                  <th className="text-left py-2.5 px-3 font-medium">操作</th>
+                  <th className="text-left py-2.5 px-3 font-medium">用户</th>
+                  <th className="text-left py-2.5 px-3 font-medium hidden md:table-cell">资源</th>
+                  <th className="text-left py-2.5 px-3 font-medium">风险级别</th>
+                  <th className="text-left py-2.5 px-3 font-medium hidden lg:table-cell">详情</th>
                 </tr>
               </thead>
               <tbody>
@@ -464,13 +476,13 @@ export default function AuditCenterPage() {
                     <td className="py-2.5 px-3 text-os-subtle font-mono whitespace-nowrap">
                       {formatDateTime(event.timestamp)}
                     </td>
-                    <td className="py-2.5 px-3 text-os-text-high font-medium">
+                    <td className="break-words py-2.5 px-3 text-os-text-high font-medium">
                       {event.action}
                     </td>
-                    <td className="py-2.5 px-3 text-os-text">
+                    <td className="break-all py-2.5 px-3 text-os-text">
                       {event.user || event.user_id || "-"}
                     </td>
-                    <td className="py-2.5 px-3 text-os-subtle hidden md:table-cell">
+                    <td className="break-all py-2.5 px-3 text-os-subtle hidden md:table-cell">
                       {event.resource || event.org_id || "-"}
                     </td>
                     <td className="py-2.5 px-3">
@@ -481,10 +493,10 @@ export default function AuditCenterPage() {
                         )}
                       >
                         {severityIcon(event.severity)}
-                        {event.severity || "info"}
+                        {severityLabel(event.severity || "info")}
                       </span>
                     </td>
-                    <td className="py-2.5 px-3 text-os-muted hidden lg:table-cell max-w-[200px] truncate">
+                    <td className="max-w-[260px] break-words py-2.5 px-3 text-os-subtle hidden lg:table-cell">
                       {event.detail || "-"}
                     </td>
                   </tr>

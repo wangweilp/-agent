@@ -36,9 +36,9 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
         <div className="flex-1" />
         <div className={`
           flex items-center gap-1 px-1.5 py-0.5 rounded-full text-2xs
-          ${isIdle ? "bg-emerald-400/8 text-emerald-400/80" : "bg-indigo-400/8 text-indigo-400/80"}
+          ${isIdle ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"}
         `}>
-          <div className={`w-1 h-1 rounded-full ${isIdle ? "bg-emerald-400" : "bg-indigo-400 animate-pulse"}`} />
+          <div className={`w-1 h-1 rounded-full ${isIdle ? "bg-emerald-600" : "bg-indigo-600 animate-pulse"}`} />
           {isIdle ? "待命" : "运行中"}
         </div>
       </div>
@@ -47,7 +47,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
         {/* ── Agent 状态卡片 ── */}
         <div className={`rounded-xl p-3.5 border transition-all duration-500 ${
           isActive
-            ? "bg-os-accent/5 border-os-accent/15 shadow-os-glow"
+            ? "bg-os-accent/5 border-os-accent/20 shadow-os-glow"
             : "bg-os-surface/50 border-os-border/50"
         }`}>
           <div className="flex items-center gap-2 mb-3">
@@ -59,9 +59,9 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                isActive ? "bg-os-accent/15" : "bg-os-elevated"
+                isActive ? "bg-os-accent/10" : "bg-os-elevated"
               }`}>
-                <Cpu size={16} className={isActive ? "text-os-accent" : "text-os-muted"} />
+                <Cpu size={16} className={isActive ? "text-os-accent" : "text-os-subtle"} />
               </div>
               {isActive && (
                 <div className="absolute -inset-1 rounded-xl border border-os-accent/20 animate-pulse" />
@@ -74,7 +74,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
                 {status === "reflecting" && "自我反思"}
                 {status === "idle" && "智能体就绪"}
               </p>
-              <p className="text-2xs text-os-muted mt-0.5">
+              <p className="text-2xs text-os-subtle mt-0.5">
                 {isIdle ? "等待您的指令，随时可以开始对话" : "正在处理您的请求..."}
               </p>
             </div>
@@ -92,7 +92,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
                   transition={{ duration: 0.5 }}
                 />
               </div>
-              <span className="text-2xs text-os-muted whitespace-nowrap">
+              <span className="text-2xs text-os-subtle whitespace-nowrap">
                 {agentPhase === "retrieving" && "检索"}
                 {agentPhase === "thinking" && "推理"}
                 {agentPhase === "acting" && "执行"}
@@ -125,20 +125,21 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
                     <div className="flex items-center gap-2 min-w-0">
                       <div className={`
                         w-1.5 h-1.5 rounded-full shrink-0
-                        ${tc.status === "running" ? "bg-amber-400 animate-pulse" : ""}
-                        ${tc.status === "success" ? "bg-emerald-400" : ""}
-                        ${tc.status === "failed" ? "bg-red-400" : ""}
+                        ${tc.status === "running" ? "bg-amber-600 animate-pulse" : ""}
+                        ${tc.status === "success" ? "bg-emerald-600" : ""}
+                        ${tc.status === "failed" ? "bg-red-600" : ""}
+                        ${!["running", "success", "failed"].includes(tc.status) ? "bg-os-muted" : ""}
                       `} />
                       <span className="text-xs text-os-text-high font-medium truncate">{tc.tool_name}</span>
                     </div>
                     <span className={`text-2xs shrink-0 ml-2 ${
-                      tc.status === "running" ? "text-amber-400" :
-                      tc.status === "success" ? "text-emerald-400" :
-                      "text-red-400"
+                      tc.status === "running" ? "text-amber-800" :
+                      tc.status === "success" ? "text-emerald-700" :
+                      tc.status === "failed" ? "text-red-700" : "text-os-subtle"
                     }`}>
                       {tc.status === "running" ? "执行中" :
                        tc.status === "success" ? "完成" :
-                       tc.status === "failed" ? "失败" : tc.status}
+                       tc.status === "failed" ? "失败" : `未知状态（${tc.status}）`}
                     </span>
                   </div>
                   {tc.status === "running" && (
@@ -156,9 +157,9 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
             {toolCalls.length === 0 && (
               <div className="text-center py-4">
                 <div className="w-8 h-8 rounded-lg bg-os-elevated border border-os-border/30 flex items-center justify-center mx-auto mb-1.5">
-                  <Wrench size={12} className="text-os-muted/60" />
+                  <Wrench size={12} className="text-os-subtle" />
                 </div>
-                <p className="text-2xs text-os-muted/60">待命中 — 发送消息后可观察工具调用</p>
+                <p className="text-2xs text-os-subtle">待命中 — 发送消息后可观察工具调用</p>
               </div>
             )}
           </div>
@@ -168,9 +169,9 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
         <div>
           <div className="flex items-center gap-2 mb-2.5">
             <Clock size={12} className="text-os-subtle" />
-            <span className="text-2xs text-os-subtle uppercase tracking-wider">认知 Trace</span>
+            <span className="text-2xs text-os-subtle uppercase tracking-wider">认知追踪（Trace）</span>
             {traces.length > 0 && (
-              <span className="text-2xs text-os-muted ml-auto">{traces.length}</span>
+              <span className="text-2xs text-os-subtle ml-auto">{traces.length}</span>
             )}
           </div>
           <div className="space-y-0.5 max-h-56 overflow-y-auto">
@@ -184,10 +185,10 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
               >
                 <div className={`
                   w-1 h-1 rounded-full shrink-0
-                  ${t.status === "running" ? "bg-amber-400" : "bg-emerald-400/50"}
+                  ${t.status === "running" ? "bg-amber-600" : "bg-emerald-600/60"}
                 `} />
                 <span className="text-2xs text-os-text/80 truncate flex-1">{t.detail}</span>
-                <span className="text-2xs text-os-muted/60 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-2xs text-os-subtle shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   {t.status === "running" ? "运行中" : "完成"}
                 </span>
               </motion.div>
@@ -195,9 +196,9 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
             {traces.length === 0 && (
               <div className="text-center py-4">
                 <div className="w-8 h-8 rounded-lg bg-os-elevated border border-os-border/30 flex items-center justify-center mx-auto mb-1.5">
-                  <Layers size={12} className="text-os-muted/60" />
+                  <Layers size={12} className="text-os-subtle" />
                 </div>
-                <p className="text-2xs text-os-muted/60">暂无 Trace — 对话后将显示认知过程</p>
+                <p className="text-2xs text-os-subtle">暂无追踪（Trace）— 对话后将显示认知过程</p>
               </div>
             )}
           </div>
@@ -221,7 +222,7 @@ export function ActivityPanel({ agentPhase = "idle" }: Props) {
                 { icon: CircleDot, text: "支持图片上传与 OCR" },
                 { icon: CircleDot, text: "工具调用实时可见" },
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-2xs text-os-muted/70">
+                <div key={i} className="flex items-center gap-1.5 text-2xs text-os-subtle">
                   <item.icon size={6} className="text-os-accent/40 shrink-0" />
                   <span>{item.text}</span>
                 </div>

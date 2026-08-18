@@ -31,29 +31,43 @@ function pricingLabel(model: string): string {
 }
 
 function pricingColor(model: string): string {
-  if (model === "free") return "bg-emerald-400/10 text-emerald-300";
-  if (model === "per_use") return "bg-amber-400/10 text-amber-300";
-  return "bg-violet-400/10 text-violet-300";
+  if (model === "free") return "bg-emerald-400/10 text-emerald-700";
+  if (model === "per_use") return "bg-amber-400/10 text-amber-800";
+  return "bg-violet-400/10 text-violet-700";
 }
 
 function categoryColor(category: string): string {
   const map: Record<string, string> = {
-    automation: "bg-blue-400/10 text-blue-300",
-    assistant: "bg-cyan-400/10 text-cyan-300",
-    knowledge: "bg-emerald-400/10 text-emerald-300",
-    training: "bg-violet-400/10 text-violet-300",
-    sales: "bg-amber-400/10 text-amber-300",
-    support: "bg-rose-400/10 text-rose-300",
-    engineering: "bg-indigo-400/10 text-indigo-300",
-    hr: "bg-pink-400/10 text-pink-300",
-    analytics: "bg-orange-400/10 text-orange-300",
+    automation: "bg-blue-400/10 text-blue-700",
+    assistant: "bg-cyan-400/10 text-cyan-700",
+    knowledge: "bg-emerald-400/10 text-emerald-700",
+    training: "bg-violet-400/10 text-violet-700",
+    sales: "bg-amber-400/10 text-amber-800",
+    support: "bg-rose-400/10 text-rose-700",
+    engineering: "bg-indigo-400/10 text-indigo-700",
+    hr: "bg-pink-400/10 text-pink-700",
+    analytics: "bg-orange-400/10 text-orange-800",
   };
-  return map[category] || "bg-zinc-400/10 text-zinc-300";
+  return map[category] || "bg-zinc-400/10 text-zinc-700";
+}
+
+function categoryLabel(category: string): string {
+  const map: Record<string, string> = {
+    automation: "自动化",
+    assistant: "助手",
+    knowledge: "知识",
+    training: "培训",
+    sales: "销售",
+    support: "支持",
+    engineering: "工程",
+    hr: "人力资源",
+    analytics: "分析",
+  };
+  return map[category] || category;
 }
 
 function formatDownloads(count: number): string {
-  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
-  return String(count);
+  return count.toLocaleString("zh-CN");
 }
 
 export function MarketplaceAgentCard({
@@ -93,7 +107,7 @@ export function MarketplaceAgentCard({
               {agent.display_name}
             </h3>
             {installed && (
-              <CheckCircle2 size={13} className="shrink-0 text-os-success" />
+              <CheckCircle2 size={13} className="shrink-0 text-emerald-700" />
             )}
           </div>
           <p className="mt-1 line-clamp-2 text-xs leading-5 text-os-subtle">
@@ -104,10 +118,10 @@ export function MarketplaceAgentCard({
 
       {/* Tags — refined */}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <span className={cn("os-badge text-2xs", categoryColor(agent.category))}>
-          {agent.category}
+        <span className={cn("os-badge max-w-full break-all text-2xs", categoryColor(agent.category))}>
+          {categoryLabel(agent.category)}
         </span>
-        <span className={cn("os-badge text-2xs", pricingColor(agent.pricing_model))}>
+        <span className={cn("os-badge max-w-full break-all text-2xs", pricingColor(agent.pricing_model))}>
           {pricingLabel(agent.pricing_model)}
         </span>
         <span className="os-badge text-2xs bg-os-elevated text-os-subtle">
@@ -116,12 +130,12 @@ export function MarketplaceAgentCard({
       </div>
 
       {/* Bottom Stats — downloads | rating | author (elegant flex) */}
-      <div className="mt-auto flex items-center gap-4 pt-4 text-2xs text-os-muted">
+      <div className="mt-auto flex items-center gap-4 pt-4 text-2xs text-os-subtle">
         <span className="inline-flex items-center gap-1">
           <ArrowDownToLine size={11} />
           {formatDownloads(agent.install_count)}
         </span>
-        <span className="inline-flex items-center gap-0.5 text-amber-300">
+        <span className="inline-flex items-center gap-0.5 text-amber-800">
           <Star size={11} className="fill-amber-300" />
           {agent.rating.toFixed(1)}
         </span>
@@ -157,7 +171,7 @@ export function MarketplaceAgentCard({
           className={cn(
             "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all duration-200",
             installed
-              ? "bg-os-success/10 text-os-success border border-os-success/30 cursor-default"
+              ? "bg-os-success/10 text-emerald-700 border border-os-success/30 cursor-default"
               : busy
                 ? "border border-os-accent text-os-accent bg-transparent cursor-wait"
                 : "bg-os-elevated text-os-text hover:bg-os-accent/20 hover:text-os-accent",

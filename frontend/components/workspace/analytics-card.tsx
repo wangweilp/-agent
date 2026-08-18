@@ -14,13 +14,13 @@ interface AnalyticsCardProps {
   className?: string;
 }
 
-const accentMap: Record<string, { bg: string; text: string; border: string }> = {
-  indigo:  { bg: "bg-indigo-400/10", text: "text-indigo-400", border: "border-indigo-400/20" },
-  emerald: { bg: "bg-emerald-400/10", text: "text-emerald-400", border: "border-emerald-400/20" },
-  amber:   { bg: "bg-amber-400/10", text: "text-amber-400", border: "border-amber-400/20" },
-  violet:  { bg: "bg-violet-400/10", text: "text-violet-400", border: "border-violet-400/20" },
-  rose:    { bg: "bg-rose-400/10", text: "text-rose-400", border: "border-rose-400/20" },
-  cyan:    { bg: "bg-cyan-400/10", text: "text-cyan-400", border: "border-cyan-400/20" },
+const accentMap: Record<string, { bg: string; fill: string; text: string; border: string }> = {
+  indigo:  { bg: "bg-indigo-400/10", fill: "bg-indigo-500", text: "text-indigo-700", border: "border-indigo-400/20" },
+  emerald: { bg: "bg-emerald-400/10", fill: "bg-emerald-500", text: "text-emerald-700", border: "border-emerald-400/20" },
+  amber:   { bg: "bg-amber-400/10", fill: "bg-amber-500", text: "text-amber-800", border: "border-amber-400/20" },
+  violet:  { bg: "bg-violet-400/10", fill: "bg-violet-500", text: "text-violet-700", border: "border-violet-400/20" },
+  rose:    { bg: "bg-rose-400/10", fill: "bg-rose-500", text: "text-rose-700", border: "border-rose-400/20" },
+  cyan:    { bg: "bg-cyan-400/10", fill: "bg-cyan-500", text: "text-cyan-700", border: "border-cyan-400/20" },
 };
 
 /** 可复用分析统计卡片 — 用于团队面板各指标展示。 */
@@ -45,8 +45,8 @@ export function AnalyticsCard({
       )}
     >
       {/* Header row */}
-      <div className="flex items-center justify-between">
-        <span className="text-2xs text-os-subtle uppercase tracking-wider">
+      <div className="flex min-w-0 items-start justify-between gap-2">
+        <span className="min-w-0 break-words text-2xs uppercase tracking-wider text-os-subtle [overflow-wrap:anywhere]">
           {label}
         </span>
         {Icon && (
@@ -62,13 +62,13 @@ export function AnalyticsCard({
       </div>
 
       {/* Value */}
-      <p className="font-mono text-xl font-semibold tracking-tight text-os-text-high">
+      <p className="break-words font-mono text-xl font-semibold tracking-tight text-os-text-high [overflow-wrap:anywhere]">
         {value}
       </p>
 
       {/* Sub-value */}
       {subValue && (
-        <span className="text-2xs text-os-muted">{subValue}</span>
+        <span className="break-words text-2xs text-os-subtle [overflow-wrap:anywhere]">{subValue}</span>
       )}
 
       {/* Optional detail slot */}
@@ -92,14 +92,14 @@ export function MiniProgressBar({
   const colors = accentMap[accent] ?? accentMap.indigo;
 
   return (
-    <div className="flex items-center gap-2 text-2xs">
-      <span className="w-10 text-os-muted">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-os-elevated">
+    <div className="flex min-w-0 items-center gap-2 text-2xs">
+      <span className="w-14 shrink-0 break-words text-os-subtle">{label}</span>
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-os-elevated">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(percent, 100)}%` }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className={cn("h-full rounded-full", colors.bg)}
+          className={cn("h-full rounded-full", colors.fill)}
         />
       </div>
       <span className="w-8 text-right text-os-subtle tabular-nums">

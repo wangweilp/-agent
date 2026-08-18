@@ -10,11 +10,15 @@ import json
 import logging
 import sqlite3
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from src.adapters.config import Settings
+from src.adapters.auth_store import WorkspaceContext
 from src.sync.models import (
+    EXECUTION_STATUS_ACTIVE,
+    JOB_STATUS_ACTIVE,
     SyncConnectorConfig,
     SyncRule,
     SyncJob,
@@ -71,6 +75,7 @@ class SyncStore:
             etag_map_json TEXT DEFAULT '{}',
             hash_map_json TEXT DEFAULT '{}',
             version_map_json TEXT DEFAULT '{}',
+            workspace_id TEXT NOT NULL DEFAULT 'default',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -81,7 +86,8 @@ class SyncStore:
             cron_expression TEXT DEFAULT '',
             enabled INTEGER NOT NULL DEFAULT 1,
             webhook_url TEXT DEFAULT '',
-            webhook_secret TEXT DEFAULT ''
+            webhook_secret TEXT DEFAULT '',
+            workspace_id TEXT NOT NULL DEFAULT 'default'
         );
 
         CREATE TABLE IF NOT EXISTS sync_jobs (
@@ -91,7 +97,12 @@ class SyncStore:
             name TEXT NOT NULL,
             status TEXT DEFAULT 'pending',
             enabled INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL
+            workspace_id TEXT NOT NULL DEFAULT 'default',
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            heartbeat_at TEXT,
+            worker_id TEXT DEFAULT '',
+            attempt_count INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS sync_executions (
@@ -108,7 +119,8 @@ class SyncStore:
             memories_created INTEGER DEFAULT 0,
             errors_count INTEGER DEFAULT 0,
             error TEXT,
-            elapsed_ms INTEGER DEFAULT 0
+            elapsed_ms INTEGER DEFAULT 0,
+            workspace_id TEXT NOT NULL DEFAULT 'default'
         );
 
         CREATE TABLE IF NOT EXISTS sync_changes (
@@ -124,13 +136,58 @@ class SyncStore:
             metadata_json TEXT DEFAULT '{}',
             processed INTEGER NOT NULL DEFAULT 0,
             process_error TEXT,
-            detected_at TEXT NOT NULL
+            detected_at TEXT NOT NULL,
+            workspace_id TEXT NOT NULL DEFAULT 'default'
         );
         CREATE INDEX IF NOT EXISTS idx_changes_exec ON sync_changes(execution_id);
         CREATE INDEX IF NOT EXISTS idx_changes_resource ON sync_changes(connector_type, resource_id);
         CREATE INDEX IF NOT EXISTS idx_executions_job ON sync_executions(job_id);
         """)
         conn.commit()
+        self._run_migrations()
+
+    def _run_migrations(self) -> None:
+        """Idempotent migration: add workspace_id columns to pre-existing tables."""
+        conn = self._get_conn()
+        for table, col in (
+            ("sync_connectors", "workspace_id"),
+            ("sync_rules", "workspace_id"),
+            ("sync_jobs", "workspace_id"),
+            ("sync_executions", "workspace_id"),
+            ("sync_changes", "workspace_id"),
+        ):
+            cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            if col not in cols:
+                conn.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {col} TEXT NOT NULL DEFAULT 'default'"
+                )
+                logger.info("migration: added %s.%s", table, col)
+        for table, idx in (
+            ("sync_connectors", "idx_connectors_ws"),
+            ("sync_rules", "idx_rules_ws"),
+            ("sync_jobs", "idx_jobs_ws"),
+            ("sync_executions", "idx_executions_ws"),
+            ("sync_changes", "idx_changes_ws"),
+        ):
+            conn.execute(f"CREATE INDEX IF NOT EXISTS {idx} ON {table}(workspace_id)")
+
+        # P1: sync_jobs 生命周期字段迁移
+        job_cols = {r["name"] for r in conn.execute("PRAGMA table_info(sync_jobs)").fetchall()}
+        for col, ddl in (
+            ("started_at", "TEXT"),
+            ("heartbeat_at", "TEXT"),
+            ("worker_id", "TEXT DEFAULT ''"),
+            ("attempt_count", "INTEGER NOT NULL DEFAULT 0"),
+        ):
+            if col not in job_cols:
+                conn.execute(f"ALTER TABLE sync_jobs ADD COLUMN {col} {ddl}")
+                logger.info("migration: added sync_jobs.%s", col)
+        conn.commit()
+
+    @staticmethod
+    def _resolve_workspace(workspace_id: str | None) -> str:
+        """Resolve the effective workspace, defaulting to the request context."""
+        return workspace_id or WorkspaceContext.workspace_id()
 
     def close(self) -> None:
         if self._conn is not None:
@@ -142,15 +199,33 @@ class SyncStore:
 
     # ── Connectors ──
 
-    def save_connector(self, config: SyncConnectorConfig) -> SyncConnectorConfig:
+    def save_connector(
+        self, config: SyncConnectorConfig, workspace_id: str | None = None
+    ) -> SyncConnectorConfig:
+        ws = self._resolve_workspace(workspace_id or config.workspace_id)
+        config.workspace_id = ws
         with self._lock:
             conn = self._get_conn()
+            # ON CONFLICT(id) DO UPDATE 而非 REPLACE：避免 REPLACE 先 DELETE 旧行，
+            # 触发 sync_jobs.connector_config_id 的 ON DELETE CASCADE 清空其 Job。
             conn.execute(
-                """INSERT OR REPLACE INTO sync_connectors
+                """INSERT INTO sync_connectors
                    (id, name, connector_type, credentials_json, enabled,
                     last_sync_time, last_sync_status, etag_map_json, hash_map_json,
-                    version_map_json, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    version_map_json, workspace_id, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                   name=excluded.name,
+                   connector_type=excluded.connector_type,
+                   credentials_json=excluded.credentials_json,
+                   enabled=excluded.enabled,
+                   last_sync_time=excluded.last_sync_time,
+                   last_sync_status=excluded.last_sync_status,
+                   etag_map_json=excluded.etag_map_json,
+                   hash_map_json=excluded.hash_map_json,
+                   version_map_json=excluded.version_map_json,
+                   workspace_id=excluded.workspace_id,
+                   updated_at=excluded.updated_at""",
                 (
                     config.id, config.name, config.connector_type,
                     json.dumps(config.credentials, ensure_ascii=False),
@@ -160,6 +235,7 @@ class SyncStore:
                     json.dumps(config.etag_map, ensure_ascii=False),
                     json.dumps(config.hash_map, ensure_ascii=False),
                     json.dumps(config.version_map, ensure_ascii=False),
+                    ws,
                     config.created_at.isoformat(),
                     config.updated_at.isoformat(),
                 ),
@@ -167,29 +243,41 @@ class SyncStore:
             conn.commit()
         return config
 
-    def get_connector(self, connector_id: str) -> SyncConnectorConfig | None:
+    def get_connector(
+        self, connector_id: str, workspace_id: str | None = None
+    ) -> SyncConnectorConfig | None:
+        ws = self._resolve_workspace(workspace_id)
         conn = self._get_conn()
         row = conn.execute(
-            "SELECT * FROM sync_connectors WHERE id = ?", (connector_id,)
+            "SELECT * FROM sync_connectors WHERE id = ? AND workspace_id = ?",
+            (connector_id, ws),
         ).fetchone()
         if row is None:
             return None
         return self._row_to_connector(row)
 
-    def list_connectors(self) -> list[SyncConnectorConfig]:
+    def list_connectors(self, workspace_id: str | None = None) -> list[SyncConnectorConfig]:
+        ws = self._resolve_workspace(workspace_id)
         conn = self._get_conn()
         rows = conn.execute(
-            "SELECT * FROM sync_connectors ORDER BY updated_at DESC"
+            "SELECT * FROM sync_connectors WHERE workspace_id = ? ORDER BY updated_at DESC",
+            (ws,),
         ).fetchall()
         return [self._row_to_connector(r) for r in rows]
 
-    def update_connector(self, config: SyncConnectorConfig) -> SyncConnectorConfig:
-        return self.save_connector(config)
+    def update_connector(
+        self, config: SyncConnectorConfig, workspace_id: str | None = None
+    ) -> SyncConnectorConfig:
+        return self.save_connector(config, workspace_id=workspace_id)
 
-    def delete_connector(self, connector_id: str) -> bool:
+    def delete_connector(self, connector_id: str, workspace_id: str | None = None) -> bool:
+        ws = self._resolve_workspace(workspace_id)
         with self._lock:
             conn = self._get_conn()
-            cur = conn.execute("DELETE FROM sync_connectors WHERE id = ?", (connector_id,))
+            cur = conn.execute(
+                "DELETE FROM sync_connectors WHERE id = ? AND workspace_id = ?",
+                (connector_id, ws),
+            )
             conn.commit()
             return cur.rowcount > 0
 
@@ -217,45 +305,45 @@ class SyncStore:
             version_map=json.loads(row["version_map_json"] or "{}"),
             created_at=_parse_dt(row["created_at"]) or datetime.now(timezone.utc),
             updated_at=_parse_dt(row["updated_at"]) or datetime.now(timezone.utc),
+            workspace_id=row["workspace_id"] or "default",
         )
 
     # ── Rules ──
 
-    def save_rule(self, rule: SyncRule) -> SyncRule:
+    def save_rule(
+        self, rule: SyncRule, workspace_id: str | None = None
+    ) -> SyncRule:
+        ws = self._resolve_workspace(workspace_id or rule.workspace_id)
+        rule.workspace_id = ws
         with self._lock:
             conn = self._get_conn()
             conn.execute(
-                """INSERT OR REPLACE INTO sync_rules
-                   (id, rule_type, cron_expression, enabled, webhook_url, webhook_secret)
-                   VALUES (?,?,?,?,?,?)""",
+                """INSERT INTO sync_rules
+                   (id, rule_type, cron_expression, enabled, webhook_url, webhook_secret, workspace_id)
+                   VALUES (?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                   rule_type=excluded.rule_type,
+                   cron_expression=excluded.cron_expression,
+                   enabled=excluded.enabled,
+                   webhook_url=excluded.webhook_url,
+                   webhook_secret=excluded.webhook_secret,
+                   workspace_id=excluded.workspace_id""",
                 (
                     rule.id, rule.rule_type, rule.cron_expression,
                     1 if rule.enabled else 0, rule.webhook_url, rule.webhook_secret,
+                    ws,
                 ),
             )
             conn.commit()
         return rule
 
-    def get_rule(self, rule_id: str) -> SyncRule | None:
-        conn = self._get_conn()
-        row = conn.execute("SELECT * FROM sync_rules WHERE id = ?", (rule_id,)).fetchone()
-        if row is None:
-            return None
-        return SyncRule(
-            id=row["id"], rule_type=row["rule_type"],
-            cron_expression=row["cron_expression"] or "",
-            enabled=bool(row["enabled"]),
-            webhook_url=row["webhook_url"] or "",
-            webhook_secret=row["webhook_secret"] or "",
-        )
-
-    def get_rule_for_job(self, job_id: str) -> SyncRule | None:
+    def get_rule(
+        self, rule_id: str, workspace_id: str | None = None
+    ) -> SyncRule | None:
+        ws = self._resolve_workspace(workspace_id)
         conn = self._get_conn()
         row = conn.execute(
-            """SELECT r.* FROM sync_rules r
-               JOIN sync_jobs j ON j.rule_id = r.id
-               WHERE j.id = ?""",
-            (job_id,),
+            "SELECT * FROM sync_rules WHERE id = ? AND workspace_id = ?", (rule_id, ws)
         ).fetchone()
         if row is None:
             return None
@@ -265,56 +353,144 @@ class SyncStore:
             enabled=bool(row["enabled"]),
             webhook_url=row["webhook_url"] or "",
             webhook_secret=row["webhook_secret"] or "",
+            workspace_id=row["workspace_id"] or "default",
         )
 
-    def delete_rule(self, rule_id: str) -> bool:
+    def get_rule_for_job(
+        self, job_id: str, workspace_id: str | None = None
+    ) -> SyncRule | None:
+        ws = self._resolve_workspace(workspace_id)
+        conn = self._get_conn()
+        row = conn.execute(
+            """SELECT r.* FROM sync_rules r
+               JOIN sync_jobs j ON j.rule_id = r.id
+               WHERE j.id = ? AND j.workspace_id = ?""",
+            (job_id, ws),
+        ).fetchone()
+        if row is None:
+            return None
+        return SyncRule(
+            id=row["id"], rule_type=row["rule_type"],
+            cron_expression=row["cron_expression"] or "",
+            enabled=bool(row["enabled"]),
+            webhook_url=row["webhook_url"] or "",
+            webhook_secret=row["webhook_secret"] or "",
+            workspace_id=row["workspace_id"] or "default",
+        )
+
+    def delete_rule(
+        self, rule_id: str, workspace_id: str | None = None
+    ) -> bool:
+        ws = self._resolve_workspace(workspace_id)
         with self._lock:
             conn = self._get_conn()
-            cur = conn.execute("DELETE FROM sync_rules WHERE id = ?", (rule_id,))
+            cur = conn.execute(
+                "DELETE FROM sync_rules WHERE id = ? AND workspace_id = ?",
+                (rule_id, ws),
+            )
             conn.commit()
             return cur.rowcount > 0
 
     # ── Jobs ──
 
-    def save_job(self, job: SyncJob) -> SyncJob:
+    def save_job(
+        self, job: SyncJob, workspace_id: str | None = None
+    ) -> SyncJob:
+        ws = self._resolve_workspace(workspace_id or job.workspace_id)
+        job.workspace_id = ws
         with self._lock:
             conn = self._get_conn()
+            # 用 ON CONFLICT(id) DO UPDATE 而非 INSERT OR REPLACE：
+            # REPLACE 会先 DELETE 旧行，触发 sync_executions.job_id 的
+            # ON DELETE CASCADE，把该 Job 的 execution 全部清空（P1 数据完整性 bug）。
             conn.execute(
-                """INSERT OR REPLACE INTO sync_jobs
-                   (id, connector_config_id, rule_id, name, status, enabled, created_at)
-                   VALUES (?,?,?,?,?,?,?)""",
+                """INSERT INTO sync_jobs
+                   (id, connector_config_id, rule_id, name, status, enabled, workspace_id, created_at,
+                    started_at, heartbeat_at, worker_id, attempt_count)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                   connector_config_id=excluded.connector_config_id,
+                   rule_id=excluded.rule_id,
+                   name=excluded.name,
+                   status=excluded.status,
+                   enabled=excluded.enabled,
+                   workspace_id=excluded.workspace_id,
+                   started_at=excluded.started_at,
+                   heartbeat_at=excluded.heartbeat_at,
+                   worker_id=excluded.worker_id,
+                   attempt_count=excluded.attempt_count""",
                 (
                     job.id, job.connector_config_id, job.rule_id, job.name,
-                    job.status, 1 if job.enabled else 0, job.created_at.isoformat(),
+                    job.status, 1 if job.enabled else 0, ws, job.created_at.isoformat(),
+                    job.started_at.isoformat() if job.started_at else None,
+                    job.heartbeat_at.isoformat() if job.heartbeat_at else None,
+                    job.worker_id or "",
+                    job.attempt_count,
                 ),
             )
             conn.commit()
         return job
 
-    def get_job(self, job_id: str) -> SyncJob | None:
+    def get_job(
+        self, job_id: str, workspace_id: str | None = None
+    ) -> SyncJob | None:
+        ws = self._resolve_workspace(workspace_id)
         conn = self._get_conn()
-        row = conn.execute("SELECT * FROM sync_jobs WHERE id = ?", (job_id,)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM sync_jobs WHERE id = ? AND workspace_id = ?", (job_id, ws)
+        ).fetchone()
         if row is None:
             return None
         return self._row_to_job(row)
 
-    def list_jobs(self, enabled_only: bool = False) -> list[SyncJob]:
+    def list_jobs(
+        self, enabled_only: bool = False, workspace_id: str | None = None
+    ) -> list[SyncJob]:
+        ws = self._resolve_workspace(workspace_id)
+        conn = self._get_conn()
+        if enabled_only:
+            rows = conn.execute(
+                "SELECT * FROM sync_jobs WHERE workspace_id = ? AND enabled = 1 AND status != 'cancelled' ORDER BY created_at DESC",
+                (ws,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM sync_jobs WHERE workspace_id = ? ORDER BY created_at DESC",
+                (ws,),
+            ).fetchall()
+        return [self._row_to_job(r) for r in rows]
+
+    def list_all_jobs(self, enabled_only: bool = False) -> list[SyncJob]:
+        """List jobs across ALL workspaces.
+
+        INTERNAL — intended only for the trusted background scheduler, which
+        runs outside any request context. Do NOT call from request handlers;
+        normal callers must use `list_jobs` (workspace-scoped).
+        """
         conn = self._get_conn()
         if enabled_only:
             rows = conn.execute(
                 "SELECT * FROM sync_jobs WHERE enabled = 1 AND status != 'cancelled' ORDER BY created_at DESC"
             ).fetchall()
         else:
-            rows = conn.execute("SELECT * FROM sync_jobs ORDER BY created_at DESC").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM sync_jobs ORDER BY created_at DESC"
+            ).fetchall()
         return [self._row_to_job(r) for r in rows]
 
-    def update_job(self, job: SyncJob) -> SyncJob:
-        return self.save_job(job)
+    def update_job(
+        self, job: SyncJob, workspace_id: str | None = None
+    ) -> SyncJob:
+        return self.save_job(job, workspace_id=workspace_id)
 
-    def delete_job(self, job_id: str) -> bool:
+    def delete_job(self, job_id: str, workspace_id: str | None = None) -> bool:
+        ws = self._resolve_workspace(workspace_id)
         with self._lock:
             conn = self._get_conn()
-            cur = conn.execute("DELETE FROM sync_jobs WHERE id = ?", (job_id,))
+            cur = conn.execute(
+                "DELETE FROM sync_jobs WHERE id = ? AND workspace_id = ?",
+                (job_id, ws),
+            )
             conn.commit()
             return cur.rowcount > 0
 
@@ -335,19 +511,44 @@ class SyncStore:
             status=row["status"] or "pending",
             enabled=bool(row["enabled"]),
             created_at=_parse_dt(row["created_at"]),
+            workspace_id=row["workspace_id"] or "default",
+            started_at=_parse_dt(row["started_at"]) if row["started_at"] else None,
+            heartbeat_at=_parse_dt(row["heartbeat_at"]) if row["heartbeat_at"] else None,
+            worker_id=row["worker_id"] or "",
+            attempt_count=row["attempt_count"] or 0,
         )
 
     # ── Executions ──
 
-    def save_execution(self, execution: SyncExecution) -> SyncExecution:
+    def save_execution(
+        self, execution: SyncExecution, workspace_id: str | None = None
+    ) -> SyncExecution:
+        ws = self._resolve_workspace(workspace_id or execution.workspace_id)
+        execution.workspace_id = ws
         with self._lock:
             conn = self._get_conn()
+            # 用 ON CONFLICT(id) DO UPDATE 而非 INSERT OR REPLACE：
+            # REPLACE 在存在 active 唯一约束时会先删兄弟行，破坏幂等保护。
             conn.execute(
-                """INSERT OR REPLACE INTO sync_executions
+                """INSERT INTO sync_executions
                    (id, job_id, status, started_at, completed_at,
                     items_fetched, items_new, items_updated, items_deleted,
-                    items_renamed, memories_created, errors_count, error, elapsed_ms)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    items_renamed, memories_created, errors_count, error, elapsed_ms, workspace_id)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                   status=excluded.status,
+                   started_at=excluded.started_at,
+                   completed_at=excluded.completed_at,
+                   items_fetched=excluded.items_fetched,
+                   items_new=excluded.items_new,
+                   items_updated=excluded.items_updated,
+                   items_deleted=excluded.items_deleted,
+                   items_renamed=excluded.items_renamed,
+                   memories_created=excluded.memories_created,
+                   errors_count=excluded.errors_count,
+                   error=excluded.error,
+                   elapsed_ms=excluded.elapsed_ms,
+                   workspace_id=excluded.workspace_id""",
                 (
                     execution.id, execution.job_id, execution.status,
                     execution.started_at.isoformat() if execution.started_at else None,
@@ -356,41 +557,169 @@ class SyncStore:
                     execution.items_updated, execution.items_deleted,
                     execution.items_renamed, execution.memories_created,
                     execution.errors_count, execution.error, execution.elapsed_ms,
+                    ws,
                 ),
             )
             conn.commit()
         return execution
 
-    def get_execution(self, execution_id: str) -> SyncExecution | None:
+    def get_active_execution(
+        self, job_id: str, workspace_id: str | None = None
+    ) -> SyncExecution | None:
+        """返回某 Job 当前 active（pending/running）的 execution，无则 None。"""
+        ws = self._resolve_workspace(workspace_id)
+        placeholders = ",".join("?" for _ in EXECUTION_STATUS_ACTIVE)
         conn = self._get_conn()
         row = conn.execute(
-            "SELECT * FROM sync_executions WHERE id = ?", (execution_id,)
+            f"SELECT * FROM sync_executions WHERE job_id = ? AND workspace_id = ? "
+            f"AND status IN ({placeholders}) ORDER BY started_at DESC LIMIT 1",
+            (job_id, ws, *sorted(EXECUTION_STATUS_ACTIVE)),
+        ).fetchone()
+        if row is None:
+            return None
+        return self._row_to_execution(row)
+
+    def create_execution_if_idle(
+        self, execution: SyncExecution, workspace_id: str | None = None
+    ) -> SyncExecution | None:
+        """原子地为 Job 创建 execution —— 仅当该 Job 无 active execution 时成功。
+
+        在 Store 写锁 / SQLite 事务内执行 INSERT...WHERE NOT EXISTS，
+        并发 RUN 请求（含多线程）最终只会有一个 active execution。
+        若已有 active execution，返回 None（调用方应返回 409）。
+        """
+        ws = self._resolve_workspace(workspace_id or execution.workspace_id)
+        execution.workspace_id = ws
+        active_in = ",".join("?" for _ in EXECUTION_STATUS_ACTIVE)
+        with self._lock:
+            conn = self._get_conn()
+            cur = conn.execute(
+                f"""INSERT INTO sync_executions
+                    (id, job_id, status, started_at, completed_at,
+                     items_fetched, items_new, items_updated, items_deleted,
+                     items_renamed, memories_created, errors_count, error, elapsed_ms, workspace_id)
+                    SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM sync_executions
+                        WHERE job_id = ? AND status IN ({active_in})
+                    )""",
+                (
+                    execution.id, execution.job_id, execution.status,
+                    execution.started_at.isoformat() if execution.started_at else None,
+                    execution.completed_at.isoformat() if execution.completed_at else None,
+                    execution.items_fetched, execution.items_new,
+                    execution.items_updated, execution.items_deleted,
+                    execution.items_renamed, execution.memories_created,
+                    execution.errors_count, execution.error, execution.elapsed_ms,
+                    ws,
+                    execution.job_id, *sorted(EXECUTION_STATUS_ACTIVE),
+                ),
+            )
+            conn.commit()
+            if cur.rowcount == 1:
+                return execution
+            return None
+
+    def update_job_heartbeat(
+        self, job_id: str, workspace_id: str | None, heartbeat_at: datetime
+    ) -> None:
+        """更新 Job 心跳（Worker 后台心跳线程调用，workspace 隔离）。"""
+        ws = self._resolve_workspace(workspace_id)
+        with self._lock:
+            conn = self._get_conn()
+            conn.execute(
+                "UPDATE sync_jobs SET heartbeat_at = ? WHERE id = ? AND workspace_id = ?",
+                (heartbeat_at.isoformat(), job_id, ws),
+            )
+            conn.commit()
+
+    def recover_stale_jobs(self, stale_timeout_seconds: float = 300.0) -> list[dict]:
+        """扫描所有 workspace 的 active Job，将 stale（心跳/开始时间过期）的收敛为 failed。
+
+        INTERNAL — 仅供后台 Scheduler 启动时与 tick 周期调用，跨 workspace 扫描。
+        恢复策略：标记 failed，不自动重试（避免重复写 Memory）。
+        同时把该 Job 的 active execution 标记为 failed/cancelled，避免留下 orphan execution。
+        """
+        from datetime import timedelta
+
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(seconds=stale_timeout_seconds)
+        recovered: list[dict] = []
+        conn = self._get_conn()
+
+        with self._lock:
+            rows = conn.execute(
+                "SELECT * FROM sync_jobs WHERE status IN ('running','queued')"
+            ).fetchall()
+            for r in rows:
+                job = self._row_to_job(r)
+                # stale 判定：有心跳看心跳，否则看 started_at，再否则看 created_at
+                ref = job.heartbeat_at or job.started_at or job.created_at
+                if ref is None or ref > cutoff:
+                    continue  # 仍新鲜，跳过
+
+                active_in = ",".join("?" for _ in EXECUTION_STATUS_ACTIVE)
+                # 收敛 execution → failed
+                conn.execute(
+                    f"UPDATE sync_executions SET status='failed', "
+                    f"error='recovered: worker crashed or stale', completed_at=? "
+                    f"WHERE job_id=? AND status IN ({active_in})",
+                    (now.isoformat(), job.id, *sorted(EXECUTION_STATUS_ACTIVE)),
+                )
+                # 收敛 job → failed
+                conn.execute(
+                    "UPDATE sync_jobs SET status='failed', heartbeat_at=? WHERE id=?",
+                    (now.isoformat(), job.id),
+                )
+                recovered.append({
+                    "job_id": job.id,
+                    "workspace_id": job.workspace_id,
+                    "status": "running" if job.status == "running" else "queued",
+                    "recovered_to": "failed",
+                    "stale_ref": ref.isoformat(),
+                })
+            conn.commit()
+        return recovered
+
+    def get_execution(
+        self, execution_id: str, workspace_id: str | None = None
+    ) -> SyncExecution | None:
+        ws = self._resolve_workspace(workspace_id)
+        conn = self._get_conn()
+        row = conn.execute(
+            "SELECT * FROM sync_executions WHERE id = ? AND workspace_id = ?",
+            (execution_id, ws),
         ).fetchone()
         if row is None:
             return None
         return self._row_to_execution(row)
 
     def list_executions(
-        self, job_id: str = "", connector_id: str = "", limit: int = 50
+        self,
+        job_id: str = "",
+        connector_id: str = "",
+        limit: int = 50,
+        workspace_id: str | None = None,
     ) -> list[SyncExecution]:
+        ws = self._resolve_workspace(workspace_id)
         conn = self._get_conn()
         if job_id:
             rows = conn.execute(
-                "SELECT * FROM sync_executions WHERE job_id = ? ORDER BY started_at DESC LIMIT ?",
-                (job_id, limit),
+                "SELECT * FROM sync_executions WHERE job_id = ? AND workspace_id = ? ORDER BY started_at DESC LIMIT ?",
+                (job_id, ws, limit),
             ).fetchall()
         elif connector_id:
             rows = conn.execute(
                 """SELECT e.* FROM sync_executions e
                    JOIN sync_jobs j ON j.id = e.job_id
-                   WHERE j.connector_config_id = ?
+                   WHERE j.connector_config_id = ? AND e.workspace_id = ?
                    ORDER BY e.started_at DESC LIMIT ?""",
-                (connector_id, limit),
+                (connector_id, ws, limit),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM sync_executions ORDER BY started_at DESC LIMIT ?",
-                (limit,),
+                "SELECT * FROM sync_executions WHERE workspace_id = ? ORDER BY started_at DESC LIMIT ?",
+                (ws, limit),
             ).fetchall()
         return [self._row_to_execution(r) for r in rows]
 
@@ -419,20 +748,25 @@ class SyncStore:
             errors_count=row["errors_count"] or 0,
             error=row["error"],
             elapsed_ms=row["elapsed_ms"] or 0,
+            workspace_id=row["workspace_id"] or "default",
         )
 
     # ── Changes ──
 
-    def save_change(self, change: ChangeRecord) -> ChangeRecord:
+    def save_change(
+        self, change: ChangeRecord, workspace_id: str | None = None
+    ) -> ChangeRecord:
         with self._lock:
             conn = self._get_conn()
             content_preview = change.content[:500] if change.content else ""
+            ws = self._resolve_workspace(workspace_id or change.workspace_id)
+            change.workspace_id = ws
             conn.execute(
                 """INSERT OR REPLACE INTO sync_changes
                    (id, execution_id, connector_type, resource_id, change_type,
                     content_hash, previous_hash, content_preview, content_type,
-                    metadata_json, processed, process_error, detected_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    metadata_json, processed, process_error, detected_at, workspace_id)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     change.id, change.execution_id, change.connector_type,
                     change.resource_id, change.change_type,
@@ -442,16 +776,20 @@ class SyncStore:
                     1 if change.processed else 0,
                     change.process_error,
                     change.detected_at.isoformat(),
+                    ws,
                 ),
             )
             conn.commit()
         return change
 
-    def list_changes(self, execution_id: str) -> list[ChangeRecord]:
+    def list_changes(
+        self, execution_id: str, workspace_id: str | None = None
+    ) -> list[ChangeRecord]:
+        ws = self._resolve_workspace(workspace_id)
         conn = self._get_conn()
         rows = conn.execute(
-            "SELECT * FROM sync_changes WHERE execution_id = ? ORDER BY detected_at",
-            (execution_id,),
+            "SELECT * FROM sync_changes WHERE execution_id = ? AND workspace_id = ? ORDER BY detected_at",
+            (execution_id, ws),
         ).fetchall()
         return [self._row_to_change(r) for r in rows]
 
@@ -477,4 +815,5 @@ class SyncStore:
             processed=bool(row["processed"]),
             process_error=row["process_error"],
             detected_at=_parse_dt(row["detected_at"]),
+            workspace_id=row["workspace_id"] or "default",
         )

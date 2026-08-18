@@ -27,9 +27,13 @@ from src.sync.sync_pipeline import SyncPipeline
 
 
 def _make_auth_headers(token_service: JWTTokenService) -> dict:
-    """Create Bearer auth headers with admin role for sync management access."""
+    """Create Bearer auth headers with admin role for sync management access.
+
+    Token workspace 用 "default"，与测试中直接 `save_*`（不带 workspace_id，
+    默认落入 default）保持一致；否则 router 按 payload.workspace_id 隔离后取不到。
+    """
     user = User(id="admin-1", email="admin@sync.test", name="Sync Admin")
-    tokens = token_service.create_tokens(user, "ws-sync", WorkspaceRole.ADMIN)
+    tokens = token_service.create_tokens(user, "default", WorkspaceRole.ADMIN)
     return {"Authorization": f"Bearer {tokens.access_token}"}
 
 

@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { FileText, CreditCard, RotateCcw, Download, Eye, AlertCircle, TrendingUp } from "lucide-react";
+import { FileText, CreditCard, RotateCcw, Eye, AlertCircle, TrendingUp } from "lucide-react";
 import { api } from "@/services/api";
 import type { Invoice, Payment, Refund, BillingAccount } from "@/types";
 
@@ -27,9 +27,9 @@ type TabKey = (typeof TABS)[number]["key"];
 // ── Status & provider style maps ──
 
 const INVOICE_STATUS: Record<string, string> = {
-  paid: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  open: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20",
-  overdue: "bg-red-400/10 text-red-400 border-red-400/20",
+  paid: "bg-os-success-soft text-os-success border-os-success/20",
+  open: "bg-os-accent-soft text-os-accent border-os-accent/20",
+  overdue: "bg-os-danger-soft text-os-danger border-os-danger/20",
   draft: "bg-os-muted/20 text-os-subtle border-os-border/50",
   void: "bg-os-muted/20 text-os-subtle border-os-border/50",
 };
@@ -43,9 +43,9 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
 };
 
 const TX_STATUS: Record<string, string> = {
-  succeeded: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  pending: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  failed: "bg-red-400/10 text-red-400 border-red-400/20",
+  succeeded: "bg-os-success-soft text-os-success border-os-success/20",
+  pending: "bg-os-warning-soft text-os-warning border-os-warning/20",
+  failed: "bg-os-danger-soft text-os-danger border-os-danger/20",
 };
 
 const TX_STATUS_LABEL: Record<string, string> = {
@@ -55,9 +55,9 @@ const TX_STATUS_LABEL: Record<string, string> = {
 };
 
 const PROVIDER_STYLE: Record<string, string> = {
-  wechat: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-  alipay: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20",
-  stripe: "bg-purple-400/10 text-purple-400 border-purple-400/20",
+  wechat: "bg-os-success-soft text-os-success border-os-success/20",
+  alipay: "bg-os-accent-soft text-os-accent border-os-accent/20",
+  stripe: "bg-os-accent-soft text-os-accent border-os-accent/20",
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -75,17 +75,6 @@ function fmtAmount(amount: number): string {
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" });
-}
-
-function fmtFullDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 // ── Shared badge component ──
@@ -134,8 +123,8 @@ function LoadingSpinner() {
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="w-12 h-12 rounded-full bg-red-400/10 flex items-center justify-center">
-        <AlertCircle className="w-6 h-6 text-red-400" />
+      <div className="w-12 h-12 rounded-full bg-os-danger-soft flex items-center justify-center">
+        <AlertCircle className="w-6 h-6 text-os-danger" />
       </div>
       <p className="text-os-text text-sm">{message}</p>
     </div>
@@ -285,7 +274,7 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
         </div>
         <div className="bg-os-surface border border-os-border rounded-xl p-4">
           <p className="text-xs text-os-subtle">已支付</p>
-          <p className="text-xl font-semibold text-emerald-400 mt-1">{fmtAmount(paidAmount)}</p>
+          <p className="text-xl font-semibold text-os-success mt-1">{fmtAmount(paidAmount)}</p>
         </div>
       </div>
 
@@ -325,7 +314,7 @@ function InvoicesTab({ invoices }: { invoices: Invoice[] }) {
                   <td className="px-4 py-3 text-os-subtle text-xs whitespace-nowrap">{fmtDate(inv.created_at)}</td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      className="inline-flex items-center gap-1 text-xs text-os-accent hover:text-indigo-300 transition-colors"
+                      className="inline-flex items-center gap-1 text-xs text-os-accent hover:text-os-accent/80 transition-colors"
                       title={`查看发票 ${inv.invoice_number} 详情`}
                     >
                       <Eye className="w-3.5 h-3.5" />
@@ -357,7 +346,7 @@ function PaymentsTab({ payments }: { payments: Payment[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-os-border bg-os-elevated">
-              <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">支付ID</th>
+              <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">支付 ID</th>
               <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">金额</th>
               <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">支付方式</th>
               <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">状态</th>
@@ -415,8 +404,8 @@ function RefundsTab({ refunds }: { refunds: Refund[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-os-border bg-os-elevated">
-              <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">退款ID</th>
-              <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">支付ID</th>
+              <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">退款 ID</th>
+              <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">支付 ID</th>
               <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">金额</th>
               <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">状态</th>
               <th className="text-left px-4 py-3 text-xs text-os-subtle font-medium">原因</th>
@@ -525,8 +514,8 @@ export default function BillingPage() {
       {account && (
         <div className="bg-os-surface border border-os-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-emerald-400/10 flex items-center justify-center shrink-0">
-              <CreditCard className="w-5 h-5 text-emerald-400" />
+            <div className="w-10 h-10 rounded-full bg-os-success-soft flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5 text-os-success" />
             </div>
             <div>
               <p className="text-xs text-os-subtle">当前余额</p>

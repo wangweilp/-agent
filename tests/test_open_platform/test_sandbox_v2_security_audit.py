@@ -11,7 +11,8 @@ from src.open_platform.sandbox_v2.models import SandboxV2AuditEventType, Sandbox
 def audit_svc():
     from src.adapters.config import Settings as AppSettings
     from src.adapters.sqlite_sandbox_v2_store import SQLiteSandboxV2Store
-    store = SQLiteSandboxV2Store(config=AppSettings())
+    # 用 in-memory 隔离，避免审计事件写进真实 ./data 库并污染哈希链
+    store = SQLiteSandboxV2Store(config=AppSettings(), db_path=":memory:")
     return SandboxV2SecurityAuditService(store=store)
 
 class TestAuditEventCreation:

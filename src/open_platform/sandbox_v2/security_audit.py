@@ -71,8 +71,10 @@ class SandboxV2SecurityAuditService:
             request_id=request_id, previous_hash=previous_hash,
             metadata=metadata_clean,
         )
-        event.event_hash = self.compute_event_hash(event)
+        # 先落 created_at 再计算哈希：否则哈希用的是构造默认/None 时间，
+        # 而持久化的 created_at 不同，verify_audit_chain 重算会 mismatch。
         event.created_at = datetime.now(timezone.utc)
+        event.event_hash = self.compute_event_hash(event)
 
         if self._store:
             try:

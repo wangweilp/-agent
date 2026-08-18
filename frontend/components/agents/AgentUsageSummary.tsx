@@ -43,7 +43,7 @@ export function AgentUsageSummary({ usage, loading = false }: AgentUsageSummaryP
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="rounded-md border border-os-border bg-os-elevated/30 px-2 py-3 text-center">
-          <p className="flex items-center justify-center gap-1 text-2xs text-os-muted">
+          <p className="flex items-center justify-center gap-1 text-2xs text-os-subtle">
             <BarChart3 size={10} />
             总调用
           </p>
@@ -51,15 +51,15 @@ export function AgentUsageSummary({ usage, loading = false }: AgentUsageSummaryP
         </div>
 
         <div className="rounded-md border border-os-border bg-os-elevated/30 px-2 py-3 text-center">
-          <p className="flex items-center justify-center gap-1 text-2xs text-os-muted">
+          <p className="flex items-center justify-center gap-1 text-2xs text-os-subtle">
             <TrendingUp size={10} />
-            30天调用
+            近 30 天调用
           </p>
           <p className="mt-1 text-sm font-semibold text-os-accent">{usage.period_calls.toLocaleString()}</p>
         </div>
 
         <div className="rounded-md border border-os-border bg-os-elevated/30 px-2 py-3 text-center">
-          <p className="flex items-center justify-center gap-1 text-2xs text-os-muted">
+          <p className="flex items-center justify-center gap-1 text-2xs text-os-subtle">
             <Download size={10} />
             安装
           </p>
@@ -67,7 +67,7 @@ export function AgentUsageSummary({ usage, loading = false }: AgentUsageSummaryP
         </div>
 
         <div className="rounded-md border border-os-border bg-os-elevated/30 px-2 py-3 text-center">
-          <p className="flex items-center justify-center gap-1 text-2xs text-os-muted">
+          <p className="flex items-center justify-center gap-1 text-2xs text-os-subtle">
             <Calendar size={10} />
             最后使用
           </p>
@@ -79,29 +79,29 @@ export function AgentUsageSummary({ usage, loading = false }: AgentUsageSummaryP
         </div>
 
         <div className="rounded-md border border-os-border bg-os-elevated/30 px-2 py-3 text-center">
-          <p className="text-2xs text-os-muted">限额</p>
+          <p className="text-2xs text-os-subtle">限额</p>
           <p className="mt-1 text-sm font-semibold text-os-text-high">
             {usage.limit !== null ? usage.limit.toLocaleString() : <Infinity size={14} className="inline text-os-subtle" />}
           </p>
         </div>
 
         <div className="rounded-md border border-os-border bg-os-elevated/30 px-2 py-3 text-center">
-          <p className="text-2xs text-os-muted">剩余</p>
+          <p className="text-2xs text-os-subtle">剩余</p>
           <p
             className={`mt-1 text-sm font-semibold ${
               usage.remaining === null
                 ? "text-os-text-high"
                 : usage.remaining > 0
-                  ? "text-emerald-300"
-                  : "text-red-300"
+                  ? "text-emerald-700"
+                  : "text-red-700"
             }`}
           >
             {usage.remaining !== null ? usage.remaining.toLocaleString() : <Infinity size={14} className="inline text-os-subtle" />}
           </p>
         </div>
       </div>
-      <p className="mt-3 text-2xs text-os-muted">
-        {usage.billing_note || "※ MVP Usage — 非真实计费数据。"}
+      <p className="mt-3 text-2xs text-os-subtle">
+        {usage.billing_note || "※ MVP 用量 — 非真实计费数据。"}
       </p>
     </div>
   );

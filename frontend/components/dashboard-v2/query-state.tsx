@@ -38,8 +38,8 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center h-48 gap-3 text-os-muted">
-      <AlertCircle size={20} className="text-os-danger" />
+    <div className="flex h-48 flex-col items-center justify-center gap-3 text-os-subtle">
+      <AlertCircle size={20} className="text-red-700" />
       <p className="text-2xs">{message}</p>
       {onRetry && (
         <button

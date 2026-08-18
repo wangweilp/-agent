@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Calendar, GitCommit, Archive, Lightbulb, Image, TrendingUp,
-  FileText, ChevronLeft, ChevronRight, Filter, Brain, Hash,
+  FileText, ChevronLeft, ChevronRight, Filter, Brain, Hash, AlertCircle,
   BarChart3, BookOpen, Zap,
 } from "lucide-react";
 import { api } from "@/services/api";
@@ -78,7 +78,7 @@ function CalendarHeatmap({ days }: { days: TimelineDay[] }) {
       {/* Day labels */}
       <div className="flex flex-col gap-0.5 mr-0.5">
         {dayLabels.map((label, i) => (
-          <div key={i} className="w-4 h-3 flex items-center justify-center text-2xs text-os-muted">
+          <div key={i} className="w-4 h-3 flex items-center justify-center text-2xs text-os-subtle">
             {i % 2 === 0 ? label : ""}
           </div>
         ))}
@@ -104,13 +104,13 @@ function CalendarHeatmap({ days }: { days: TimelineDay[] }) {
       ))}
       {/* Legend */}
       <div className="flex items-end gap-0.5 ml-2 pb-0.5">
-        <span className="text-2xs text-os-muted mr-0.5">少</span>
+        <span className="text-2xs text-os-subtle mr-0.5">少</span>
         <div className="w-3 h-3 rounded-sm bg-os-surface" />
         <div className="w-3 h-3 rounded-sm bg-indigo-400/20" />
         <div className="w-3 h-3 rounded-sm bg-indigo-400/40" />
         <div className="w-3 h-3 rounded-sm bg-indigo-400/60" />
         <div className="w-3 h-3 rounded-sm bg-indigo-400/80" />
-        <span className="text-2xs text-os-muted ml-0.5">多</span>
+        <span className="text-2xs text-os-subtle ml-0.5">多</span>
       </div>
     </div>
   );
@@ -123,23 +123,23 @@ function StatsBar({ stats, isLoading }: { stats?: TimelineStats; isLoading: bool
   if (!stats) return null;
 
   const items = [
-    { count: stats.created_count, label: "新增", color: "text-indigo-400" },
-    { count: stats.reflection_count, label: "反思", color: "text-amber-400" },
-    { count: stats.archived_count, label: "归档", color: "text-amber-400/70" },
-    { count: stats.image_count, label: "图片", color: "text-violet-400" },
-    { count: stats.promoted_count, label: "提升", color: "text-emerald-400" },
+    { count: stats.created_count, label: "新增", color: "text-os-primary" },
+    { count: stats.reflection_count, label: "反思", color: "text-os-warning" },
+    { count: stats.archived_count, label: "归档", color: "text-os-warning" },
+    { count: stats.image_count, label: "图片", color: "text-os-primary" },
+    { count: stats.promoted_count, label: "提升", color: "text-os-success" },
   ];
 
   return (
     <div className="flex items-center gap-4 flex-wrap">
-      <span className="text-2xs text-os-muted uppercase tracking-wider">统计</span>
+      <span className="text-2xs text-os-subtle uppercase tracking-wider">统计</span>
       {items.map((item) => (
         <div key={item.label} className="flex items-center gap-1">
           <span className={cn("text-sm font-mono font-semibold", item.color)}>{item.count}</span>
           <span className="text-2xs text-os-subtle">{item.label}</span>
         </div>
       ))}
-      <span className="text-2xs text-os-muted ml-auto">
+      <span className="text-2xs text-os-subtle ml-auto">
         总计 {stats.total_events} 事件
       </span>
     </div>
@@ -174,7 +174,7 @@ export default function TimelinePage() {
   }, [dateRange]);
 
   // Data
-  const { data: days, isLoading } = useQuery({
+  const { data: days, isLoading, isError } = useQuery({
     queryKey: ["timeline", startDate, endDate, memoryType, entity, page],
     queryFn: () => api.timeline.list({
       start_date: startDate || undefined,
@@ -186,7 +186,7 @@ export default function TimelinePage() {
     refetchInterval: 30000,
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ["timeline-stats", startDate, endDate],
     queryFn: () => api.timeline.stats({
       start_date: startDate || undefined,
@@ -217,10 +217,10 @@ export default function TimelinePage() {
           <div>
             <h1 className="text-lg font-semibold text-os-text-high tracking-tight">记忆时间轴</h1>
             <p className="text-xs text-os-subtle mt-0.5">
-              {days ? `${days.length} 天有记录` : "加载中..."}
+              {isError ? "时间轴加载失败" : days ? `${days.length} 天有记录` : "加载中..."}
             </p>
           </div>
-          <div className="flex items-center gap-2 text-2xs text-os-muted">
+          <div className="flex items-center gap-2 text-2xs text-os-subtle">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-breathe" />
             实时
           </div>
@@ -228,7 +228,11 @@ export default function TimelinePage() {
 
         {/* Stats Bar */}
         <div className="os-card p-3">
-          <StatsBar stats={stats} isLoading={statsLoading} />
+          {statsError ? (
+            <p className="text-sm text-os-danger">统计数据加载失败</p>
+          ) : (
+            <StatsBar stats={stats} isLoading={statsLoading} />
+          )}
         </div>
 
         {/* Calendar Heatmap */}
@@ -236,7 +240,7 @@ export default function TimelinePage() {
           <div className="flex items-center gap-2 mb-3">
             <Calendar size={14} className="text-os-accent" />
             <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">贡献日历</h2>
-            <span className="text-2xs text-os-muted">过去 6 个月</span>
+            <span className="text-2xs text-os-subtle">过去 6 个月</span>
           </div>
           <CalendarHeatmap days={days || []} />
         </div>
@@ -288,14 +292,14 @@ export default function TimelinePage() {
             value={entity}
             onChange={(e) => { setPage(1); setEntity(e.target.value); }}
             placeholder="按实体过滤..."
-            className="h-6 w-40 px-2 rounded bg-os-surface border border-os-border text-2xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent"
+            className="h-6 w-40 px-2 rounded bg-os-surface border border-os-border text-2xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent"
           />
 
           <span className="w-px h-4 bg-os-border" />
 
           <div className="flex items-center gap-1">
             <Filter size={11} className="text-os-muted" />
-            <span className="text-2xs text-os-muted">
+            <span className="text-2xs text-os-subtle">
               {memoryType || entity || dateRange !== "all" ? "已过滤" : "无过滤"}
             </span>
           </div>
@@ -312,9 +316,15 @@ export default function TimelinePage() {
                 </div>
               ))}
             </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center justify-center py-24 text-os-danger">
+              <AlertCircle size={48} className="mb-4" />
+              <p className="text-sm">时间轴加载失败</p>
+              <p className="text-2xs mt-1 text-os-subtle">请检查网络连接后重试</p>
+            </div>
           ) : !days || days.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-os-muted">
-              <Clock size={48} className="mb-4 opacity-30" />
+            <div className="flex flex-col items-center justify-center py-24 text-os-subtle">
+              <Clock size={48} className="mb-4 text-os-muted" />
               <p className="text-sm">暂无时间轴数据</p>
               <p className="text-2xs mt-1">开始记录记忆后，时间轴会自动填充</p>
             </div>
@@ -333,7 +343,7 @@ export default function TimelinePage() {
                     <span className="text-sm font-semibold text-os-text-high">
                       {day.date}
                     </span>
-                    <span className="text-2xs text-os-muted">
+                    <span className="text-2xs text-os-subtle">
                       {day.count} 个事件
                     </span>
                     <div className="flex-1 h-px bg-os-border ml-2" />
@@ -375,9 +385,9 @@ export default function TimelinePage() {
                                   </span>
                                   <span className={cn(
                                     "text-2xs px-1.5 py-0.5 rounded-full",
-                                    event.memory_type === "reflect" ? "bg-amber-400/10 text-amber-400" :
-                                    event.memory_type === "semantic" ? "bg-emerald-400/10 text-emerald-400" :
-                                    "bg-indigo-400/10 text-indigo-400"
+                                    event.memory_type === "reflect" ? "bg-os-warning-soft text-os-warning" :
+                                    event.memory_type === "semantic" ? "bg-os-success-soft text-os-success" :
+                                    "bg-os-primary-soft text-os-primary"
                                   )}>
                                     {memoryTypeLabel[event.memory_type] || event.memory_type}
                                   </span>
@@ -388,7 +398,7 @@ export default function TimelinePage() {
                                 {event.entities.length > 0 && (
                                   <div className="flex gap-1 mt-1.5 flex-wrap">
                                     {event.entities.slice(0, 3).map((e) => (
-                                      <span key={e} className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-muted">
+                                      <span key={e} className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-subtle">
                                         {e}
                                       </span>
                                     ))}
@@ -400,6 +410,9 @@ export default function TimelinePage() {
                               <span className={cn(
                                 "text-2xs font-mono shrink-0",
                                 importanceColor(event.importance)
+                                  .replace("text-emerald-400", "text-os-success")
+                                  .replace("text-amber-400", "text-os-warning")
+                                  .replace("text-zinc-500", "text-os-subtle")
                               )}>
                                 {event.importance}
                               </span>
@@ -421,7 +434,7 @@ export default function TimelinePage() {
                 >
                   <ChevronLeft size={13} /> 上一页
                 </button>
-                <span className="text-2xs text-os-muted">第 {page} 页</span>
+                <span className="text-2xs text-os-subtle">第 {page} 页</span>
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={!days || days.length < limit}

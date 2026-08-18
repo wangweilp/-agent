@@ -49,17 +49,17 @@ interface EventEntry {
 // ── Labels ──
 
 const eventLabels: Record<string, { label: string; color: string }> = {
-  "memory.created": { label: "记忆创建", color: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20" },
-  "memory.merged": { label: "记忆合并", color: "bg-amber-400/10 text-amber-400 border-amber-400/20" },
-  "memory.accessed": { label: "记忆访问", color: "bg-blue-400/10 text-blue-400 border-blue-400/20" },
-  "recall.executed": { label: "检索执行", color: "bg-purple-400/10 text-purple-400 border-purple-400/20" },
-  "reflection.run": { label: "反思运行", color: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20" },
-  "reflection.insight": { label: "反思洞察", color: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20" },
-  "reflection.skipped": { label: "反思跳过", color: "bg-rose-400/10 text-rose-400 border-rose-400/20" },
-  "agent.start": { label: "智能体启动", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20" },
-  "agent.done": { label: "智能体完成", color: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20" },
-  "tool.call_start": { label: "工具调用", color: "bg-slate-400/10 text-slate-400 border-slate-400/20" },
-  "tool.call_done": { label: "工具完成", color: "bg-slate-400/10 text-slate-400 border-slate-400/20" },
+  "memory.created": { label: "记忆创建", color: "bg-os-success-soft text-os-success border-os-success/20" },
+  "memory.merged": { label: "记忆合并", color: "bg-os-warning-soft text-os-warning border-os-warning/20" },
+  "memory.accessed": { label: "记忆访问", color: "bg-os-info-soft text-os-info border-os-info/20" },
+  "recall.executed": { label: "检索执行", color: "bg-os-primary-soft text-os-primary border-os-primary/20" },
+  "reflection.run": { label: "反思运行", color: "bg-os-primary-soft text-os-primary border-os-primary/20" },
+  "reflection.insight": { label: "反思洞察", color: "bg-os-primary-soft text-os-primary border-os-primary/20" },
+  "reflection.skipped": { label: "反思跳过", color: "bg-os-danger-soft text-os-danger border-os-danger/20" },
+  "agent.start": { label: "智能体启动", color: "bg-os-info-soft text-os-info border-os-info/20" },
+  "agent.done": { label: "智能体完成", color: "bg-os-info-soft text-os-info border-os-info/20" },
+  "tool.call_start": { label: "工具调用", color: "bg-os-surface-muted text-os-subtle border-os-border" },
+  "tool.call_done": { label: "工具完成", color: "bg-os-surface-muted text-os-subtle border-os-border" },
 };
 
 const sourceLabel: Record<string, string> = { user: "用户", agent: "智能体", reflect: "反思" };
@@ -72,9 +72,9 @@ const typeLabel: Record<string, string> = {
 
 type Tab = "memory" | "retrieve" | "events";
 const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: "memory", label: "记忆 Explorer", icon: <Brain size={14} /> },
-  { key: "retrieve", label: "Retrieval Inspector", icon: <Search size={14} /> },
-  { key: "events", label: "Event Timeline", icon: <Activity size={14} /> },
+  { key: "memory", label: "记忆浏览器", icon: <Brain size={14} /> },
+  { key: "retrieve", label: "检索分析", icon: <Search size={14} /> },
+  { key: "events", label: "事件时间线", icon: <Activity size={14} /> },
 ];
 
 // ── Components ──
@@ -83,7 +83,7 @@ function MemoryExplorer() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
 
-  const { data: raw, isLoading } = useQuery({
+  const { data: raw, isLoading, isError } = useQuery({
     queryKey: ["debug-memory", query],
     queryFn: () => api.memory.list({ q: query, limit: 50 }),
     refetchInterval: 15000,
@@ -119,8 +119,8 @@ function MemoryExplorer() {
           <div key={i} className="os-card p-3 flex items-center gap-2.5">
             <span className="text-os-muted">{s.icon}</span>
             <div>
-              <p className="text-2xs text-os-muted">{s.label}</p>
-              <p className={cn("text-sm font-mono font-medium", s.good === true ? "text-emerald-400" : s.good === false ? "text-rose-400" : "text-os-text-high")}>{s.value}</p>
+              <p className="text-2xs text-os-subtle">{s.label}</p>
+              <p className={cn("text-sm font-mono font-medium", s.good === true ? "text-os-success" : s.good === false ? "text-os-danger" : "text-os-text-high")}>{s.value}</p>
             </div>
           </div>
         ))}
@@ -135,7 +135,7 @@ function MemoryExplorer() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="搜索记忆内容或实体..."
-            className="flex-1 bg-transparent text-sm text-os-text-high outline-none placeholder:text-os-muted"
+            className="flex-1 bg-transparent text-sm text-os-text-high outline-none placeholder:text-os-subtle"
           />
         </div>
         <select
@@ -152,9 +152,11 @@ function MemoryExplorer() {
 
       {/* Memory list */}
       {isLoading ? (
-        <p className="text-sm text-os-muted py-8 text-center">加载中...</p>
+        <p className="text-sm text-os-subtle py-8 text-center">加载中...</p>
+      ) : isError ? (
+        <p className="text-sm text-os-danger py-8 text-center">记忆数据加载失败，请稍后重试</p>
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-os-muted py-8 text-center">暂无记忆数据</p>
+        <p className="text-sm text-os-subtle py-8 text-center">暂无记忆数据</p>
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((m: MemoryItem) => (
@@ -167,28 +169,28 @@ function MemoryExplorer() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className={cn("px-1.5 py-0.5 rounded text-2xs font-medium",
-                    m.source === "user" && "bg-indigo-400/10 text-indigo-400",
-                    m.source === "reflect" && "bg-amber-400/10 text-amber-400",
-                    m.source === "agent" && "bg-emerald-400/10 text-emerald-400",
+                    m.source === "user" && "bg-os-primary-soft text-os-primary",
+                    m.source === "reflect" && "bg-os-warning-soft text-os-warning",
+                    m.source === "agent" && "bg-os-success-soft text-os-success",
                   )}>{sourceLabel[m.source] || m.source}</span>
-                  <span className="text-2xs text-os-muted">{typeLabel[m.memory_type] || m.memory_type}</span>
+                  <span className="text-2xs text-os-subtle">{typeLabel[m.memory_type] || m.memory_type}</span>
                   <span className={cn("text-2xs font-mono",
-                    m.importance >= 7 ? "text-amber-400" : m.importance >= 5 ? "text-os-subtle" : "text-os-muted"
+                    m.importance >= 7 ? "text-os-warning" : "text-os-subtle"
                   )}>权重 {m.importance}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {m.embedding_status === "vectorized" ? (
-                    <span className="flex items-center gap-1 text-2xs text-emerald-400"><Zap size={10} />已向量化</span>
+                    <span className="flex items-center gap-1 text-2xs text-os-success"><Zap size={10} />已向量化</span>
                   ) : (
-                    <span className="flex items-center gap-1 text-2xs text-rose-400"><AlertCircle size={10} />向量缺失</span>
+                    <span className="flex items-center gap-1 text-2xs text-os-danger"><AlertCircle size={10} />向量缺失</span>
                   )}
-                  <span className="text-2xs text-os-muted flex items-center gap-1"><Eye size={10} />{m.access_count}</span>
+                  <span className="text-2xs text-os-subtle flex items-center gap-1"><Eye size={10} />{m.access_count}</span>
                 </div>
               </div>
               <p className="text-sm text-os-text-high leading-relaxed line-clamp-2">
                 {m.summary || m.content}
               </p>
-              <div className="flex items-center gap-2 text-2xs text-os-muted">
+              <div className="flex items-center gap-2 text-2xs text-os-subtle">
                 <Clock size={10} /> {formatDate(m.timestamp)}
                 {m.entities.length > 0 && (
                   <span className="flex items-center gap-1">
@@ -209,18 +211,24 @@ function RetrievalInspector() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<RetrieveHit[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [topK, setTopK] = useState(5);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
+    setSearchError("");
     try {
       const data = await apiFetch<RetrieveHit[]>(
         `/debug/retrieve?q=${encodeURIComponent(query)}&top_k=${topK}`
       );
       setResults(data);
-    } catch { /* ignore */ }
-    setLoading(false);
+    } catch {
+      setResults([]);
+      setSearchError("检索请求失败，请稍后重试");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const maxScore = results.length > 0 ? Math.max(...results.map((r) => r.final_score)) : 1;
@@ -236,7 +244,7 @@ function RetrievalInspector() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             placeholder="输入查询以测试检索管线..."
-            className="flex-1 bg-transparent text-sm text-os-text-high outline-none placeholder:text-os-muted"
+            className="flex-1 bg-transparent text-sm text-os-text-high outline-none placeholder:text-os-subtle"
           />
         </div>
         <select
@@ -245,7 +253,7 @@ function RetrievalInspector() {
           className="os-card px-3 py-2 text-sm text-os-subtle bg-transparent outline-none"
         >
           {[3, 5, 10, 20].map((k) => (
-            <option key={k} value={k}>Top {k}</option>
+            <option key={k} value={k}>前 {k} 条</option>
           ))}
         </select>
         <button
@@ -256,8 +264,10 @@ function RetrievalInspector() {
         </button>
       </div>
 
-      {results.length === 0 ? (
-        <p className="text-sm text-os-muted py-8 text-center">
+      {searchError ? (
+        <p className="text-sm text-os-danger py-8 text-center">{searchError}</p>
+      ) : results.length === 0 ? (
+        <p className="text-sm text-os-subtle py-8 text-center">
           输入查询并点击 &ldquo;查询&rdquo; 来查看检索管线的分步评分
         </p>
       ) : (
@@ -272,10 +282,10 @@ function RetrievalInspector() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-os-muted">#{i + 1}</span>
+                  <span className="font-mono text-xs text-os-subtle">#{i + 1}</span>
                   <span className={cn("px-1.5 py-0.5 rounded text-2xs font-medium",
-                    hit.source === "user" && "bg-indigo-400/10 text-indigo-400",
-                    hit.source === "reflect" && "bg-amber-400/10 text-amber-400",
+                    hit.source === "user" && "bg-os-primary-soft text-os-primary",
+                    hit.source === "reflect" && "bg-os-warning-soft text-os-warning",
                   )}>{sourceLabel[hit.source] || hit.source}</span>
                 </div>
                 <span className="text-sm font-mono font-bold text-os-text-high">
@@ -302,13 +312,13 @@ function RetrievalInspector() {
                       }}>
                         <div className={`h-full rounded-sm ${seg.color}`} />
                       </div>
-                      <span className="text-2xs text-os-muted mt-0.5">{seg.label}</span>
+                      <span className="text-2xs text-os-subtle mt-0.5">{seg.label}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-2xs text-os-muted">
+              <div className="flex items-center gap-4 text-2xs text-os-subtle">
                 <span className="flex items-center gap-1"><Clock size={9} />{formatDate(hit.timestamp)}</span>
                 <span>重要性 {hit.importance}/10</span>
               </div>
@@ -321,7 +331,7 @@ function RetrievalInspector() {
 }
 
 function EventTimeline() {
-  const { data: events = [], isLoading, refetch } = useQuery({
+  const { data: events = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["debug-events"],
     queryFn: () => apiFetch<EventEntry[]>(`/debug/events?limit=100`),
     refetchInterval: 10000,
@@ -338,9 +348,13 @@ function EventTimeline() {
         </button>
       </div>
 
-      {events.length === 0 ? (
-        <p className="text-sm text-os-muted py-8 text-center">
-          暂无事件。尝试与 Agent 对话或在 Memory Explorer 中操作以生成事件。
+      {isLoading ? (
+        <p className="text-sm text-os-subtle py-8 text-center">正在加载系统事件...</p>
+      ) : isError ? (
+        <p className="text-sm text-os-danger py-8 text-center">系统事件加载失败，请稍后重试</p>
+      ) : events.length === 0 ? (
+        <p className="text-sm text-os-subtle py-8 text-center">
+          暂无事件。尝试与智能体对话或在记忆浏览器中操作以生成事件。
         </p>
       ) : (
         <div className="relative">
@@ -349,7 +363,7 @@ function EventTimeline() {
 
           <div className="flex flex-col gap-1">
             {events.map((e: EventEntry, i: number) => {
-              const info = eventLabels[e.type] || { label: e.type, color: "bg-slate-400/10 text-slate-400 border-slate-400/20" };
+              const info = eventLabels[e.type] || { label: e.type, color: "bg-os-surface-muted text-os-subtle border-os-border" };
               return (
                 <motion.div
                   key={e.id}
@@ -361,12 +375,12 @@ function EventTimeline() {
                   {/* Dot on timeline */}
                   <div className="absolute -left-5 top-2 w-2 h-2 rounded-full bg-os-border border-2 border-os-base" />
                   <div className={cn("os-card p-2 text-xs flex items-center gap-2", info.color, "border")}>
-                    <span className="text-2xs font-mono text-os-muted min-w-[60px]">
+                    <span className="text-2xs font-mono text-os-subtle min-w-[60px]">
                       {e.timestamp.slice(11, 19)}
                     </span>
                     <span className="font-medium">{info.label}</span>
                     {e.data && Object.keys(e.data).length > 0 && (
-                      <span className="text-2xs text-os-muted truncate max-w-[200px]">
+                      <span className="text-2xs text-os-subtle truncate max-w-[200px]">
                         {Object.entries(e.data).map(([k, v]) => `${k}=${v}`).join(", ")}
                       </span>
                     )}
@@ -390,8 +404,8 @@ export default function DebugConsolePage() {
     <PageTransition>
       <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-6">
         <div>
-          <h1 className="text-lg font-semibold text-os-text-high">Debug Console</h1>
-          <p className="text-sm text-os-muted mt-1">记忆 lifecycle 可观测性 & inspector</p>
+          <h1 className="text-lg font-semibold text-os-text-high">调试控制台</h1>
+          <p className="text-sm text-os-subtle mt-1">记忆生命周期可观测与诊断</p>
         </div>
 
         {/* Tabs */}
@@ -404,7 +418,7 @@ export default function DebugConsolePage() {
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
                 activeTab === tab.key
                   ? "bg-os-elevated text-os-text-high shadow-sm"
-                  : "text-os-muted hover:text-os-subtle"
+                  : "text-os-subtle hover:text-os-text"
               )}
             >
               {tab.icon}

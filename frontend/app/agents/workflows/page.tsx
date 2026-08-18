@@ -28,31 +28,49 @@ function nodeMeta(nodeType: WorkflowNode["node_type"]) {
       return {
         icon: Bot,
         label: "智能体",
-        className: "border-blue-400/30 bg-blue-400/10 text-blue-200",
+        className: "border-blue-200 bg-blue-50 text-blue-700",
       };
     case "human":
       return {
         icon: UserRound,
         label: "人工",
-        className: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+        className: "border-amber-200 bg-amber-50 text-amber-800",
       };
     case "condition":
       return {
         icon: GitBranch,
         label: "条件",
-        className: "border-purple-400/30 bg-purple-400/10 text-purple-200",
+        className: "border-purple-200 bg-purple-50 text-purple-700",
       };
     case "parallel":
       return {
         icon: GitBranch,
         label: "并行",
-        className: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200",
+        className: "border-cyan-200 bg-cyan-50 text-cyan-700",
+      };
+    case "tool":
+      return {
+        icon: WorkflowIcon,
+        label: "工具",
+        className: "border-orange-200 bg-orange-50 text-orange-700",
+      };
+    case "memory":
+      return {
+        icon: WorkflowIcon,
+        label: "记忆",
+        className: "border-green-200 bg-green-50 text-green-700",
+      };
+    case "knowledge_graph":
+      return {
+        icon: WorkflowIcon,
+        label: "知识图谱",
+        className: "border-pink-200 bg-pink-50 text-pink-700",
       };
     case "start":
       return {
         icon: Play,
         label: "开始",
-        className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
       };
     case "end":
       return {
@@ -91,7 +109,7 @@ function WorkflowStats({ workflows }: { workflows: Workflow[] }) {
         <div key={label} className="os-card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs text-os-muted">{label}</p>
+              <p className="text-xs text-os-subtle">{label}</p>
               <p className="mt-2 text-2xl font-semibold text-os-text-high">{value}</p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-os-accent">
@@ -121,7 +139,7 @@ function NodePill({ node }: { node: WorkflowNode }) {
 
 function WorkflowFlow({ workflow }: { workflow: Workflow }) {
   if (workflow.nodes.length === 0) {
-    return <p className="text-xs text-os-muted">暂无节点</p>;
+    return <p className="text-xs text-os-subtle">暂无节点</p>;
   }
 
   return (
@@ -129,7 +147,7 @@ function WorkflowFlow({ workflow }: { workflow: Workflow }) {
       <div className="flex min-w-max items-center gap-2">
         {workflow.nodes.map((node, index) => (
           <div key={node.node_id} className="flex items-center gap-2">
-            {index > 0 && <span className="text-os-muted">→</span>}
+            {index > 0 && <span className="text-os-subtle">→</span>}
             <NodePill node={node} />
           </div>
         ))}
@@ -142,18 +160,26 @@ function ExecutionToast({ execution }: { execution: WorkflowExecution | null }) 
   if (!execution) return null;
 
   const success = execution.status === "completed";
+  const statusLabel: Record<string, string> = {
+    draft: "草稿",
+    running: "运行中",
+    paused: "等待人工",
+    completed: "已完成",
+    failed: "失败",
+    cancelled: "已取消",
+  };
 
   return (
     <div
       className={`mb-6 rounded-md border p-4 text-sm leading-6 ${
         success
-          ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-          : "border-amber-400/20 bg-amber-400/10 text-amber-200"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-amber-200 bg-amber-50 text-amber-800"
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
         {success ? <CheckCircle2 size={16} /> : <Clock size={16} />}
-        <span>执行状态：{execution.status}</span>
+        <span>执行状态：{statusLabel[execution.status] ?? execution.status}</span>
         <span>耗时：{execution.duration_ms.toFixed(0)}ms</span>
       </div>
     </div>
@@ -213,6 +239,8 @@ export default function WorkflowBuilderPage() {
     });
   }, [query, tagFilter, workflows]);
 
+  const hasWorkflowFilters = Boolean(query.trim() || tagFilter);
+
   const handleExecute = async (workflowId: string) => {
     setExecuting(workflowId);
     setError(null);
@@ -270,7 +298,7 @@ export default function WorkflowBuilderPage() {
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
             <WorkflowIcon size={14} className="text-os-accent" />
-            Agent 编排与流程观察
+            智能体（Agent）编排与流程观察
           </div>
           <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">工作流编排</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
@@ -313,7 +341,7 @@ export default function WorkflowBuilderPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="搜索工作流、节点、智能体或 ID"
-              className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+              className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
             />
           </label>
 
@@ -363,7 +391,7 @@ export default function WorkflowBuilderPage() {
       )}
 
       {error && (
-        <div className="mb-6 rounded-md border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-200">
+        <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
           {error}
         </div>
       )}
@@ -391,7 +419,7 @@ export default function WorkflowBuilderPage() {
                 <div className="min-w-0">
                   <Link
                     href={`/agents/workflows/${workflow.workflow_id}`}
-                    className="break-words text-base font-semibold text-os-text-high hover:text-blue-400 transition-colors"
+                    className="break-words text-base font-semibold text-os-text-high transition-colors hover:text-blue-700"
                   >
                     {workflow.name}
                   </Link>
@@ -414,12 +442,12 @@ export default function WorkflowBuilderPage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-os-muted">无标签</span>
+                  <span className="text-xs text-os-subtle">无标签</span>
                 )}
               </div>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-os-border pt-4">
-                <div className="text-xs text-os-muted">
+                <div className="text-xs text-os-subtle">
                   {workflow.nodes.length} 个节点 · 起点 {workflow.start_node_id || "未设置"}
                 </div>
                 <div className="flex gap-2">
@@ -435,7 +463,7 @@ export default function WorkflowBuilderPage() {
                     type="button"
                     onClick={() => void handleExecute(workflow.workflow_id)}
                     disabled={executing === workflow.workflow_id}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-emerald-700 px-3 text-xs font-medium text-white transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {executing === workflow.workflow_id ? (
                       <Loader2 size={13} className="animate-spin" />
@@ -452,9 +480,13 @@ export default function WorkflowBuilderPage() {
       ) : (
         <section className="os-card flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
           <WorkflowIcon size={28} className="text-os-muted" />
-          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的工作流</h2>
+          <h2 className="mt-3 text-base font-semibold text-os-text-high">
+            {hasWorkflowFilters ? "没有匹配的工作流" : "暂无工作流"}
+          </h2>
           <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">
-            调整搜索条件，或创建一个演示工作流验证编排界面。
+            {hasWorkflowFilters
+              ? "调整搜索条件，或创建一个演示工作流验证编排界面。"
+              : "当前尚未创建工作流，可创建演示工作流开始验证编排。"}
           </p>
         </section>
       )}
@@ -469,8 +501,8 @@ export default function WorkflowBuilderPage() {
           <div className="os-card flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden">
             <div className="flex items-start justify-between gap-4 border-b border-os-border p-5">
               <div className="min-w-0">
-                <p className="text-2xs font-medium uppercase tracking-wider text-os-muted">
-                  Workflow Detail
+                <p className="text-2xs font-medium uppercase tracking-wider text-os-subtle">
+                  工作流详情
                 </p>
                 <h2
                   id="workflow-detail-title"
@@ -493,7 +525,9 @@ export default function WorkflowBuilderPage() {
             </div>
 
             <div className="space-y-3 overflow-y-auto p-5">
-              {selectedWorkflow.nodes.map((node) => {
+              {selectedWorkflow.nodes.length === 0 ? (
+                <p className="py-8 text-center text-sm text-os-subtle">暂无工作流节点</p>
+              ) : selectedWorkflow.nodes.map((node) => {
                 const meta = nodeMeta(node.node_type);
                 return (
                   <div key={node.node_id} className="rounded-md border border-os-border bg-os-base p-3">
@@ -504,11 +538,11 @@ export default function WorkflowBuilderPage() {
                       </span>
                     </div>
                     <div className="mt-2 space-y-1 text-xs leading-5 text-os-subtle">
-                      <p>ID: {node.node_id}</p>
-                      {node.agent_id && <p>智能体: {node.agent_id}</p>}
+                      <p>ID：{node.node_id}</p>
+                      {node.agent_id && <p>智能体：{node.agent_id}</p>}
                       {node.description && <p>{node.description}</p>}
-                      {node.next_nodes.length > 0 && <p>下一节点: {node.next_nodes.join(", ")}</p>}
-                      {node.human_prompt && <p>人工提示: {node.human_prompt}</p>}
+                      {node.next_nodes.length > 0 && <p>下一节点：{node.next_nodes.join(", ")}</p>}
+                      {node.human_prompt && <p>人工提示：{node.human_prompt}</p>}
                     </div>
                   </div>
                 );

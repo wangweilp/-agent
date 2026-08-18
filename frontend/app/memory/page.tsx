@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import {
-  Brain, Search, Grid3x3, List, Table2, GitMerge, Archive, Sparkles,
-} from "lucide-react";
+import { Archive, Brain, GitMerge, Grid3x3, List, Search, Sparkles, Table2 } from "lucide-react";
 import { api } from "@/services/api";
 import { PageTransition, StaggerItem } from "@/components/animations/page-transition";
 import { CardSkeleton } from "@/components/animations/skeleton";
@@ -14,14 +12,30 @@ import { MemoryTimeline } from "@/components/memory/memory-timeline";
 import { MemoryTable } from "@/components/memory/memory-table";
 import { MemoryDrawer } from "@/components/memory/memory-drawer";
 import { MemoryFilterBar } from "@/components/memory/memory-filter-bar";
+import {
+  EmptyState,
+  OsBadge,
+  OsButton,
+  OsInput,
+  PageHeader,
+  PageShell,
+  StatusBadge,
+  Toolbar,
+} from "@/components/ui/os";
+import { tabStyles } from "@/styles/components";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "grid" | "timeline" | "table";
 
+const viewModes = [
+  { mode: "grid" as const, icon: Grid3x3, label: "卡片" },
+  { mode: "timeline" as const, icon: List, label: "时间线" },
+  { mode: "table" as const, icon: Table2, label: "表格" },
+];
+
 export default function MemoryPage() {
   const queryClient = useQueryClient();
 
-  // Search state
   const [query, setQuery] = useState("");
   const [semantic, setSemantic] = useState(false);
   const [typeFilter, setTypeFilter] = useState("");
@@ -32,7 +46,6 @@ export default function MemoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  // Build search params
   const searchParams = {
     q: query || undefined,
     type: typeFilter || undefined,
@@ -44,14 +57,12 @@ export default function MemoryPage() {
   };
   const hasFilters = !!(typeFilter || statusFilter || dateFrom || dateTo);
 
-  // Data fetch — use /memory/search
-  const { data: memories, isLoading } = useQuery({
+  const { data: memories, isLoading, isError } = useQuery({
     queryKey: ["memories", searchParams],
     queryFn: () => api.memory.search(searchParams),
     refetchInterval: 20000,
   });
 
-  // Mutations
   const mergeMutation = useMutation({
     mutationFn: async () => {
       const ids = Array.from(selectedIds);
@@ -74,11 +85,11 @@ export default function MemoryPage() {
     },
   });
 
-  // Selection handlers
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
@@ -88,138 +99,147 @@ export default function MemoryPage() {
     if (selectedIds.size === memories.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(memories.map((m) => m.id)));
+      setSelectedIds(new Set(memories.map((memory) => memory.id)));
     }
   }, [memories, selectedIds.size]);
 
   const clearFilters = useCallback(() => {
-    setTypeFilter(""); setStatusFilter("");
-    setDateFrom(""); setDateTo("");
+    setTypeFilter("");
+    setStatusFilter("");
+    setDateFrom("");
+    setDateTo("");
   }, []);
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-4 max-w-[1440px] mx-auto">
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-os-text-high tracking-tight">记忆搜索中心</h1>
-            <p className="text-xs text-os-subtle mt-0.5">
-              {memories ? `共 ${memories.length} 条记忆` : "加载中..."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="flex items-center gap-0.5 bg-os-surface rounded-md border border-os-border p-0.5">
-              {([
-                { mode: "grid" as const, icon: Grid3x3, label: "卡片" },
-                { mode: "timeline" as const, icon: List, label: "时间线" },
-                { mode: "table" as const, icon: Table2, label: "表格" },
-              ]).map(({ mode, icon: Icon, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={cn(
-                    "p-1.5 rounded transition-colors",
-                    viewMode === mode
-                      ? "bg-os-elevated text-os-text-high"
-                      : "text-os-muted hover:text-os-subtle"
-                  )}
-                  title={label}
-                >
-                  <Icon size={14} />
-                </button>
-              ))}
-            </div>
-
-            {/* Bulk actions */}
-            {selectedIds.size > 0 && (
-              <div className="flex items-center gap-1.5 ml-2">
-                <span className="text-2xs text-os-muted">{selectedIds.size} 已选</span>
-                {selectedIds.size >= 2 && (
-                  <button
-                    onClick={() => mergeMutation.mutate()}
-                    disabled={mergeMutation.isPending}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-2xs bg-os-accent/20 text-os-accent hover:bg-os-accent/30 transition-colors disabled:opacity-50"
-                  >
-                    <GitMerge size={11} />合并
-                  </button>
-                )}
-                <button
-                  onClick={() => batchArchiveMutation.mutate()}
-                  disabled={batchArchiveMutation.isPending}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded text-2xs bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors disabled:opacity-50"
-                >
-                  <Archive size={11} />归档
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Search Bar ── */}
-        <form onSubmit={(e) => { e.preventDefault(); queryClient.invalidateQueries({ queryKey: ["memories"] }); }}
-          className="flex items-center gap-2">
-          <div className="flex-1 relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-os-muted" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={semantic ? "语义搜索 — 输入自然语言描述..." : "搜索记忆关键词、实体名..."}
-              className="w-full h-9 pl-9 pr-24 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
-            />
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setSemantic(!semantic)}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded text-2xs transition-colors",
-                  semantic ? "bg-os-accent/20 text-os-accent" : "text-os-muted hover:text-os-subtle"
-                )}
-                title="语义搜索"
-              >
-                <Sparkles size={11} />语义
-              </button>
-              <button type="submit"
-                className="px-3 py-1 rounded bg-os-accent text-white text-2xs font-medium hover:bg-os-accent/90 transition-colors">
-                搜索
-              </button>
-            </div>
-          </div>
-        </form>
-
-        {/* ── Filter Bar ── */}
-        <MemoryFilterBar
-          type={typeFilter} status={statusFilter}
-          dateFrom={dateFrom} dateTo={dateTo}
-          onTypeChange={setTypeFilter} onStatusChange={setStatusFilter}
-          onDateFromChange={setDateFrom} onDateToChange={setDateTo}
-          onClear={clearFilters} hasFilters={hasFilters}
+      <PageShell>
+        <PageHeader
+          icon={Brain}
+          title="记忆管理"
+          subtitle={memories ? `共 ${memories.length} 条记忆。支持关键词、语义检索、批量合并与归档。` : "正在加载记忆索引。"}
+          actions={
+            <>
+              <StatusBadge status={semantic ? "info" : "ready"}>{semantic ? "语义搜索" : "关键词搜索"}</StatusBadge>
+              {selectedIds.size > 0 && <OsBadge variant="primary">{selectedIds.size} 已选</OsBadge>}
+            </>
+          }
         />
 
-        {/* ── Content ── */}
+        <Toolbar>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              queryClient.invalidateQueries({ queryKey: ["memories"] });
+            }}
+            className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center"
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-os-muted" />
+              <OsInput
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={semantic ? "语义搜索：输入自然语言描述..." : "搜索记忆关键词、实体名..."}
+                className="w-full pl-9 md:pr-32"
+                aria-label="搜索记忆"
+              />
+              <div className="mt-2 flex items-center gap-2 md:absolute md:right-1.5 md:top-1/2 md:mt-0 md:-translate-y-1/2">
+                <OsButton type="button" variant={semantic ? "soft" : "ghost"} size="sm" onClick={() => setSemantic((value) => !value)}>
+                  <Sparkles size={13} />
+                  语义
+                </OsButton>
+                <OsButton type="submit" variant="primary" size="sm">
+                  搜索
+                </OsButton>
+              </div>
+            </div>
+          </form>
+
+          <div className="flex items-center gap-1 rounded-2xl border border-os-border bg-os-surface-tinted p-1">
+            {viewModes.map(({ mode, icon: Icon, label }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                className={tabStyles({ active: viewMode === mode })}
+                aria-label={`切换到${label}视图`}
+                title={label}
+              >
+                <Icon size={15} />
+              </button>
+            ))}
+          </div>
+
+          {selectedIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedIds.size >= 2 && (
+                <OsButton
+                  type="button"
+                  variant="soft"
+                  size="sm"
+                  onClick={() => mergeMutation.mutate()}
+                  disabled={mergeMutation.isPending}
+                >
+                  <GitMerge size={13} />
+                  合并
+                </OsButton>
+              )}
+              <OsButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => batchArchiveMutation.mutate()}
+                disabled={batchArchiveMutation.isPending}
+              >
+                <Archive size={13} />
+                归档
+              </OsButton>
+            </div>
+          )}
+        </Toolbar>
+
+        <MemoryFilterBar
+          type={typeFilter}
+          status={statusFilter}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onTypeChange={setTypeFilter}
+          onStatusChange={setStatusFilter}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onClear={clearFilters}
+          hasFilters={hasFilters}
+        />
+
         {isLoading ? (
-          <div className={cn(
-            viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" : "space-y-3"
-          )}>
-            {Array.from({ length: 6 }).map((_, i) => (<CardSkeleton key={i} />))}
+          <div className={cn(viewMode === "grid" ? "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" : "space-y-3")}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <CardSkeleton key={index} />
+            ))}
           </div>
+        ) : isError ? (
+          <EmptyState
+            icon={Brain}
+            title="记忆加载失败"
+            description="暂时无法读取记忆数据，请检查网络连接后重试。"
+            className="min-h-[360px]"
+          />
         ) : !memories || memories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-os-muted">
-            <Brain size={48} className="mb-4 opacity-30" />
-            <p className="text-sm">没有找到记忆</p>
-            <p className="text-2xs mt-1">尝试调整搜索条件或开始与智能体对话以创建新记忆</p>
-          </div>
+          <EmptyState
+            icon={Brain}
+            title="没有找到记忆"
+            description="尝试调整搜索条件，或开始与智能体对话来创建新的记忆。"
+            className="min-h-[360px]"
+          />
         ) : (
           <>
             {viewMode === "grid" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <AnimatePresence mode="popLayout">
-                  {memories.map((mem, i) => (
-                    <StaggerItem key={mem.id} delay={i * 0.02}>
+                  {memories.map((memory, index) => (
+                    <StaggerItem key={memory.id} delay={index * 0.02}>
                       <MemoryCard
-                        memory={mem}
-                        selected={selectedIds.has(mem.id)}
+                        memory={memory}
+                        selected={selectedIds.has(memory.id)}
                         onToggleSelect={toggleSelect}
                         onClick={(id) => setDetailId(id)}
                       />
@@ -229,28 +249,27 @@ export default function MemoryPage() {
               </div>
             )}
 
-            {viewMode === "timeline" && (
-              <MemoryTimeline memories={memories} />
-            )}
+            {viewMode === "timeline" && <MemoryTimeline memories={memories} />}
 
             {viewMode === "table" && (
               <MemoryTable
-                memories={memories} selected={selectedIds}
-                onToggleSelect={toggleSelect} onSelectAll={selectAll}
+                memories={memories}
+                selected={selectedIds}
+                onToggleSelect={toggleSelect}
+                onSelectAll={selectAll}
                 onViewDetail={(id) => setDetailId(id)}
               />
             )}
           </>
         )}
 
-        {/* ── Detail Drawer ── */}
         <MemoryDrawer
           memoryId={detailId}
           onClose={() => setDetailId(null)}
           onArchived={() => queryClient.invalidateQueries({ queryKey: ["memories"] })}
           onDeleted={() => queryClient.invalidateQueries({ queryKey: ["memories"] })}
         />
-      </div>
+      </PageShell>
     </PageTransition>
   );
 }

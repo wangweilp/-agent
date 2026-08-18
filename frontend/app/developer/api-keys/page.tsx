@@ -31,8 +31,8 @@ import type { DeveloperApiKey } from "@/types/open-platform";
 
 // ── 模拟配额数据（API 未返回用量，前端安全模拟） ──
 const MOCK_QUOTAS = [
-  { label: "API Requests", usage: 14052, quota: 50000, period: "本月" },
-  { label: "Agent Runs", usage: 892, quota: 2000, period: "本月" },
+  { label: "API 请求", usage: 14052, quota: 50000, period: "本月" },
+  { label: "Agent 运行", usage: 892, quota: 2000, period: "本月" },
   { label: "Token 消耗", usage: 1280000, quota: 5000000, period: "本月" },
 ];
 
@@ -108,7 +108,7 @@ export default function ApiKeysPage() {
     setError(null);
     const scopes = scopesText.split(",").map((s) => s.trim()).filter(Boolean);
     if (!scopes.length) {
-      setError("scopes 不能为空");
+      setError("权限范围（scopes）不能为空");
       return;
     }
     setCreating(true);
@@ -207,7 +207,7 @@ export default function ApiKeysPage() {
       {/* Header */}
       <div className="mb-6 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-os-text-high">API Keys</h1>
+          <h1 className="text-2xl font-semibold text-os-text-high">API Key</h1>
           <p className="text-sm text-os-subtle">管理开发者 API Key · 密钥保险库</p>
         </div>
         <button
@@ -221,7 +221,7 @@ export default function ApiKeysPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
+        <div className="mb-4 rounded-lg border border-os-danger/20 bg-os-danger-soft p-3 text-sm text-os-danger">
           {error}
         </div>
       )}
@@ -242,7 +242,7 @@ export default function ApiKeysPage() {
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-xs text-os-subtle">
                     {q.label}
-                    <span className="ml-2 text-2xs text-os-muted">{q.period}</span>
+                    <span className="ml-2 text-2xs text-os-subtle">{q.period}</span>
                   </span>
                   <span className="font-mono text-xs">
                     <span
@@ -253,7 +253,7 @@ export default function ApiKeysPage() {
                     >
                       {formatNumber(q.usage)}
                     </span>
-                    <span className="text-os-muted"> / {formatNumber(q.quota)}</span>
+                    <span className="text-os-subtle"> / {formatNumber(q.quota)}</span>
                   </span>
                 </div>
                 <QuotaBar usage={q.usage} quota={q.quota} />
@@ -261,7 +261,7 @@ export default function ApiKeysPage() {
             );
           })}
         </div>
-        <p className="mt-3 text-2xs text-os-muted">配额基于当前套餐，超限将自动限流。数据为模拟值。</p>
+        <p className="mt-3 text-xs leading-5 text-os-subtle">配额基于当前套餐，超限将自动限流。数据为模拟值。</p>
       </section>
 
       {/* ── 任务 A: 创建表单 ── */}
@@ -275,21 +275,21 @@ export default function ApiKeysPage() {
         </h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-2xs font-medium text-os-subtle">Name</label>
+            <label className="mb-1 block text-2xs font-medium text-os-subtle">名称</label>
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="Production Key"
-              className="h-9 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+              placeholder="生产环境密钥"
+              className="h-9 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
             />
           </div>
           <div>
-            <label className="mb-1 block text-2xs font-medium text-os-subtle">Scopes (逗号分隔)</label>
+            <label className="mb-1 block text-2xs font-medium text-os-subtle">权限范围（Scopes，逗号分隔）</label>
             <input
               value={scopesText}
               onChange={(e) => setScopesText(e.target.value)}
               placeholder="agent:read, agent:submit"
-              className="h-9 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+              className="h-9 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
             />
           </div>
         </div>
@@ -306,7 +306,7 @@ export default function ApiKeysPage() {
       {/* ── 任务 A: 密钥保险库列表 ── */}
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs text-os-subtle">
-          {keys.length} keys · <span className="text-os-success">{activeCount} active</span>
+          {keys.length} 个密钥 · <span className="text-os-success">{activeCount} 个活跃</span>
         </span>
         <label className="flex items-center gap-2 text-xs text-os-subtle">
           <input
@@ -331,7 +331,7 @@ export default function ApiKeysPage() {
             </div>
           ))}
         </div>
-      ) : keys.length === 0 ? (
+      ) : error && keys.length === 0 ? null : keys.length === 0 ? (
         <div className="flex min-h-32 items-center justify-center rounded-2xl border border-os-border/50 bg-os-surface/40 p-4 backdrop-blur-md">
           <p className="text-sm text-os-subtle">暂无 API Key</p>
         </div>
@@ -349,7 +349,7 @@ export default function ApiKeysPage() {
                     {/* Name + status */}
                     <div className="flex items-center gap-2">
                       <KeyRound size={14} className="shrink-0 text-os-accent" />
-                      <span className="text-sm font-semibold text-os-text-high">{k.name}</span>
+                      <span className="min-w-0 flex-1 break-words text-sm font-semibold text-os-text-high">{k.name}</span>
                       <StatusBadge status={k.status} />
                     </div>
 
@@ -394,7 +394,7 @@ export default function ApiKeysPage() {
                     </div>
 
                     {/* Meta — created / last used */}
-                    <div className="mt-2 flex flex-wrap items-center gap-4 text-2xs text-os-muted">
+                    <div className="mt-2 flex flex-wrap items-center gap-4 text-2xs text-os-subtle">
                       <span className="inline-flex items-center gap-1" title={k.created_at}>
                         <Calendar size={10} />
                         {formatRelativeTime(k.created_at)}
@@ -411,14 +411,14 @@ export default function ApiKeysPage() {
                     <button
                       onClick={() => handleRevoke(k.api_key_id)}
                       disabled={revoking.has(k.api_key_id)}
-                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-os-border px-2 text-xs text-os-subtle transition-colors hover:border-red-400/30 hover:text-red-300 disabled:opacity-50"
+                        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-os-border px-2 text-xs text-os-subtle transition-colors hover:border-os-danger/30 hover:text-os-danger disabled:opacity-50"
                     >
                       {revoking.has(k.api_key_id) ? (
                         <Loader2 size={12} className="animate-spin" />
                       ) : (
                         <Trash2 size={12} />
                       )}
-                      Revoke
+                      撤销
                     </button>
                   )}
                 </div>
@@ -432,13 +432,13 @@ export default function ApiKeysPage() {
       <section className="mt-8 rounded-2xl border border-os-danger/40 bg-os-danger/5 p-6">
         <div className="mb-4 flex items-center gap-2">
           <AlertTriangle size={16} className="text-os-danger" />
-          <h2 className="text-sm font-semibold text-os-danger">Danger Zone</h2>
+          <h2 className="text-sm font-semibold text-os-danger">危险操作</h2>
         </div>
         <p className="mb-4 text-xs text-os-subtle">
           以下操作不可逆。执行前请确认你理解其后果。
         </p>
 
-        <div className="flex items-center justify-between gap-4 rounded-lg border border-os-border/50 bg-os-surface/30 p-4">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-os-border/50 bg-os-surface/30 p-4 sm:flex-row sm:items-center">
           <div className="min-w-0">
             <h3 className="text-sm font-medium text-os-text-high">撤销全部活跃密钥</h3>
             <p className="mt-1 text-xs text-os-subtle">
@@ -449,7 +449,7 @@ export default function ApiKeysPage() {
             type="button"
             onClick={() => setShowRevokeAll(true)}
             disabled={activeCount === 0}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-os-danger px-3 text-xs font-medium text-os-danger transition-colors hover:bg-os-danger/10 disabled:cursor-not-allowed disabled:border-os-border disabled:text-os-muted"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-os-danger px-3 text-xs font-medium text-os-danger transition-colors hover:bg-os-danger/10 disabled:cursor-not-allowed disabled:border-os-border disabled:text-os-subtle sm:shrink-0"
           >
             <Trash2 size={13} />
             撤销全部

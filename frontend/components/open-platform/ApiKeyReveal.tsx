@@ -38,9 +38,9 @@ export function ApiKeyReveal({ rawKey, onClose }: { rawKey: string; onClose: () 
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-os-border px-5 py-3.5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-os-success">
-              <KeyRound size={16} className="text-os-success" />
-              API Key 已创建
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+              <KeyRound size={16} className="text-emerald-700" />
+              API 密钥已创建
             </h2>
             <button
               onClick={onClose}
@@ -53,8 +53,8 @@ export function ApiKeyReveal({ rawKey, onClose }: { rawKey: string; onClose: () 
           <div className="space-y-4 px-5 py-5">
             {/* Warning banner */}
             <div className="flex items-start gap-2 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2.5">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-400" />
-              <p className="text-xs leading-5 text-amber-300">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-800" />
+              <p className="text-xs leading-5 text-amber-800">
                 请立即复制此密钥。关闭此窗口后将<strong className="font-semibold">无法再次查看</strong>。
               </p>
             </div>

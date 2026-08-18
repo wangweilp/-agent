@@ -5,11 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Clock, ArrowRight, Brain, Archive, GitMerge, TrendingUp,
-  Image, Sparkles, FileText, Loader2, Calendar,
+  Image as ImageIcon, Sparkles, FileText, Loader2, Calendar,
 } from "lucide-react";
 import { cn, formatDate, formatNumber } from "@/lib/utils";
 import { api } from "@/services/api";
-import type { TimelineEvent, TimelineStats } from "@/types";
 
 // ── 事件类型映射 ──
 const EVENT_META: Record<string, {
@@ -22,49 +21,49 @@ const EVENT_META: Record<string, {
   memory_created: {
     label: "记忆创建",
     icon: <Brain size={11} />,
-    color: "text-emerald-400",
+    color: "text-emerald-700",
     bg: "bg-emerald-400/10",
     border: "border-emerald-400/20",
   },
   memory_archived: {
     label: "记忆归档",
     icon: <Archive size={11} />,
-    color: "text-amber-400",
+    color: "text-amber-800",
     bg: "bg-amber-400/10",
     border: "border-amber-400/20",
   },
   memory_merged: {
     label: "记忆合并",
     icon: <GitMerge size={11} />,
-    color: "text-violet-400",
+    color: "text-violet-700",
     bg: "bg-violet-400/10",
     border: "border-violet-400/20",
   },
   memory_promoted: {
     label: "记忆提升",
     icon: <TrendingUp size={11} />,
-    color: "text-cyan-400",
+    color: "text-cyan-700",
     bg: "bg-cyan-400/10",
     border: "border-cyan-400/20",
   },
   image_uploaded: {
     label: "图片上传",
-    icon: <Image size={11} />,
-    color: "text-sky-400",
+    icon: <ImageIcon size={11} />,
+    color: "text-sky-700",
     bg: "bg-sky-400/10",
     border: "border-sky-400/20",
   },
   reflection_generated: {
     label: "反思生成",
     icon: <Sparkles size={11} />,
-    color: "text-indigo-400",
+    color: "text-indigo-700",
     bg: "bg-indigo-400/10",
     border: "border-indigo-400/20",
   },
   weekly_report_generated: {
     label: "周报生成",
     icon: <FileText size={11} />,
-    color: "text-zinc-400",
+    color: "text-zinc-700",
     bg: "bg-zinc-400/10",
     border: "border-zinc-400/20",
   },
@@ -75,6 +74,15 @@ const TYPE_LABELS: Record<string, string> = {
   semantic: "语义",
   procedural: "程序",
   reflect: "反思",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "活跃",
+  archived: "已归档",
+  merged: "已合并",
+  pending: "待处理",
+  inactive: "非活跃",
+  deleted: "已删除",
 };
 
 export function MemoryFlowTimeline() {
@@ -115,7 +123,7 @@ export function MemoryFlowTimeline() {
     { label: "合并", value: stats?.merged_count ?? 0, icon: <GitMerge size={11} />, accent: "violet" as const },
     { label: "提升", value: stats?.promoted_count ?? 0, icon: <TrendingUp size={11} />, accent: "cyan" as const },
     { label: "反思", value: stats?.reflection_count ?? 0, icon: <Sparkles size={11} />, accent: "indigo" as const },
-    { label: "图片", value: stats?.image_count ?? 0, icon: <Image size={11} />, accent: "sky" as const },
+    { label: "图片", value: stats?.image_count ?? 0, icon: <ImageIcon size={11} />, accent: "sky" as const },
     { label: "周报", value: stats?.weekly_report_count ?? 0, icon: <FileText size={11} />, accent: "zinc" as const },
   ];
 
@@ -123,10 +131,10 @@ export function MemoryFlowTimeline() {
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Clock size={14} className="text-violet-400" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Clock size={14} className="text-violet-700" />
           <h2 className="text-sm font-semibold text-os-text-high">记忆流转时间线</h2>
-          <span className="text-2xs text-os-muted">chat → working → long-term storage</span>
+          <span className="text-2xs text-os-subtle">对话 → 工作记忆 → 长期存储</span>
         </div>
       </div>
 
@@ -139,7 +147,7 @@ export function MemoryFlowTimeline() {
 
       {/* ── 过滤器 ── */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-2xs text-os-muted mr-1">事件类型:</span>
+        <span className="mr-1 text-2xs text-os-subtle">事件类型：</span>
         <FilterChip
           active={filterType === "all"}
           onClick={() => setFilterType("all")}
@@ -159,11 +167,11 @@ export function MemoryFlowTimeline() {
       {/* ── 时间线 ── */}
       <div className="rounded-md border border-os-border bg-os-surface/30 p-4">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-2xs text-os-muted gap-2">
+          <div className="flex items-center justify-center py-8 text-2xs text-os-subtle gap-2">
             <Loader2 size={14} className="animate-spin" /> 加载时间线...
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-2xs text-os-muted">
+          <div className="flex flex-col items-center justify-center py-8 text-2xs text-os-subtle">
             <Clock size={20} className="mb-2 opacity-50" />
             暂无事件
           </div>
@@ -178,10 +186,10 @@ export function MemoryFlowTimeline() {
                 <div key={day.date} className="space-y-2">
                   {/* 日期分隔 */}
                   <div className="flex items-center gap-2 sticky top-0 bg-os-surface/80 backdrop-blur-sm py-1 z-10">
-                    <Calendar size={11} className="text-os-muted" />
+                    <Calendar size={11} className="text-os-subtle" />
                     <span className="text-2xs font-medium text-os-subtle font-mono">{day.date}</span>
-                    <span className="text-2xs text-os-muted">·</span>
-                    <span className="text-2xs text-os-muted">{dayEvents.length} events</span>
+                    <span className="text-2xs text-os-subtle">·</span>
+                    <span className="text-2xs text-os-subtle">{dayEvents.length} 个事件</span>
                     <div className="flex-1 h-px bg-os-border/50" />
                   </div>
 
@@ -207,20 +215,20 @@ export function MemoryFlowTimeline() {
 
                           {/* 事件内容 */}
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                               <span className={cn("text-2xs font-medium", meta.color)}>
                                 {meta.label}
                               </span>
-                              <span className="text-2xs text-os-muted font-mono">
+                              <span className="text-2xs text-os-subtle font-mono">
                                 {TYPE_LABELS[event.memory_type] || event.memory_type}
                               </span>
-                              <span className="text-2xs text-os-muted">·</span>
-                              <span className="text-2xs text-os-muted">
+                              <span className="text-2xs text-os-subtle">·</span>
+                              <span className="text-2xs text-os-subtle">
                                 {formatDate(event.timestamp)}
                               </span>
                               {event.status !== "active" && (
-                                <span className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-muted font-mono">
-                                  {event.status}
+                                <span className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-subtle font-mono">
+                                  {STATUS_LABELS[event.status] ?? event.status}
                                 </span>
                               )}
                             </div>
@@ -230,12 +238,12 @@ export function MemoryFlowTimeline() {
                             {event.entities.length > 0 && (
                               <div className="flex items-center gap-1 mt-1 flex-wrap">
                                 {event.entities.slice(0, 5).map((e) => (
-                                  <span key={e} className="text-2xs px-1 py-0.5 rounded bg-violet-400/10 text-violet-300 font-mono">
+                                  <span key={e} className="text-2xs px-1 py-0.5 rounded bg-violet-400/10 text-violet-700 font-mono">
                                     {e}
                                   </span>
                                 ))}
                                 {event.entities.length > 5 && (
-                                  <span className="text-2xs text-os-muted">+{event.entities.length - 5}</span>
+                                  <span className="text-2xs text-os-subtle">+{event.entities.length - 5}</span>
                                 )}
                               </div>
                             )}
@@ -245,11 +253,11 @@ export function MemoryFlowTimeline() {
                           <div className="shrink-0 text-right">
                             <div className={cn(
                               "text-xs font-bold tabular-nums",
-                              event.importance >= 8 ? "text-emerald-400" : event.importance >= 6 ? "text-amber-400" : "text-zinc-500",
+                              event.importance >= 8 ? "text-emerald-700" : event.importance >= 6 ? "text-amber-800" : "text-zinc-500",
                             )}>
                               {event.importance}
                             </div>
-                            <div className="text-2xs text-os-muted">imp</div>
+                            <div className="text-2xs text-os-subtle">重要度</div>
                           </div>
                         </motion.li>
                       );
@@ -264,19 +272,19 @@ export function MemoryFlowTimeline() {
 
       {/* ── 流转示意 ── */}
       <div className="rounded-md border border-os-border bg-os-surface/20 p-3">
-        <div className="text-2xs text-os-muted mb-2 uppercase tracking-wider">记忆流转路径</div>
+        <div className="text-2xs text-os-subtle mb-2 uppercase tracking-wider">记忆流转路径</div>
         <div className="flex items-center gap-2 text-2xs flex-wrap">
-          <FlowNode label="Chat Input" color="cyan" />
-          <ArrowRight size={11} className="text-os-muted" />
-          <FlowNode label="STM (Episodic)" color="cyan" />
-          <ArrowRight size={11} className="text-os-muted" />
-          <FlowNode label="WM (Working Set)" color="violet" />
-          <ArrowRight size={11} className="text-os-muted" />
-          <FlowNode label="Reflection" color="indigo" />
-          <ArrowRight size={11} className="text-os-muted" />
-          <FlowNode label="LTM (Semantic/Procedural)" color="emerald" />
-          <ArrowRight size={11} className="text-os-muted" />
-          <FlowNode label="Archive" color="amber" />
+          <FlowNode label="对话输入" color="cyan" />
+          <ArrowRight size={11} className="text-os-subtle" />
+          <FlowNode label="STM（情景记忆）" color="cyan" />
+          <ArrowRight size={11} className="text-os-subtle" />
+          <FlowNode label="WM（工作集）" color="violet" />
+          <ArrowRight size={11} className="text-os-subtle" />
+          <FlowNode label="反思" color="indigo" />
+          <ArrowRight size={11} className="text-os-subtle" />
+          <FlowNode label="LTM（语义/程序记忆）" color="emerald" />
+          <ArrowRight size={11} className="text-os-subtle" />
+          <FlowNode label="归档" color="amber" />
         </div>
       </div>
     </div>
@@ -294,17 +302,17 @@ function StatMini({
   accent: "violet" | "emerald" | "amber" | "cyan" | "indigo" | "sky" | "zinc";
 }) {
   const accentMap = {
-    violet: "text-violet-400",
-    emerald: "text-emerald-400",
-    amber: "text-amber-400",
-    cyan: "text-cyan-400",
-    indigo: "text-indigo-400",
-    sky: "text-sky-400",
-    zinc: "text-zinc-400",
+    violet: "text-violet-700",
+    emerald: "text-emerald-700",
+    amber: "text-amber-800",
+    cyan: "text-cyan-700",
+    indigo: "text-indigo-700",
+    sky: "text-sky-700",
+    zinc: "text-zinc-700",
   };
   return (
     <div className="rounded-md border border-os-border/50 bg-os-base/50 p-2">
-      <div className="flex items-center gap-1 text-2xs text-os-muted mb-0.5">
+      <div className="flex items-center gap-1 text-2xs text-os-subtle mb-0.5">
         <span className={accentMap[accent]}>{icon}</span>
         {label}
       </div>
@@ -329,8 +337,8 @@ function FilterChip({
       className={cn(
         "flex items-center gap-1 px-2 py-0.5 rounded text-2xs transition-colors",
         active
-          ? "bg-violet-400/10 text-violet-300 border border-violet-400/30"
-          : "bg-os-elevated text-os-muted border border-os-border hover:text-os-subtle",
+          ? "bg-violet-400/10 text-violet-700 border border-violet-400/30"
+          : "bg-os-elevated text-os-subtle border border-os-border hover:text-os-subtle",
       )}
     >
       {icon}
@@ -341,11 +349,11 @@ function FilterChip({
 
 function FlowNode({ label, color }: { label: string; color: "cyan" | "violet" | "indigo" | "emerald" | "amber" }) {
   const colorMap = {
-    cyan: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20",
-    violet: "bg-violet-400/10 text-violet-400 border-violet-400/20",
-    indigo: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20",
-    emerald: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-    amber: "bg-amber-400/10 text-amber-400 border-amber-400/20",
+    cyan: "bg-cyan-400/10 text-cyan-700 border-cyan-400/20",
+    violet: "bg-violet-400/10 text-violet-700 border-violet-400/20",
+    indigo: "bg-indigo-400/10 text-indigo-700 border-indigo-400/20",
+    emerald: "bg-emerald-400/10 text-emerald-700 border-emerald-400/20",
+    amber: "bg-amber-400/10 text-amber-800 border-amber-400/20",
   };
   return (
     <span className={cn("px-2 py-0.5 rounded border font-mono", colorMap[color])}>

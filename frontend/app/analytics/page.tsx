@@ -28,10 +28,12 @@ export default function AnalyticsPage() {
   const [retention, setRetention] = useState<RetentionCohort | null>(null);
   const [realtime, setRealtime] = useState<RealtimeMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [timeRange, setTimeRange] = useState(30);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [
         m,
@@ -59,6 +61,7 @@ export default function AnalyticsPage() {
       setRealtime(rl);
     } catch (err) {
       console.error("Failed to fetch analytics:", err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -71,9 +74,9 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Growth & Analytics Center</h1>
+          <h1 className="text-2xl font-bold tracking-tight">增长与分析中心</h1>
           <p className="text-sm text-muted-foreground">
             运营数据分析与决策看板
             {realtime && (
@@ -105,6 +108,18 @@ export default function AnalyticsPage() {
           </button>
         </div>
       </div>
+
+      {loading && !metrics && (
+        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
+          正在加载分析数据...
+        </div>
+      )}
+
+      {loadError && (
+        <div className="rounded-xl border border-os-danger/20 bg-os-danger-soft p-4 text-sm text-os-danger">
+          分析数据加载失败，请检查网络连接后重试。
+        </div>
+      )}
 
       {/* Metrics Cards */}
       {metrics && (
@@ -144,7 +159,7 @@ export default function AnalyticsPage() {
         {embeddingUsage && (
           <UsageTrendChart
             data={embeddingUsage.trend}
-            title="Embedding 调用趋势"
+            title="嵌入模型调用趋势"
             dataKey="count"
             type="bar"
           />

@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               企业管理
             </h1>
           </div>
-          <p className="text-2xs text-os-muted ml-8">
+          <p className="ml-8 text-2xs text-os-subtle">
             系统管理控制台
           </p>
         </div>
@@ -58,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className={cn(
                   "flex items-center gap-2.5 h-9 px-2.5 rounded-lg text-xs transition-all duration-150 group",
                   isActive
-                    ? "bg-os-accent/10 text-os-accent border border-os-accent/10"
+                    ? "border border-os-accent/10 bg-os-accent/10 text-os-primary-hover"
                     : "text-os-text hover:text-os-text-high hover:bg-os-elevated/80 border border-transparent"
                 )}
               >
@@ -66,11 +66,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   "w-6 h-6 rounded-md flex items-center justify-center shrink-0",
                   isActive ? "bg-os-accent/15" : "bg-os-elevated/50"
                 )}>
-                  <item.icon size={14} className={isActive ? "text-os-accent" : "text-os-subtle"} />
+                  <item.icon size={14} className={isActive ? "text-os-primary-hover" : "text-os-subtle"} />
                 </div>
                 <span className="whitespace-nowrap">{item.label}</span>
                 {isActive && (
-                  <ChevronRight size={12} className="ml-auto text-os-accent" />
+                  <ChevronRight size={12} className="ml-auto text-os-primary-hover" />
                 )}
               </Link>
             );

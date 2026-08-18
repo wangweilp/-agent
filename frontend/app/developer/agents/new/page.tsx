@@ -115,7 +115,7 @@ export default function NewSubmissionPage() {
       try {
         metadata = JSON.parse(metaText);
       } catch {
-        setError("Metadata JSON 格式错误");
+        setError("元数据 JSON 格式错误");
         return;
       }
     }
@@ -148,20 +148,20 @@ export default function NewSubmissionPage() {
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
       <Link href="/developer/agents" className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high">
-        <ArrowLeft size={14} />Submissions
+        <ArrowLeft size={14} />智能体提交
       </Link>
       <div className="flex items-center gap-3 mb-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-os-border bg-os-elevated">
           <Code2 size={18} className="text-os-accent" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-os-text-high">Agent Studio</h1>
-          <p className="text-xs text-os-subtle">智能体集成开发环境 · IDE-grade Authoring</p>
+          <h1 className="text-2xl font-semibold text-os-text-high">智能体工作室（Agent Studio）</h1>
+          <p className="text-xs text-os-subtle">智能体集成开发环境 · IDE 级创作</p>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200 whitespace-pre-wrap">
+        <div className="mb-4 whitespace-pre-wrap rounded-xl border border-os-danger/20 bg-os-danger-soft p-3 text-sm text-os-danger">
           {error}
         </div>
       )}
@@ -179,12 +179,12 @@ export default function NewSubmissionPage() {
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-os-subtle">智能体标识 (name)</label>
+                  <label className="mb-1 block text-xs font-medium text-os-subtle">智能体标识（name）</label>
                   <input
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
                     placeholder="my-agent"
-                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
                   />
                 </div>
                 <div>
@@ -192,8 +192,8 @@ export default function NewSubmissionPage() {
                   <input
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="My 智能体"
-                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+                    placeholder="我的智能体"
+                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
                   />
                 </div>
                 <div>
@@ -202,16 +202,16 @@ export default function NewSubmissionPage() {
                     value={version}
                     onChange={(e) => setVersion(e.target.value)}
                     placeholder="1.0.0"
-                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-os-subtle">Package URL (optional)</label>
+                  <label className="mb-1 block text-xs font-medium text-os-subtle">Package URL（可选）</label>
                   <input
                     value={packageUrl}
                     onChange={(e) => setPackageUrl(e.target.value)}
                     placeholder="https://..."
-                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+                    className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
                   />
                 </div>
               </div>
@@ -220,8 +220,8 @@ export default function NewSubmissionPage() {
                 <input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe what this agent does."
-                  className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+                  placeholder="描述此智能体的功能。"
+                  className="h-10 w-full rounded-lg border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
                 />
               </div>
             </section>
@@ -231,10 +231,10 @@ export default function NewSubmissionPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-os-text-high flex items-center gap-2">
                   <span className="w-1 h-4 rounded-full bg-os-accent" />
-                  系统提示词 (System Prompt)
+                  系统提示词（System Prompt）
                 </h2>
                 <span className="text-xs text-os-subtle font-mono">
-                  {systemPrompt.length} chars · 支持 <code className="text-os-accent">{"{{var}}"}</code>
+                  {systemPrompt.length} 个字符 · 支持 <code className="text-os-accent">{"{{var}}"}</code>
                 </span>
               </div>
               <div className="relative rounded-xl border border-os-border bg-slate-50 overflow-hidden focus-within:ring-1 focus-within:ring-os-accent focus-within:border-os-accent transition-all">
@@ -244,7 +244,7 @@ export default function NewSubmissionPage() {
                     <span className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-400/60" />
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/60" />
-                    <span className="ml-2 text-2xs text-os-muted font-mono">system_prompt.md</span>
+                    <span className="ml-2 font-mono text-2xs text-os-subtle">system_prompt.md</span>
                   </div>
                   <span className="text-2xs text-os-subtle font-mono">UTF-8 · LF</span>
                 </div>
@@ -254,7 +254,7 @@ export default function NewSubmissionPage() {
                   spellCheck={false}
                   rows={10}
                   placeholder="你是一个专业的智能体。请根据用户输入，调用相应工具完成任务...&#10;&#10;支持变量: {{user_name}} {{context}} {{memory}}"
-                  className="w-full bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-os-text-high outline-none placeholder:text-os-muted resize-none"
+                  className="w-full bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-os-text-high outline-none placeholder:text-os-subtle resize-none"
                 />
               </div>
             </section>
@@ -263,7 +263,7 @@ export default function NewSubmissionPage() {
             <section className="os-card p-6 rounded-xl space-y-3">
               <h2 className="text-sm font-semibold text-os-text-high flex items-center gap-2">
                 <span className="w-1 h-4 rounded-full bg-os-accent" />
-                能力矩阵 (Capability Matrix)
+                能力矩阵
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {CAPABILITIES.map((cap) => {
@@ -290,7 +290,7 @@ export default function NewSubmissionPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-os-text-high">{cap.label}</p>
-                          <p className="text-2xs text-os-muted truncate">{cap.description}</p>
+                          <p className="break-words text-xs leading-5 text-os-subtle">{cap.description}</p>
                         </div>
                       </div>
                       <Switch
@@ -308,14 +308,14 @@ export default function NewSubmissionPage() {
             <section className="os-card p-6 rounded-xl space-y-3">
               <h2 className="text-sm font-semibold text-os-text-high flex items-center gap-2">
                 <span className="w-1 h-4 rounded-full bg-os-accent" />
-                Metadata (JSON, optional)
+                元数据（JSON，可选）
               </h2>
               <textarea
                 rows={3}
                 value={metaText}
                 onChange={(e) => setMetaText(e.target.value)}
                 spellCheck={false}
-                className="w-full rounded-lg border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+                className="w-full rounded-lg border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
                 placeholder='{"env": "prod"}'
               />
             </section>
@@ -328,9 +328,9 @@ export default function NewSubmissionPage() {
               <div className="flex items-center justify-between px-4 py-3 border-b border-os-border">
                 <div className="flex items-center gap-2">
                   <Eye size={14} className="text-os-accent" />
-                  <span className="text-sm font-medium text-os-text-high">Manifest Preview</span>
+                   <span className="text-sm font-medium text-os-text-high">Manifest 预览</span>
                 </div>
-                <span className="text-2xs text-os-subtle font-mono">auto-generated</span>
+                <span className="text-2xs text-os-subtle font-mono">自动生成</span>
               </div>
 
               {/* JSON 预览 */}
@@ -341,11 +341,11 @@ export default function NewSubmissionPage() {
               </div>
 
               {/* 底部状态栏 */}
-              <div className="flex items-center justify-between px-4 py-2 border-t border-os-border bg-os-elevated/30">
-                <span className="text-2xs text-os-muted">
-                  {capabilities.length} capabilities · {systemPrompt.length} prompt chars
+              <div className="flex flex-col items-start justify-between gap-1 border-t border-os-border bg-os-elevated/30 px-4 py-2 sm:flex-row sm:items-center">
+                <span className="text-2xs text-os-subtle">
+                  {capabilities.length} 项能力 · {systemPrompt.length} 个提示词字符
                 </span>
-                <span className="text-2xs text-emerald-400 font-mono">● valid JSON</span>
+                <span className="font-mono text-2xs text-os-success">● JSON 有效</span>
               </div>
             </div>
 
@@ -361,7 +361,7 @@ export default function NewSubmissionPage() {
                   提交中...
                 </>
               ) : (
-                "Create Draft"
+                "创建草稿"
               )}
             </button>
           </div>

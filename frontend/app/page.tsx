@@ -34,27 +34,27 @@ interface BentoFeature {
 const BENTO_FEATURES: BentoFeature[] = [
   {
     title: "多维记忆图谱",
-    desc: "情景 / 语义 / 反思三层记忆架构，跨会话长期记忆引擎，让 Agent 真正「记住」每一次交互。",
+    desc: "情景 / 语义 / 反思三层记忆架构，跨会话长期记忆引擎，让智能体（Agent）真正「记住」每一次交互。",
     icon: Brain,
     colSpan: "md:col-span-2",
     accent: "text-os-accent",
   },
   {
     title: "沙箱安全控制面",
-    desc: "Rootless 容器隔离 + MicroVM 沙箱，零信任执行面，全链路审计与 kill-switch。",
+    desc: "Rootless 容器隔离 + MicroVM 沙箱，零信任执行面，全链路审计与紧急停机开关（kill-switch）。",
     icon: ShieldCheck,
     rowSpan: "md:row-span-2",
     accent: "text-emerald-600",
   },
   {
     title: "插件生态大厅",
-    desc: "Raycast 风格的 Agent Marketplace，开发者 SDK 一键发布，版本签名校验。",
+    desc: "Raycast 风格的智能体市场（Agent Marketplace），开发者 SDK 一键发布，版本签名校验。",
     icon: Layers,
     accent: "text-indigo-500",
   },
   {
     title: "决策可观测内核",
-    desc: "Waterfall Trace + Causal Graph，每一个 LLM 调用的 Latency / Tokens / Cost 全链路可视。",
+    desc: "瀑布追踪（Waterfall Trace）+ 因果图（Causal Graph），每一次 LLM 调用的延迟、Token 用量与成本全链路可视。",
     icon: GitBranch,
     accent: "text-violet-500",
   },
@@ -177,7 +177,7 @@ export default function Home() {
           className="mb-10 text-center"
         >
           <h2 className="text-2xl font-semibold text-os-text-high sm:text-3xl md:text-4xl">
-            一体化的 Agent 基础设施
+            一体化的智能体（Agent）基础设施
           </h2>
           <p className="mt-3 text-sm text-os-subtle md:text-base">
             从记忆到执行，从决策到可观测——知维 OS 提供端到端的能力底座。
@@ -241,7 +241,7 @@ export default function Home() {
             <pre className="min-w-max">
               {MOCK_CODE_LINES.map((line, i) => (
                 <div key={i} className="flex">
-                  <span className="select-none w-8 shrink-0 pr-3 text-right text-os-muted/60 text-xs">
+                  <span className="select-none w-8 shrink-0 pr-3 text-right text-xs text-os-subtle">
                     {i + 1}
                   </span>
                   <code className="whitespace-pre">
@@ -268,10 +268,10 @@ export default function Home() {
           className="mt-8 flex flex-wrap items-center justify-center gap-3"
         >
           {[
-            { label: "Type Hints", icon: Zap },
-            { label: "Async Native", icon: GitBranch },
-            { label: "Memory API", icon: Database },
-            { label: "Sandbox SDK", icon: ShieldCheck },
+            { label: "类型提示（Type Hints）", icon: Zap },
+            { label: "原生异步（Async Native）", icon: GitBranch },
+            { label: "记忆 API", icon: Database },
+            { label: "沙箱 SDK", icon: ShieldCheck },
           ].map((tag) => {
             const Icon = tag.icon;
             return (
@@ -298,7 +298,7 @@ export default function Home() {
           <div className="pointer-events-none absolute left-1/2 top-0 h-36 w-80 -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(circle_at_center,rgba(91,92,226,0.035),transparent_66%)]" />
           <div className="relative">
             <h2 className="text-2xl font-semibold text-os-text-high sm:text-3xl md:text-4xl">
-              开始构建你的认知 Agent
+              开始构建你的认知智能体（Agent）
             </h2>
             <p className="mt-3 text-sm text-os-subtle md:text-base">
               免费 30 天试用 Pro 套餐，无需信用卡。
@@ -316,7 +316,7 @@ export default function Home() {
         {/* 页脚 */}
         <footer className="mt-16 border-t border-os-border pt-8 text-center">
           <p className="text-2xs font-mono text-os-subtle">
-            © 2026 知维 OS · Zhiwei OS · The Cognitive OS for Enterprise Agents
+            © 2026 知维 OS · 企业级智能体认知操作系统
           </p>
         </footer>
       </section>

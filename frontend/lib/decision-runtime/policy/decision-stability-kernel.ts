@@ -462,7 +462,7 @@ export class DecisionStabilityKernel {
 
     // STEP 4: Mean reversion（仅当检测到漂移时）
     let final_weight = clamped_weight;
-    let reason_parts: string[] = [
+    const reason_parts: string[] = [
       `delta bounded: ${input.raw_delta} → ${bounded_delta}`,
       `weight clamped: ${input.old_weight} → ${clamped_weight}`,
     ];

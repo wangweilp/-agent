@@ -47,6 +47,22 @@ import type {
 } from "@/types/marketplace";
 import { cn } from "@/lib/utils";
 
+const AGENT_STATUS_LABELS: Record<string, string> = {
+  active: "运行中",
+  beta: "测试版",
+  deprecated: "已弃用",
+  disabled: "已停用",
+  error: "异常",
+};
+
+const PUBLISHER_TYPE_LABELS: Record<string, string> = {
+  internal: "内部发布",
+  organization: "组织",
+  developer: "开发者",
+  official: "官方",
+  community: "社区",
+};
+
 // ── 权限 Pill 元数据映射 ──
 function permissionMeta(permission: string): { icon: string; label: string } {
   const p = permission.toLowerCase();
@@ -226,7 +242,7 @@ export default function MarketplaceAgentDetailPage() {
       }
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "加载失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "加载失败"}`);
     } finally {
       setLoading(false);
     }
@@ -254,7 +270,7 @@ export default function MarketplaceAgentDetailPage() {
         setIsInstalled(true);
         void fetchAgent();
       } else {
-        setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "安装失败"}`);
+        setError(`[${apiErr.status || "错误"}] ${apiErr.message || "安装失败"}`);
       }
     } finally {
       setInstalling(false);
@@ -275,7 +291,7 @@ export default function MarketplaceAgentDetailPage() {
       }
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "操作失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "操作失败"}`);
     } finally {
       setToggling(false);
     }
@@ -291,7 +307,7 @@ export default function MarketplaceAgentDetailPage() {
       setInstallation(null);
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "卸载失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "卸载失败"}`);
     } finally {
       setUninstalling(false);
       setShowConfirmUninstall(false);
@@ -311,7 +327,7 @@ export default function MarketplaceAgentDetailPage() {
       setShowConfigDialog(false);
     } catch (e: unknown) {
       const apiErr = e as MarketplaceApiError;
-      setError(`[${apiErr.status || "ERR"}] ${apiErr.message || "配置保存失败"}`);
+      setError(`[${apiErr.status || "错误"}] ${apiErr.message || "配置保存失败"}`);
     } finally {
       setSavingConfig(false);
     }
@@ -323,14 +339,18 @@ export default function MarketplaceAgentDetailPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl border border-os-border/50 bg-os-surface/40 p-6 text-center backdrop-blur-md">
           <Bot size={32} className="text-os-muted" />
-          <h2 className="text-base font-semibold text-os-text-high">智能体不存在</h2>
-          <p className="text-sm text-os-subtle">请检查 Marketplace 智能体 ID 是否正确。</p>
+          <h2 className="text-base font-semibold text-os-text-high">
+            {error ? "智能体加载失败" : "智能体不存在"}
+          </h2>
+          <p className={cn("max-w-lg break-words text-sm", error ? "text-os-danger" : "text-os-subtle")}>
+            {error || "请检查智能体市场中的智能体 ID 是否正确。"}
+          </p>
           <Link
             href="/agent-marketplace"
             className="inline-flex items-center gap-2 rounded-lg border border-os-border px-3 py-1.5 text-xs text-os-subtle transition-colors hover:text-os-text-high"
           >
             <ArrowLeft size={14} />
-            返回 Marketplace
+            返回智能体市场
           </Link>
         </div>
       </main>
@@ -348,11 +368,11 @@ export default function MarketplaceAgentDetailPage() {
         className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle transition-colors hover:text-os-text-high"
       >
         <ArrowLeft size={14} />
-        返回 Marketplace
+        返回智能体市场
       </Link>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">
+        <div className="mb-4 rounded-lg border border-os-danger/20 bg-os-danger-soft p-3 text-sm text-os-danger">
           {error}
         </div>
       )}
@@ -398,13 +418,13 @@ export default function MarketplaceAgentDetailPage() {
             className={cn(
               "os-badge shrink-0",
               agent.status === "active"
-                ? "bg-emerald-400/10 text-emerald-300"
+                ? "bg-os-success-soft text-os-success"
                 : agent.status === "beta"
-                  ? "bg-amber-400/10 text-amber-300"
-                  : "bg-zinc-500/10 text-os-muted",
+                  ? "bg-os-warning-soft text-os-warning"
+                  : "bg-os-elevated text-os-subtle",
             )}
           >
-            {agent.status}
+            {AGENT_STATUS_LABELS[agent.status] || agent.status}
           </span>
         </div>
       </section>
@@ -449,7 +469,7 @@ export default function MarketplaceAgentDetailPage() {
                   {agent.supported_workflows.map((wf) => (
                     <span
                       key={wf}
-                      className="rounded-lg bg-violet-400/10 px-2.5 py-1 text-xs text-violet-300"
+                      className="rounded-lg bg-os-accent-soft px-2.5 py-1 text-xs text-os-accent"
                     >
                       {wf}
                     </span>
@@ -479,11 +499,14 @@ export default function MarketplaceAgentDetailPage() {
 
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <InfoItem label="安装 ID" value={installation.installation_id} mono />
-                <InfoItem label="状态" value={installation.status} />
+                <InfoItem
+                  label="状态"
+                  value={AGENT_STATUS_LABELS[installation.status] || installation.status}
+                />
                 <InfoItem
                   label="启用"
                   value={installation.enabled ? "是" : "否"}
-                  color={installation.enabled ? "text-emerald-300" : "text-red-300"}
+                  color={installation.enabled ? "text-os-success" : "text-os-danger"}
                 />
                 <InfoItem label="锁定版本" value={installation.version_pinned || "跟随最新"} />
               </div>
@@ -519,7 +542,7 @@ export default function MarketplaceAgentDetailPage() {
                     {installation.permissions_granted.map((p) => (
                       <span
                         key={p}
-                        className="rounded bg-emerald-400/10 px-2 py-0.5 text-2xs text-emerald-300"
+                        className="rounded bg-os-success-soft px-2 py-0.5 text-2xs text-os-success"
                       >
                         {p}
                       </span>
@@ -537,8 +560,8 @@ export default function MarketplaceAgentDetailPage() {
                   className={cn(
                     "inline-flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     installation.enabled
-                      ? "bg-red-400/10 text-red-300 hover:bg-red-400/15"
-                      : "bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15",
+                      ? "bg-os-danger-soft text-os-danger hover:bg-os-danger/15"
+                      : "bg-os-success-soft text-os-success hover:bg-os-success/15",
                   )}
                 >
                   {toggling ? (
@@ -569,13 +592,13 @@ export default function MarketplaceAgentDetailPage() {
                 </Link>
 
                 {showConfirmUninstall ? (
-                  <div className="inline-flex items-center gap-2 rounded-lg border border-red-400/20 bg-red-400/5 px-3 py-2">
-                    <span className="text-xs text-red-300">确认卸载？</span>
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-os-danger/20 bg-os-danger-soft px-3 py-2">
+                    <span className="text-xs text-os-danger">确认卸载？</span>
                     <button
                       type="button"
                       onClick={handleUninstall}
                       disabled={uninstalling}
-                      className="rounded bg-red-400/20 px-2 py-0.5 text-xs text-red-200 hover:bg-red-400/30 disabled:opacity-50"
+                      className="rounded bg-os-danger px-2 py-0.5 text-xs text-white hover:bg-os-danger/90 disabled:opacity-50"
                     >
                       {uninstalling ? "卸载中..." : "确认"}
                     </button>
@@ -591,7 +614,7 @@ export default function MarketplaceAgentDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmUninstall(true)}
-                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:border-red-400/30 hover:text-red-300"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-os-border px-3 text-xs font-medium text-os-subtle transition-colors hover:border-os-danger/30 hover:text-os-danger"
                   >
                     <Trash2 size={14} />
                     卸载
@@ -614,7 +637,7 @@ export default function MarketplaceAgentDetailPage() {
                     <span className="text-sm font-semibold">已安装</span>
                   </div>
                   <p className="text-2xs text-os-subtle">
-                    状态: {installation.enabled ? "运行中" : "已停用"}
+                    状态：{installation.enabled ? "运行中" : "已停用"}
                   </p>
                   <Link
                     href="/agent-marketplace/installations"
@@ -653,7 +676,7 @@ export default function MarketplaceAgentDetailPage() {
 
             {/* Quick stats */}
             <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
-              <h4 className="text-2xs font-semibold uppercase tracking-wider text-os-muted">概览</h4>
+              <h4 className="text-2xs font-semibold tracking-wider text-os-subtle">概览</h4>
               <div className="mt-3 space-y-2.5">
                 <StatRow
                   icon={<ArrowDownToLine size={13} />}
@@ -681,7 +704,7 @@ export default function MarketplaceAgentDetailPage() {
             {/* Permissions pills with icons */}
             {requiredPerms.length > 0 && (
               <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
-                <h4 className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wider text-os-muted">
+                <h4 className="flex items-center gap-1.5 text-2xs font-semibold tracking-wider text-os-subtle">
                   <Shield size={12} />
                   权限要求
                 </h4>
@@ -705,7 +728,7 @@ export default function MarketplaceAgentDetailPage() {
 
             {/* Author / Version metadata */}
             <section className="rounded-2xl border border-os-border/50 bg-os-surface/40 p-5 backdrop-blur-md">
-              <h4 className="text-2xs font-semibold uppercase tracking-wider text-os-muted">元数据</h4>
+              <h4 className="text-2xs font-semibold tracking-wider text-os-subtle">元数据</h4>
               <div className="mt-3 space-y-2.5">
                 <MetaRow
                   icon={<User size={13} />}
@@ -715,7 +738,7 @@ export default function MarketplaceAgentDetailPage() {
                 <MetaRow
                   icon={<Building2 size={13} />}
                   label="类型"
-                  value={agent.publisher_type}
+                  value={PUBLISHER_TYPE_LABELS[agent.publisher_type] || agent.publisher_type}
                 />
                 <MetaRow
                   icon={<Layers size={13} />}
@@ -785,7 +808,7 @@ function MetaRow({
         {icon}
         {label}
       </span>
-      <span className="truncate text-xs font-medium text-os-text-high">{value}</span>
+      <span className="min-w-0 break-words text-right text-xs font-medium text-os-text-high">{value}</span>
     </div>
   );
 }
@@ -803,8 +826,8 @@ function InfoItem({
 }) {
   return (
     <div>
-      <p className="text-2xs text-os-muted">{label}</p>
-      <p className={`mt-0.5 ${mono ? "font-mono" : ""} text-xs ${color || "text-os-text-high"}`}>
+      <p className="text-2xs text-os-subtle">{label}</p>
+      <p className={`mt-0.5 break-all ${mono ? "font-mono" : ""} text-xs ${color || "text-os-text-high"}`}>
         {value}
       </p>
     </div>

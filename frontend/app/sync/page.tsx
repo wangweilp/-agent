@@ -197,13 +197,13 @@ const SCHEDULE_PRESETS = [
 ] as const;
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string; dotClass: string }> = {
-  active:    { color: "text-emerald-400", bg: "bg-emerald-400/10", label: "活跃",   dotClass: "bg-emerald-400 animate-status-breathe" },
-  inactive:  { color: "text-zinc-500",    bg: "bg-zinc-500/10",    label: "未激活", dotClass: "bg-zinc-500" },
-  error:     { color: "text-red-400",     bg: "bg-red-400/10",     label: "错误",   dotClass: "bg-red-400" },
-  paused:    { color: "text-amber-400",   bg: "bg-amber-400/10",   label: "暂停",   dotClass: "bg-amber-400" },
-  running:   { color: "text-blue-400",    bg: "bg-blue-400/10",    label: "运行中", dotClass: "bg-blue-400 animate-pulse" },
-  completed: { color: "text-emerald-400", bg: "bg-emerald-400/10", label: "已完成", dotClass: "bg-emerald-400" },
-  failed:    { color: "text-red-400",     bg: "bg-red-400/10",     label: "失败",   dotClass: "bg-red-400" },
+  active:    { color: "text-emerald-700", bg: "bg-emerald-50", label: "活跃",   dotClass: "bg-emerald-600 animate-status-breathe" },
+  inactive:  { color: "text-zinc-600",    bg: "bg-zinc-100",    label: "未激活", dotClass: "bg-zinc-500" },
+  error:     { color: "text-red-700",     bg: "bg-red-50",     label: "错误",   dotClass: "bg-red-600" },
+  paused:    { color: "text-amber-800",   bg: "bg-amber-50",   label: "暂停",   dotClass: "bg-amber-600" },
+  running:   { color: "text-blue-700",    bg: "bg-blue-50",    label: "运行中", dotClass: "bg-blue-600 animate-pulse" },
+  completed: { color: "text-emerald-700", bg: "bg-emerald-50", label: "已完成", dotClass: "bg-emerald-600" },
+  failed:    { color: "text-red-700",     bg: "bg-red-50",     label: "失败",   dotClass: "bg-red-600" },
 };
 
 function formatDuration(ms: number | null): string {
@@ -244,10 +244,10 @@ function StatusBadge({ status }: { status: string }) {
 
 function EmptyState({ icon: Icon, title, description }: { icon: React.ComponentType<{ size?: number; className?: string }>; title: string; description: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-os-muted">
-      <Icon size={40} className="mb-3 opacity-30" />
-      <p className="text-sm">{title}</p>
-      <p className="text-2xs mt-1">{description}</p>
+    <div className="flex flex-col items-center justify-center py-20">
+      <Icon size={40} className="mb-3 text-slate-500" />
+      <p className="text-sm text-os-text-high">{title}</p>
+      <p className="mt-1 text-2xs text-os-subtle">{description}</p>
     </div>
   );
 }
@@ -539,14 +539,14 @@ export default function SyncPage() {
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-os-text-high tracking-tight">Sync Hub</h1>
+            <h1 className="text-lg font-semibold text-os-text-high tracking-tight">同步中心</h1>
             <p className="text-xs text-os-subtle mt-0.5">
               管理外部数据源连接器与自动同步任务
             </p>
           </div>
           <button
             onClick={refreshAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-muted bg-os-elevated border border-os-border hover:text-os-subtle hover:border-os-muted transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-os-border bg-os-elevated px-3 py-1.5 text-2xs text-os-subtle transition-colors hover:border-os-muted hover:text-os-text-high"
           >
             <RefreshCw size={12} />
             刷新
@@ -559,12 +559,12 @@ export default function SyncPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Link size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">连接器总数</span>
+                <span className="text-2xs text-os-subtle">连接器总数</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {statsLoading ? "..." : formatNumber(stats?.total_connectors ?? 0)}
               </p>
-              <p className="text-2xs text-os-muted mt-0.5">
+              <p className="mt-0.5 text-2xs text-os-subtle">
                 {stats?.enabled_connectors ?? 0} 已启用
               </p>
             </div>
@@ -573,12 +573,12 @@ export default function SyncPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <RefreshCw size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">活跃同步</span>
+                <span className="text-2xs text-os-subtle">活跃同步</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {statsLoading ? "..." : formatNumber(stats?.active_jobs ?? 0)}
               </p>
-              <p className="text-2xs text-os-muted mt-0.5">
+              <p className="mt-0.5 text-2xs text-os-subtle">
                 {stats?.pending_jobs ?? 0} 等待中
               </p>
             </div>
@@ -587,12 +587,12 @@ export default function SyncPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle2 size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">成功率 (1h)</span>
+                <span className="text-2xs text-os-subtle">近 1 小时成功率</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {statsLoading ? "..." : `${successRate}%`}
               </p>
-              <p className="text-2xs text-os-muted mt-0.5">
+              <p className="mt-0.5 text-2xs text-os-subtle">
                 {(stats?.last_hour_executions ?? 0) - (stats?.last_hour_failures ?? 0)} 成功 / {stats?.last_hour_failures ?? 0} 失败
               </p>
             </div>
@@ -601,7 +601,7 @@ export default function SyncPage() {
             <div className="os-card p-4">
               <div className="flex items-center gap-2 mb-2">
                 <ListOrdered size={14} className="text-os-accent" />
-                <span className="text-2xs text-os-muted">队列深度</span>
+                <span className="text-2xs text-os-subtle">队列深度</span>
               </div>
               <p className="text-lg font-semibold text-os-text-high">
                 {statsLoading ? "..." : formatNumber(stats?.queue_depth ?? 0)}
@@ -624,7 +624,7 @@ export default function SyncPage() {
                       "px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
                       activeTab === tab.id
                         ? "bg-os-accent text-white"
-                        : "text-os-muted hover:text-os-subtle hover:bg-os-elevated",
+                        : "text-os-subtle hover:bg-os-elevated hover:text-os-text-high",
                     )}
                   >
                     {tab.label}
@@ -648,7 +648,7 @@ export default function SyncPage() {
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
                     connectors.length > 0
                       ? "bg-os-accent text-white hover:bg-os-accent/90"
-                      : "bg-os-elevated text-os-muted cursor-not-allowed",
+                      : "bg-os-elevated text-os-subtle cursor-not-allowed",
                   )}
                 >
                   <Plus size={13} />
@@ -695,10 +695,10 @@ export default function SyncPage() {
                           {isActive && (
                             <div className="absolute top-3 right-3 flex items-center gap-1.5">
                               <div className="relative">
-                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                                <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-status-breathe" />
+                                <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                                <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-600 animate-status-breathe" />
                               </div>
-                              <span className="text-2xs font-medium text-emerald-400">LIVE</span>
+                              <span className="text-2xs font-medium text-emerald-700">运行中</span>
                             </div>
                           )}
 
@@ -708,7 +708,7 @@ export default function SyncPage() {
                               "w-9 h-9 rounded-lg flex items-center justify-center border transition-colors",
                               isActive
                                 ? "bg-os-accent/10 border-os-accent/30 text-os-accent"
-                                : "bg-os-elevated border-os-border text-os-muted",
+                                : "bg-os-elevated border-os-border text-os-subtle",
                             )}>
                               <Icon size={16} />
                             </div>
@@ -716,14 +716,14 @@ export default function SyncPage() {
                               <p className="text-xs font-medium text-os-text-high truncate max-w-[140px]">
                                 {c.name}
                               </p>
-                              <span className="text-2xs text-os-muted">
+                              <span className="text-2xs text-os-subtle">
                                 {getConnectorLabel(c.connector_type)}
                               </span>
                             </div>
                           </div>
 
                           {/* Last sync */}
-                          <div className="flex items-center gap-1.5 text-2xs text-os-muted">
+                          <div className="flex items-center gap-1.5 text-2xs text-os-subtle">
                             <Clock size={10} />
                             <span>
                               {c.last_sync_at ? `上次同步: ${formatDate(c.last_sync_at)}` : "尚未同步"}
@@ -747,18 +747,18 @@ export default function SyncPage() {
                                 }, 100);
                               }}
                               disabled={testConnectionMutation.isPending}
-                              className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-muted hover:text-os-accent hover:bg-os-accent/10 transition-colors disabled:opacity-50"
+                              className="flex items-center gap-1 rounded px-2 py-1 text-2xs text-os-subtle transition-colors hover:bg-os-accent/10 hover:text-os-accent disabled:opacity-50"
                             >
                               <TestTube size={11} />
                               测试
                             </button>
-                            <button className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-muted hover:text-os-subtle hover:bg-os-elevated transition-colors">
+                            <button className="flex items-center gap-1 rounded px-2 py-1 text-2xs text-os-subtle transition-colors hover:bg-os-elevated hover:text-os-text-high">
                               <Settings2 size={11} />
                               编辑
                             </button>
                             <button
                               onClick={() => setDeleteConfirm({ type: "connector", id: c.connector_id })}
-                              className="flex items-center gap-1 px-2 py-1 rounded text-2xs text-os-muted hover:text-red-400 hover:bg-red-400/10 transition-colors ml-auto"
+                              className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-2xs text-os-subtle transition-colors hover:bg-red-50 hover:text-red-700"
                             >
                               <Trash2 size={11} />
                               卸载
@@ -792,12 +792,12 @@ export default function SyncPage() {
                     <table className="w-full text-xs" role="table">
                       <thead>
                         <tr className="border-b border-os-border">
-                          <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider">任务名称</th>
-                          <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden sm:table-cell">连接器</th>
-                          <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden md:table-cell">调度</th>
-                          <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider">状态</th>
-                          <th className="text-left py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider hidden lg:table-cell">上次运行</th>
-                          <th className="text-right py-2.5 px-3 text-2xs text-os-muted font-medium uppercase tracking-wider">操作</th>
+                          <th className="px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle">任务名称</th>
+                          <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle sm:table-cell">连接器</th>
+                          <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle md:table-cell">调度</th>
+                          <th className="px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle">状态</th>
+                          <th className="hidden px-3 py-2.5 text-left text-2xs font-medium uppercase tracking-wider text-os-subtle lg:table-cell">上次运行</th>
+                          <th className="px-3 py-2.5 text-right text-2xs font-medium uppercase tracking-wider text-os-subtle">操作</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -815,13 +815,13 @@ export default function SyncPage() {
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 hidden sm:table-cell">
-                                <span className="inline-flex items-center gap-1 text-os-muted">
+                                <span className="inline-flex items-center gap-1 text-os-subtle">
                                   <ConnIcon size={12} />
                                   {jobConnector?.name ?? getConnectorLabel(jobConnector?.connector_type ?? "")}
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 hidden md:table-cell">
-                                <span className="text-os-muted font-mono text-2xs">
+                                <span className="font-mono text-2xs text-os-subtle">
                                   {formatCronLabel(job.cron_expression)}
                                 </span>
                               </td>
@@ -829,7 +829,7 @@ export default function SyncPage() {
                                 <StatusBadge status={job.status} />
                               </td>
                               <td className="py-2.5 px-3 hidden lg:table-cell">
-                                <span className="text-os-muted">
+                                <span className="text-os-subtle">
                                   {job.last_run_at ? formatDate(job.last_run_at) : "--"}
                                 </span>
                               </td>
@@ -838,7 +838,7 @@ export default function SyncPage() {
                                   <button
                                     onClick={() => runJobMutation.mutate(job.job_id)}
                                     disabled={runJobMutation.isPending}
-                                    className="p-1.5 rounded hover:bg-os-elevated transition-colors text-os-muted hover:text-emerald-400"
+                                    className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-emerald-700"
                                     title="立即运行"
                                     aria-label={`运行 ${job.name}`}
                                   >
@@ -848,7 +848,7 @@ export default function SyncPage() {
                                     <button
                                       onClick={() => retryJobMutation.mutate(job.job_id)}
                                       disabled={retryJobMutation.isPending}
-                                      className="p-1.5 rounded hover:bg-os-elevated transition-colors text-os-muted hover:text-amber-400"
+                                      className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-amber-700"
                                       title="重试"
                                       aria-label={`重试 ${job.name}`}
                                     >
@@ -857,7 +857,7 @@ export default function SyncPage() {
                                   )}
                                   <button
                                     onClick={() => setDeleteConfirm({ type: "job", id: job.job_id })}
-                                    className="p-1.5 rounded hover:bg-os-elevated transition-colors text-os-muted hover:text-red-400"
+                                    className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-red-700"
                                     title="删除"
                                     aria-label={`删除 ${job.name}`}
                                   >
@@ -910,37 +910,37 @@ export default function SyncPage() {
                               </span>
                               <StatusBadge status={ex.status} />
                             </div>
-                            <span className="text-2xs text-os-muted shrink-0">
+                            <span className="shrink-0 text-2xs text-os-subtle">
                               {formatDuration(ex.duration_ms)}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-4 text-2xs text-os-muted">
+                          <div className="flex items-center gap-4 text-2xs text-os-subtle">
                             {ex.items_new != null && (
                               <span className="flex items-center gap-1">
-                                <span className="text-emerald-400">+{ex.items_new}</span> 新增
+                                <span className="text-emerald-700">+{ex.items_new}</span> 新增
                               </span>
                             )}
                             {ex.items_updated != null && (
                               <span className="flex items-center gap-1">
-                                <span className="text-amber-400">~{ex.items_updated}</span> 更新
+                                <span className="text-amber-800">~{ex.items_updated}</span> 更新
                               </span>
                             )}
                             {ex.items_deleted != null && (
                               <span className="flex items-center gap-1">
-                                <span className="text-red-400">-{ex.items_deleted}</span> 删除
+                                <span className="text-red-700">-{ex.items_deleted}</span> 删除
                               </span>
                             )}
                             {itemsChanged === 0 && (
-                              <span className="text-os-muted">无变更</span>
+                              <span className="text-os-subtle">无变更</span>
                             )}
                             <span className="ml-auto">{formatDate(ex.started_at)}</span>
                           </div>
 
                           {ex.error && (
-                            <div className="flex items-start gap-1.5 p-2 rounded-md bg-red-400/5 border border-red-400/10">
-                              <AlertTriangle size={11} className="text-red-400 mt-0.5 shrink-0" />
-                              <span className="text-2xs text-red-300 break-all">
+                            <div className="flex items-start gap-1.5 rounded-md border border-red-200 bg-red-50 p-2">
+                              <AlertTriangle size={11} className="mt-0.5 shrink-0 text-red-700" />
+                              <span className="break-all text-2xs text-red-700">
                                 {parseJsonSafe(ex.error)}
                               </span>
                             </div>
@@ -955,17 +955,17 @@ export default function SyncPage() {
                 {(stats?.active_jobs ?? 0) > 0 && (
                   <div className="mt-4 space-y-3">
                     {/* 管线状态条 */}
-                    <div className="flex items-center gap-3 rounded-lg border border-os-accent-cyan/30 bg-os-accent-cyan/5 p-3">
+                    <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
                       <div className="relative">
-                        <div className="w-2.5 h-2.5 rounded-full bg-os-accent-cyan animate-pulse" />
-                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-os-accent-cyan blur-[6px] animate-pulse" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
+                        <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-blue-600 blur-[6px] animate-pulse" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-os-accent-cyan">
+                        <p className="text-xs font-medium text-blue-700">
                           同步管线运行中 · {stats?.active_jobs ?? 0} 个活跃任务
                         </p>
-                        <p className="text-2xs text-os-muted">
-                          队列深度: {stats?.queue_depth ?? 0} · 过去 1h 执行: {stats?.last_hour_executions ?? 0} 次
+                        <p className="text-2xs text-os-subtle">
+                          队列深度：{stats?.queue_depth ?? 0} · 过去 1 小时执行：{stats?.last_hour_executions ?? 0} 次
                         </p>
                       </div>
                       {/* 流光连接线 */}
@@ -973,7 +973,7 @@ export default function SyncPage() {
                         {[0, 1, 2, 3, 4].map((i) => (
                           <motion.div
                             key={i}
-                            className="w-1.5 h-1.5 rounded-full bg-os-accent-cyan"
+                            className="w-1.5 h-1.5 rounded-full bg-blue-600"
                             animate={{ opacity: [0.3, 1, 0.3] }}
                             transition={{
                               duration: 1.2,
@@ -990,8 +990,8 @@ export default function SyncPage() {
                     <div className="rounded-xl border border-os-border/50 bg-slate-50 overflow-hidden">
                       <div className="flex items-center justify-between px-3 py-2 border-b border-os-border/30">
                         <div className="flex items-center gap-1.5">
-                          <Terminal size={11} className="text-os-success" />
-                          <span className="font-mono text-2xs text-os-muted">sync-pipeline.log</span>
+                          <Terminal size={11} className="text-emerald-700" />
+                          <span className="font-mono text-2xs text-os-subtle">sync-pipeline.log</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <div className="w-2 h-2 rounded-full bg-red-500/60" />
@@ -999,7 +999,7 @@ export default function SyncPage() {
                           <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
                         </div>
                       </div>
-                      <div className="h-48 overflow-y-auto p-4 font-mono text-xs text-os-success space-y-0.5">
+                      <div className="h-48 space-y-0.5 overflow-y-auto p-4 font-mono text-xs text-os-text">
                         {executions.slice(0, 8).map((ex, i) => {
                           const ts = new Date(ex.started_at).toLocaleTimeString("en-US", { hour12: false });
                           const job = jobs.find((j) => j.job_id === ex.job_id);
@@ -1007,28 +1007,28 @@ export default function SyncPage() {
                           const itemsTotal = (ex.items_new ?? 0) + (ex.items_updated ?? 0) + (ex.items_deleted ?? 0);
                           return (
                             <div key={ex.execution_id} className="leading-5">
-                              <span className="text-os-muted">[{ts}]</span>{" "}
+                              <span className="text-os-subtle">[{ts}]</span>{" "}
                               <span className={cn(
-                                ex.status === "completed" && "text-os-success",
-                                ex.status === "running" && "text-os-accent-cyan",
-                                ex.status === "failed" && "text-red-400",
+                                ex.status === "completed" && "text-emerald-700",
+                                ex.status === "running" && "text-blue-700",
+                                ex.status === "failed" && "text-red-700",
                               )}>
                                 {ex.status === "completed"
-                                  ? `> [OK] "${name}" synced — +${ex.items_new ?? 0} new / ~${ex.items_updated ?? 0} upd / -${ex.items_deleted ?? 0} del (${formatDuration(ex.duration_ms)})`
+                                  ? `> [OK] “${name}”同步完成 — +${ex.items_new ?? 0} 新增 / ~${ex.items_updated ?? 0} 更新 / -${ex.items_deleted ?? 0} 删除（${formatDuration(ex.duration_ms)}）`
                                   : ex.status === "running"
-                                    ? `> [..] "${name}" fetching items... (${itemsTotal} changes so far)`
-                                    : `> [ERR] "${name}" failed: ${parseJsonSafe(ex.error ?? "unknown")}`}
+                                    ? `> [..] “${name}”正在拉取数据...（当前 ${itemsTotal} 项变更）`
+                                    : `> [ERR] “${name}”执行失败：${parseJsonSafe(ex.error ?? "未知错误")}`}
                               </span>
                             </div>
                           );
                         })}
                         {executions.length === 0 && (
-                          <div className="leading-5 text-os-muted">
+                          <div className="leading-5 text-os-subtle">
                             <span>$</span> 等待同步任务执行...
                           </div>
                         )}
                         <div className="leading-5">
-                          <span className="text-os-muted">$</span>{" "}
+                          <span className="text-os-subtle">$</span>{" "}
                           <span className="inline-block w-1.5 h-3.5 bg-os-success animate-pulse align-middle" />
                         </div>
                       </div>
@@ -1073,18 +1073,18 @@ export default function SyncPage() {
                 <div className="space-y-4">
                   {/* Connector name */}
                   <div>
-                    <label className="block text-2xs text-os-muted mb-1.5">连接器名称</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">连接器名称</label>
                     <input
                       value={connectorForm.name}
                       onChange={(e) => setConnectorForm((p) => ({ ...p, name: e.target.value }))}
                       placeholder="例如：我的飞书文档"
-                      className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                      className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                     />
                   </div>
 
                   {/* Connector type picker */}
                   <div ref={connectorDropdownRef}>
-                    <label className="block text-2xs text-os-muted mb-1.5">连接器类型</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">连接器类型</label>
                     <div className="relative">
                       <button
                         type="button"
@@ -1119,7 +1119,7 @@ export default function SyncPage() {
                                   value={connectorTypeSearch}
                                   onChange={(e) => setConnectorTypeSearch(e.target.value)}
                                   placeholder="搜索类型..."
-                                  className="w-full h-8 pl-7 pr-3 bg-os-surface border border-os-border rounded text-2xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent"
+                                  className="w-full h-8 pl-7 pr-3 bg-os-surface border border-os-border rounded text-2xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent"
                                   autoFocus
                                 />
                               </div>
@@ -1127,7 +1127,7 @@ export default function SyncPage() {
                             {/* List */}
                             <div className="max-h-48 overflow-y-auto p-1">
                               {filteredConnectorTypes.length === 0 ? (
-                                <p className="text-2xs text-os-muted text-center py-4">无匹配结果</p>
+                                <p className="py-4 text-center text-2xs text-os-subtle">无匹配结果</p>
                               ) : (
                                 filteredConnectorTypes.map((t) => {
                                   const Icon = t.icon;
@@ -1151,7 +1151,7 @@ export default function SyncPage() {
                                     >
                                       <Icon size={14} className={isSelected ? "text-os-accent" : "text-os-muted"} />
                                       {t.label}
-                                      <span className="text-2xs text-os-muted ml-auto">{t.value}</span>
+                                      <span className="ml-auto text-2xs text-os-subtle">{t.value}</span>
                                     </button>
                                   );
                                 })
@@ -1165,17 +1165,17 @@ export default function SyncPage() {
 
                   {/* Dynamic credential fields */}
                   <div>
-                    <label className="block text-2xs text-os-muted mb-1.5">凭据信息</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">凭据信息</label>
                     <div className="space-y-2">
                       {getCredentialFields(connectorForm.connector_type).map((field) => (
                         <div key={field.key}>
-                          <label className="block text-2xs text-os-muted mb-1">{field.label}</label>
+                          <label className="mb-1 block text-2xs text-os-subtle">{field.label}</label>
                           <input
                             type={field.type}
                             value={connectorForm.credentials[field.key] ?? ""}
                             onChange={(e) => handleCredentialChange(field.key, e.target.value)}
                             placeholder={field.placeholder}
-                            className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                            className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                           />
                         </div>
                       ))}
@@ -1188,8 +1188,8 @@ export default function SyncPage() {
                       className={cn(
                         "flex items-start gap-2 p-3 rounded-md text-xs border",
                         testResult.success
-                          ? "bg-emerald-400/5 border-emerald-400/10 text-emerald-300"
-                          : "bg-red-400/5 border-red-400/10 text-red-300",
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-red-200 bg-red-50 text-red-700",
                       )}
                     >
                       {testResult.success ? <CheckCircle2 size={14} className="mt-0.5 shrink-0" /> : <AlertTriangle size={14} className="mt-0.5 shrink-0" />}
@@ -1262,18 +1262,18 @@ export default function SyncPage() {
                 <div className="space-y-4">
                   {/* Job name */}
                   <div>
-                    <label className="block text-2xs text-os-muted mb-1.5">任务名称</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">任务名称</label>
                     <input
                       value={jobForm.name}
                       onChange={(e) => setJobForm((p) => ({ ...p, name: e.target.value }))}
                       placeholder="例如：每日飞书同步"
-                      className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                      className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                     />
                   </div>
 
                   {/* Connector selection */}
                   <div>
-                    <label className="block text-2xs text-os-muted mb-1.5">关联连接器</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">关联连接器</label>
                     <select
                       value={jobForm.connector_config_id}
                       onChange={(e) => setJobForm((p) => ({ ...p, connector_config_id: e.target.value }))}
@@ -1293,7 +1293,7 @@ export default function SyncPage() {
 
                   {/* Rule type */}
                   <div>
-                    <label className="block text-2xs text-os-muted mb-1.5">同步规则</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">同步规则</label>
                     <select
                       value={jobForm.rule_type}
                       onChange={(e) => setJobForm((p) => ({ ...p, rule_type: e.target.value }))}
@@ -1307,7 +1307,7 @@ export default function SyncPage() {
 
                   {/* Schedule picker */}
                   <div>
-                    <label className="block text-2xs text-os-muted mb-1.5">调度策略</label>
+                    <label className="mb-1.5 block text-2xs text-os-subtle">调度策略</label>
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       {SCHEDULE_PRESETS.map((preset) => (
                         <button
@@ -1318,7 +1318,7 @@ export default function SyncPage() {
                             "px-3 py-2 rounded-md text-xs text-left border transition-colors",
                             jobForm.schedule_preset === preset.value
                               ? "border-os-accent bg-os-accent/10 text-os-accent"
-                              : "border-os-border bg-os-elevated text-os-muted hover:text-os-subtle hover:border-os-muted",
+                              : "border-os-border bg-os-elevated text-os-subtle hover:border-os-muted hover:text-os-text-high",
                           )}
                         >
                           {preset.label}
@@ -1333,14 +1333,14 @@ export default function SyncPage() {
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                       >
-                        <label className="block text-2xs text-os-muted mb-1">Cron 表达式</label>
+                        <label className="mb-1 block text-2xs text-os-subtle">Cron 表达式</label>
                         <input
                           value={jobForm.custom_cron}
                           onChange={(e) => setJobForm((p) => ({ ...p, custom_cron: e.target.value }))}
                           placeholder="0 2 * * *"
-                          className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs font-mono text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                          className="w-full h-9 px-3 bg-os-elevated border border-os-border rounded-md text-xs font-mono text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                         />
-                        <p className="text-2xs text-os-muted mt-1">
+                        <p className="mt-1 text-2xs text-os-subtle">
                           格式: 分 时 日 月 周 (例如 "0 2 * * *" = 每天凌晨 2 点)
                         </p>
                       </motion.div>
@@ -1405,12 +1405,12 @@ export default function SyncPage() {
                 aria-label="确认删除"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-full bg-red-400/10 flex items-center justify-center">
-                    <AlertTriangle size={18} className="text-red-400" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-50">
+                    <AlertTriangle size={18} className="text-red-700" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-os-text-high">确认删除</h3>
-                    <p className="text-2xs text-os-muted mt-0.5">
+                    <p className="mt-0.5 text-2xs text-os-subtle">
                       此操作不可撤销，确定要删除这个{deleteConfirm.type === "connector" ? "连接器" : "同步任务"}吗？
                     </p>
                   </div>

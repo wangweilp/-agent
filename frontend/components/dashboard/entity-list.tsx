@@ -54,7 +54,7 @@ export function EntityList({ entities, isLoading }: EntityListProps) {
         >
           <span className="text-os-primary">#</span>
           <span className="truncate">{entity.name}</span>
-          <span className="rounded-full bg-os-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-os-muted">
+          <span className="rounded-full bg-os-surface-muted px-1.5 py-0.5 font-mono text-[11px] text-os-subtle">
             {entity.mention_count}
           </span>
         </motion.span>

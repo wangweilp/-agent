@@ -79,8 +79,6 @@ export class EnforcementPipeline {
     let currentEvent = event;
     let finalDecision: GateResult["decision"] = "ALLOW";
     let applied = false;
-    let rejectionReason: string | null = null;
-
     // 阶段 1：pre_validate
     const preValidateResult = this.preValidate(event);
     stages.push(preValidateResult);

@@ -23,12 +23,12 @@ import { TabAlerts } from "@/components/dashboard-v2/tab-alerts";
 type TabId = "overview" | "growth" | "agent" | "memory" | "cost" | "alerts";
 
 const TABS: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "growth", label: "Growth", icon: TrendingUp },
+  { id: "overview", label: "概览", icon: LayoutDashboard },
+  { id: "growth", label: "增长", icon: TrendingUp },
   { id: "agent", label: "智能体性能", icon: Bot },
   { id: "memory", label: "记忆健康", icon: Brain },
-  { id: "cost", label: "Cost Analytics", icon: Coins },
-  { id: "alerts", label: "Alerts", icon: Bell },
+  { id: "cost", label: "成本分析", icon: Coins },
+  { id: "alerts", label: "告警", icon: Bell },
 ];
 
 export default function DashboardV2Page() {
@@ -65,11 +65,11 @@ export default function DashboardV2Page() {
           <div>
             <h1 className="text-lg font-semibold text-os-text-high tracking-tight flex items-center gap-2">
               <Activity size={16} className="text-os-accent" />
-              可观测性 Console
+              可观测性控制台
             </h1>
-            <p className="text-xs text-os-subtle mt-0.5">Dashboard V2 — 用户增长 · 智能体 · 记忆 · 成本 · 告警</p>
+            <p className="text-xs text-os-subtle mt-0.5">仪表盘 V2 — 用户增长 · 智能体 · 记忆 · 成本 · 告警</p>
           </div>
-          <div className="flex items-center gap-2 text-2xs text-os-muted">
+          <div className="flex items-center gap-2 text-2xs text-os-subtle">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-breathe" />
             实时监控中
           </div>

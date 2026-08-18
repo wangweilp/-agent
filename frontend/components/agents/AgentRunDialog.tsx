@@ -25,10 +25,10 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
 
   return (
     <div>
-      <h4 className="mb-2 text-xs font-medium text-os-muted">{title}</h4>
+      <h4 className="mb-2 text-xs font-medium text-os-subtle">{title}</h4>
       <ol className="space-y-1.5 text-xs leading-5 text-os-subtle">
         {items.map((item, index) => (
-          <li key={`${title}-${index}`} className="rounded-md bg-os-elevated px-3 py-2">
+          <li key={`${title}-${index}`} className="break-words rounded-md bg-os-elevated px-3 py-2">
             {item}
           </li>
         ))}
@@ -86,8 +86,8 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
       <div className="os-card flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden">
         <div className="flex items-start justify-between gap-4 border-b border-os-border p-5">
           <div className="min-w-0">
-            <p className="text-2xs font-medium uppercase tracking-wider text-os-muted">
-              Agent 运行测试
+            <p className="text-2xs font-medium uppercase tracking-wider text-os-subtle">
+              智能体（Agent）运行测试
             </p>
             <h2
               id="agent-run-title"
@@ -118,7 +118,7 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={`测试 ${agent.name}`}
-                className="h-10 rounded-md border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+                className="h-10 rounded-md border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
               />
             </label>
 
@@ -129,7 +129,7 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="描述希望这个智能体处理的任务、输入或约束"
                 rows={3}
-                className="resize-none rounded-md border border-os-border bg-os-elevated px-3 py-2 text-sm leading-6 text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+                className="resize-none rounded-md border border-os-border bg-os-elevated px-3 py-2 text-sm leading-6 text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
               />
             </label>
           </div>
@@ -154,7 +154,7 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
           </div>
 
           {error && (
-            <div className="flex items-start gap-2 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-xs leading-5 text-red-200">
+            <div className="flex items-start gap-2 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-xs leading-5 text-red-700">
               <AlertTriangle size={15} className="mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>
@@ -164,7 +164,7 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
             <div className="rounded-lg border border-os-border bg-os-base p-4">
               <div className="flex items-center gap-2 text-sm text-os-text-high">
                 <CircleDashed size={16} className="animate-spin text-os-accent" />
-                正在调用后端 Agent 执行器
+                正在调用后端智能体（Agent）执行器
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-os-elevated">
                 <div className="h-full w-1/2 animate-pulse rounded-full bg-os-accent" />
@@ -178,8 +178,8 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
                 <span
                   className={`os-badge ${
                     result.success
-                      ? "bg-emerald-400/10 text-emerald-300"
-                      : "bg-red-400/10 text-red-300"
+                      ? "bg-emerald-400/10 text-emerald-700"
+                      : "bg-red-400/10 text-red-700"
                   }`}
                 >
                   <CheckCircle2 size={12} />
@@ -199,14 +199,14 @@ export function AgentRunDialog({ agent, open, onClose }: AgentRunDialogProps) {
                 </span>
               </div>
 
-              {result.error && <p className="text-xs leading-5 text-red-300">{result.error}</p>}
+              {result.error && <p className="break-words text-xs leading-5 text-red-700">{result.error}</p>}
 
               <div>
-                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-os-muted">
+                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-os-subtle">
                   <Sparkles size={13} />
                   输出
                 </h4>
-                <div className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-md bg-os-elevated p-3 text-sm leading-6 text-os-text-high">
+                <div className="max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-os-elevated p-3 text-sm leading-6 text-os-text-high">
                   {result.output || "无输出"}
                 </div>
               </div>

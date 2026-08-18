@@ -26,6 +26,7 @@ export function SessionSidebar() {
           }
           className="w-6 h-6 rounded-md flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-all"
           title="新建会话"
+          aria-label="新建会话"
         >
           <Plus size={14} />
         </button>
@@ -34,11 +35,11 @@ export function SessionSidebar() {
         {sessions.length === 0 && (
           <div className="text-center py-10 space-y-3">
             <div className="w-10 h-10 rounded-xl bg-os-elevated border border-os-border/50 flex items-center justify-center mx-auto">
-              <MessageSquare size={18} className="text-os-muted" />
+              <MessageSquare size={18} className="text-os-subtle" />
             </div>
             <div>
               <p className="text-xs text-os-text-high/80 font-medium">暂无会话</p>
-              <p className="text-2xs text-os-muted mt-0.5">点击右上角 + 开始新对话</p>
+              <p className="text-2xs text-os-subtle mt-0.5">点击右上角 + 开始新对话</p>
             </div>
           </div>
         )}
@@ -58,17 +59,17 @@ export function SessionSidebar() {
           >
             <div className={cn(
               "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
-              s.id === activeId ? "bg-os-accent/15" : "bg-os-elevated",
+              s.id === activeId ? "bg-os-accent/10" : "bg-os-elevated",
             )}>
               <MessageSquare size={13} className={s.id === activeId ? "text-os-accent" : "text-os-subtle"} />
             </div>
             <div className="flex-1 min-w-0">
               <p className={cn("text-xs truncate", s.id === activeId ? "text-os-accent" : "text-os-text-high")}>{s.title}</p>
-              <p className="text-2xs text-os-muted">{formatDate(s.updated_at)}</p>
+              <p className="text-2xs text-os-subtle">{formatDate(s.updated_at)}</p>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); removeSession(s.id); }}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded text-os-subtle hover:text-red-400 hover:bg-red-400/10 transition-all"
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 rounded text-os-subtle hover:text-red-700 hover:bg-red-400/10 transition-all"
               aria-label="删除会话"
             >
               <Trash2 size={12} />
@@ -79,7 +80,7 @@ export function SessionSidebar() {
 
       {/* 底部提示 */}
       <div className="border-t border-os-border/50 px-4 py-2">
-        <p className="text-2xs text-os-muted/60 text-center">
+        <p className="text-2xs text-os-subtle text-center">
           {sessions.length > 0 ? `${sessions.length} 个会话` : "开始你的第一段对话"}
         </p>
       </div>

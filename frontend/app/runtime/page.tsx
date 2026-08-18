@@ -27,18 +27,24 @@ import { tabStyles } from "@/styles/components";
 type TabId = "kill" | "gates" | "incidents" | "redteam" | "simulator";
 
 const TABS: { id: TabId; label: string; icon: LucideIcon; hint: string }[] = [
-  { id: "kill", label: "Kill Switch", icon: Power, hint: "实时终止控制" },
-  { id: "gates", label: "Gate Matrix", icon: Fence, hint: "执行约束矩阵" },
-  { id: "incidents", label: "Incident Center", icon: AlertOctagon, hint: "安全事件流" },
-  { id: "redteam", label: "Red Team", icon: FlaskConical, hint: "对抗测试结果" },
-  { id: "simulator", label: "Policy Simulator", icon: SlidersHorizontal, hint: "沙箱策略模拟" },
+  { id: "kill", label: "熔断开关", icon: Power, hint: "实时终止控制" },
+  { id: "gates", label: "门禁矩阵", icon: Fence, hint: "执行约束矩阵" },
+  { id: "incidents", label: "事件中心", icon: AlertOctagon, hint: "安全事件流" },
+  { id: "redteam", label: "红队测试", icon: FlaskConical, hint: "对抗测试结果" },
+  { id: "simulator", label: "策略模拟", icon: SlidersHorizontal, hint: "沙箱策略模拟" },
 ];
+
+const MODE_LABELS: Record<string, string> = {
+  "metadata-only / simulation": "仅元数据 / 模拟运行",
+  "metadata-only": "仅元数据",
+  simulation: "模拟运行",
+};
 
 export default function RuntimeControlPlanePage() {
   const [active, setActive] = useState<TabId>("kill");
   const [visited, setVisited] = useState<Set<TabId>>(new Set(["kill"]));
 
-  const { data: governance, refetch, isFetching } = useQuery({
+  const { data: governance, refetch, isFetching, isError } = useQuery({
     queryKey: ["runtime-governance-summary"],
     queryFn: () => getRuntimeGovernanceSummary(),
     refetchInterval: 30000,
@@ -74,12 +80,14 @@ export default function RuntimeControlPlanePage() {
       <PageShell>
         <PageHeader
           icon={ShieldAlert}
-          title="Runtime Control Plane"
-          subtitle="运行时治理控制面：Kill Switch、Gate Matrix、Incident、Red Team 与策略模拟。"
+          title="运行时控制平面"
+          subtitle="运行时治理控制面：熔断开关、门禁矩阵、安全事件、红队测试与策略模拟。"
           actions={
             <>
-              <StatusBadge status={governance?.production_sandbox === "disabled" ? "warning" : "ready"}>
-                {governance?.current_mode || "metadata-only / simulation"}
+              <StatusBadge status={isError || governance?.production_sandbox === "disabled" ? "warning" : "ready"}>
+                {isError
+                  ? "治理数据加载失败"
+                  : MODE_LABELS[governance?.current_mode || ""] || governance?.current_mode || "仅元数据 / 模拟运行"}
               </StatusBadge>
               <OsButton onClick={() => refetch()} disabled={isFetching} size="sm" variant="secondary">
                 <RefreshCw size={13} className={cn(isFetching && "animate-spin")} />
@@ -88,6 +96,12 @@ export default function RuntimeControlPlanePage() {
             </>
           }
         />
+
+        {isError && (
+          <InfoBanner variant="danger" title="运行时治理数据加载失败">
+            当前控制数据可能不完整，请稍后刷新；页面不会将缺失数据标记为正常状态。
+          </InfoBanner>
+        )}
 
         {governance?.boundary_statement && (
           <InfoBanner variant="warning" title="运行时边界声明">

@@ -12,9 +12,10 @@ import sys
 import time
 import traceback
 
-# 强制 UTF-8 输出，解决 Windows GBK 终端 emoji 编码问题
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+# 注意：本文件是独立运行脚本（python tests/smoke_test.py），不是 pytest 用例。
+# 不要在模块导入期改写 sys.stdout/sys.stderr —— 那会在 pytest 收集本文件时
+# 覆盖 pytest 的全局 capture，导致 "I/O operation on closed file" 等进程级污染。
+# UTF-8 输出包装只在作为 main 独立运行时才生效（见下方 __main__ 块）。
 
 # ── ensure project root on path ──
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -465,6 +466,9 @@ def test_sandbox_v2():
 # Main
 # ═══════════════════════════════════════════════════════════════
 if __name__ == "__main__":
+    # 仅独立运行时启用 UTF-8 输出，避免 Windows GBK 终端 emoji 编码问题
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
     os.environ["SMOKE_ORIGINAL_CWD"] = os.getcwd()
     print("=" * 60)
     print("  D:\\dma\\day2  Runtime Smoke Test")

@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, ChevronDown, LogOut, Menu } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useAgentStore } from "@/stores/agent-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { OsButton, StatusBadge } from "@/components/ui/os";

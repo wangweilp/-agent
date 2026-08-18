@@ -2354,7 +2354,9 @@ class SQLiteSandboxV2Store:
         params: list[Any] = []
         if organization_id: sql += " AND organization_id=?"; params.append(organization_id)
         if workspace_id: sql += " AND workspace_id=?"; params.append(workspace_id)
-        sql += " ORDER BY created_at DESC LIMIT 1"
+        # 审计链的 previous_hash 按插入顺序链接；按 rowid（插入序）取最新，
+        # 避免同一微秒内 created_at 相同导致取错前驱、链分叉。
+        sql += " ORDER BY rowid DESC LIMIT 1"
         row = next(self._exec(sql, params), None)
         return self._row_to_audit_event(dict(row)) if row else None
 
@@ -2367,7 +2369,8 @@ class SQLiteSandboxV2Store:
         if workspace_id: sql += " AND workspace_id=?"; params.append(workspace_id)
         if event_type: sql += " AND event_type=?"; params.append(event_type)
         if severity: sql += " AND severity=?"; params.append(severity)
-        sql += " ORDER BY created_at DESC LIMIT ?"; params.append(limit)
+        # created_at 相同时按 rowid 排序，保证与哈希链（插入序）一致
+        sql += " ORDER BY created_at DESC, rowid DESC LIMIT ?"; params.append(limit)
         return [self._row_to_audit_event(dict(r)) for r in self._exec(sql, params)]
 
     def create_evidence_bundle(self, bundle: Any) -> Any:

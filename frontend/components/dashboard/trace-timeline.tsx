@@ -28,17 +28,17 @@ const typeIcons: Record<string, React.ElementType> = {
 const typeDotColor: Record<string, string> = {
   llm_call: "bg-os-accent shadow-[0_0_6px_rgba(129,140,248,0.6)]",
   tool_call: "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]",
-  reflection: "bg-os-accent-violet shadow-[0_0_6px_rgba(167,139,250,0.6)]",
+  reflection: "bg-os-memory-violet shadow-[0_0_6px_rgba(167,139,250,0.6)]",
   memory_write: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]",
-  memory_read: "bg-os-accent-cyan shadow-[0_0_6px_rgba(34,211,238,0.6)]",
+  memory_read: "bg-os-data-cyan shadow-[0_0_6px_rgba(34,211,238,0.6)]",
 };
 
 const typeLabel: Record<string, string> = {
-  llm_call: "LLM_CALL",
-  tool_call: "TOOL_CALL",
-  reflection: "REFLECT",
-  memory_write: "MEM_WRITE",
-  memory_read: "MEM_READ",
+  llm_call: "LLM 调用",
+  tool_call: "工具调用",
+  reflection: "反思",
+  memory_write: "写入记忆",
+  memory_read: "读取记忆",
 };
 
 // ── 瀑布流衍生指标计算 ──
@@ -106,7 +106,7 @@ function WaterfallNode({
 }) {
   const Icon = typeIcons[trace.type] || MessageSquare;
   const dotColor = typeDotColor[trace.type] || "bg-os-accent shadow-[0_0_6px_rgba(129,140,248,0.6)]";
-  const label = typeLabel[trace.type] || trace.type.toUpperCase();
+  const label = typeLabel[trace.type] || `未知类型（${trace.type}）`;
   const isRunning = trace.status === "running";
 
   return (
@@ -134,7 +134,7 @@ function WaterfallNode({
             className={cn(
               "shrink-0",
               metrics.isFailed
-                ? "text-os-danger"
+                ? "text-red-700"
                 : isRunning
                   ? "text-os-accent animate-pulse"
                   : "text-os-subtle"
@@ -178,7 +178,7 @@ function WaterfallNode({
             </span>
           </div>
           {/* 详情行 */}
-          <p className="text-2xs text-os-muted truncate" title={trace.detail}>
+          <p className="text-2xs text-os-subtle truncate" title={trace.detail}>
             {trace.detail || "—"}
           </p>
         </div>
@@ -187,14 +187,14 @@ function WaterfallNode({
         <div className="flex shrink-0 items-center gap-3 font-mono text-2xs">
           {/* Latency */}
           <div className="flex flex-col items-end w-[64px]">
-            <span className="text-os-subtle">latency</span>
+            <span className="text-os-subtle">延迟</span>
             <span
               className={cn(
                 "tabular-nums font-semibold",
                 metrics.isFailed
-                  ? "text-os-danger"
+                  ? "text-red-700"
                   : metrics.isHighLatency
-                    ? "text-os-warning"
+                    ? "text-amber-800"
                     : "text-os-text-high"
               )}
             >
@@ -204,36 +204,36 @@ function WaterfallNode({
 
           {/* Tokens In/Out */}
           <div className="flex flex-col items-end w-[88px]">
-            <span className="text-os-subtle">tokens</span>
-            <span className="tabular-nums text-os-accent-cyan">
-              <span className="text-os-text">in</span>{" "}
+            <span className="text-os-subtle">Token 用量</span>
+            <span className="tabular-nums text-os-data-cyan">
+              <span className="text-os-text">输入</span>{" "}
               {formatTokens(metrics.tokensIn)}
-              <span className="text-os-border mx-0.5">/</span>
-              <span className="text-os-text">out</span>{" "}
+              <span className="mx-0.5 text-os-subtle">/</span>
+              <span className="text-os-text">输出</span>{" "}
               {formatTokens(metrics.tokensOut)}
             </span>
           </div>
 
           {/* Cost */}
           <div className="flex flex-col items-end w-[56px]">
-            <span className="text-os-subtle">cost</span>
-            <span className="tabular-nums text-emerald-400">{formatCost(metrics.costUsd)}</span>
+            <span className="text-os-subtle">成本</span>
+            <span className="tabular-nums text-emerald-700">{formatCost(metrics.costUsd)}</span>
           </div>
 
           {/* 状态徽章 */}
           <div className="flex items-center w-[44px] justify-end">
             {metrics.isFailed ? (
-              <span className="inline-flex items-center gap-0.5 rounded bg-os-danger/15 px-1.5 py-0.5 text-2xs font-bold text-os-danger border border-os-danger/30">
+              <span className="inline-flex items-center gap-0.5 rounded bg-os-danger/10 px-1.5 py-0.5 text-2xs font-bold text-red-700 border border-os-danger/30">
                 <AlertTriangle className="h-2.5 w-2.5" />
-                FAIL
+                失败
               </span>
             ) : isRunning ? (
-              <span className="inline-flex items-center gap-0.5 rounded bg-os-accent/15 px-1.5 py-0.5 text-2xs font-semibold text-os-accent border border-os-accent/30">
+              <span className="inline-flex items-center gap-0.5 rounded bg-os-accent/10 px-1.5 py-0.5 text-2xs font-semibold text-os-accent border border-os-accent/30">
                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                RUN
+                运行
               </span>
             ) : (
-              <CheckCircle2 className="h-3 w-3 text-emerald-400/60" />
+              <CheckCircle2 className="h-3 w-3 text-emerald-700" />
             )}
           </div>
         </div>
@@ -252,13 +252,13 @@ function WaterfallNode({
 function WaterfallHeader() {
   return (
     <div className="flex items-center gap-3 py-1.5 pl-3 pr-3 text-2xs font-mono uppercase tracking-wider text-os-subtle border-b border-os-border/40">
-      <div className="shrink-0 w-[140px]">node</div>
-      <div className="flex-1">waterfall</div>
+      <div className="shrink-0 w-[140px]">节点</div>
+      <div className="flex-1">瀑布图</div>
       <div className="shrink-0 flex items-center gap-3">
-        <span className="w-[64px] text-right">latency</span>
-        <span className="w-[88px] text-right">tokens</span>
-        <span className="w-[56px] text-right">cost</span>
-        <span className="w-[44px] text-right">state</span>
+        <span className="w-[64px] text-right">延迟</span>
+        <span className="w-[88px] text-right">Token 用量</span>
+        <span className="w-[56px] text-right">成本</span>
+        <span className="w-[44px] text-right">状态</span>
       </div>
     </div>
   );
@@ -268,7 +268,7 @@ export function TraceTimeline({ traces }: { traces: TraceEntry[] }) {
   if (traces.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-xs text-os-muted">暂无 Trace 数据，启动智能体对话后将自动记录</p>
+        <p className="text-xs text-os-subtle">暂无追踪数据，启动智能体对话后将自动记录</p>
       </div>
     );
   }
@@ -302,11 +302,11 @@ export function TraceTimeline({ traces }: { traces: TraceEntry[] }) {
       {/* 瀑布流尾部统计 */}
       <div className="mt-2 pt-2 border-t border-os-border/40 flex items-center justify-between text-2xs font-mono text-os-subtle">
         <span>
-          <span className="text-os-text">{recent.length}</span> spans
+          <span className="text-os-text">{recent.length}</span> 个跨度
         </span>
         <span>
-          max latency:{" "}
-          <span className={cn(maxLatency > 2000 ? "text-os-warning" : "text-os-text-high")}>
+          最大延迟：{" "}
+          <span className={cn(maxLatency > 2000 ? "text-amber-800" : "text-os-text-high")}>
             {formatMs(maxLatency)}
           </span>
         </span>

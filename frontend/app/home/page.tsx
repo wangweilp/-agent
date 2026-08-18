@@ -233,7 +233,7 @@ export default function WorkspaceHomePage() {
             <pre className="min-w-max">
               {MOCK_CODE_LINES.map((line, i) => (
                 <div key={i} className="flex">
-                  <span className="select-none w-8 shrink-0 pr-3 text-right text-os-muted/60 text-xs">
+                  <span className="select-none w-8 shrink-0 pr-3 text-right text-xs text-os-subtle">
                     {i + 1}
                   </span>
                   <code className="whitespace-pre">
@@ -260,10 +260,10 @@ export default function WorkspaceHomePage() {
           className="mt-8 flex flex-wrap items-center justify-center gap-3"
         >
           {[
-            { label: "Type Hints", icon: Zap },
-            { label: "Async Native", icon: GitBranch },
-            { label: "Memory API", icon: Database },
-            { label: "Sandbox SDK", icon: ShieldCheck },
+            { label: "类型提示", icon: Zap },
+            { label: "原生异步", icon: GitBranch },
+            { label: "记忆 API", icon: Database },
+            { label: "沙箱 SDK", icon: ShieldCheck },
           ].map((tag) => {
             const Icon = tag.icon;
             return (

@@ -8,7 +8,6 @@ import {
   cardStyles,
   emptyStateStyles,
   inputStyles,
-  tabStyles,
   toolbarStyles,
 } from "@/styles/components";
 import { spacing, typeScale } from "@/styles/tokens";
@@ -80,7 +79,7 @@ export function SectionHeader({
           {Icon && <Icon size={15} className="text-os-primary" />}
           <h2 className={typeScale.sectionTitle}>{title}</h2>
         </div>
-        {subtitle && <p className="mt-1 text-xs leading-5 text-os-muted">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-xs leading-5 text-os-subtle">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -177,7 +176,7 @@ export function MetricCard({
       <div className="mt-5 flex items-end justify-between gap-3">
         <div>
           <div className={typeScale.metricValue}>{value}</div>
-          {detail && <div className="mt-2 text-xs leading-5 text-os-muted">{detail}</div>}
+          {detail && <div className="mt-2 text-xs leading-5 text-os-subtle">{detail}</div>}
         </div>
         {trend && <div className="text-xs font-medium text-os-subtle">{trend}</div>}
       </div>
@@ -208,7 +207,7 @@ export function EmptyState({
         <Icon size={18} />
       </div>
       <p className="text-sm font-semibold text-os-text-high">{title}</p>
-      {description && <p className="mt-1 max-w-md text-sm leading-6 text-os-muted">{description}</p>}
+      {description && <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

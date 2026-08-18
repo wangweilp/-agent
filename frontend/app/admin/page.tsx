@@ -1,32 +1,28 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Activity, AlertTriangle, Brain, Building2, RefreshCw, Shield, TrendingUp, Users } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  Building2,
-  Users,
-  Brain,
-  TrendingUp,
-  Shield,
-  AlertTriangle,
-  Activity,
-  RefreshCw,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+  EmptyState,
+  InfoBanner,
+  MetricCard,
+  OsBadge,
+  OsButton,
+  OsCard,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusBadge,
+} from "@/components/ui/os";
+import { ResponsiveChartContainer } from "@/components/ui/ResponsiveChartContainer";
 import { cn, formatNumber } from "@/lib/utils";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/stores/auth-store";
 import type { AdminSummary, GrowthDataPoint } from "@/types";
 import { layout } from "@/styles/layout";
 
-// ── Types ──
+type BadgeTone = "default" | "primary" | "success" | "warning" | "danger" | "info" | "muted";
 
 interface RecentAuditEvent {
   id: string;
@@ -38,11 +34,9 @@ interface RecentAuditEvent {
   detail: string;
 }
 
-// ── Helpers ──
-
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("zh-CN", {
+  const date = new Date(iso);
+  return date.toLocaleDateString("zh-CN", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -50,72 +44,29 @@ function formatDate(iso: string): string {
   });
 }
 
-function severityColor(s: string): string {
-  switch (s?.toLowerCase()) {
-    case "high":
-    case "critical":
-      return "text-red-400";
-    case "medium":
-    case "warning":
-      return "text-amber-400";
-    default:
-      return "text-emerald-400";
-  }
-}
-
 function severityFromAction(action: string): string {
-  const a = action.toLowerCase();
-  if (/(delete|remove|revoke|disable|deny|fail|terminate)/.test(a)) return "high";
-  if (/(update|change|create|assign|approve)/.test(a)) return "medium";
+  const normalized = action.toLowerCase();
+  if (/(delete|remove|revoke|disable|deny|fail|terminate)/.test(normalized)) return "high";
+  if (/(update|change|create|assign|approve)/.test(normalized)) return "medium";
   return "info";
 }
 
-// ── Card Component ──
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  accent = "indigo",
-  loading = false,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  accent?: "indigo" | "emerald" | "amber" | "violet" | "red" | "cyan";
-  loading?: boolean;
-}) {
-  const accentMap = {
-    indigo: "bg-indigo-400/10 text-indigo-400 border-indigo-400/20",
-    emerald: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-    amber: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-    violet: "bg-violet-400/10 text-violet-400 border-violet-400/20",
-    red: "bg-red-400/10 text-red-400 border-red-400/20",
-    cyan: "bg-cyan-400/10 text-cyan-400 border-cyan-400/20",
-  };
-
-  return (
-    <div className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface hover:border-os-border/60 transition-colors">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-2xs text-os-muted uppercase tracking-wider">{label}</p>
-          {loading ? (
-            <div className="h-7 w-16 bg-os-elevated rounded animate-pulse" />
-          ) : (
-            <p className="text-lg font-mono font-semibold text-os-text-high">
-              {typeof value === "number" ? formatNumber(value) : value}
-            </p>
-          )}
-        </div>
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center border", accentMap[accent])}>
-          <Icon size={16} />
-        </div>
-      </div>
-    </div>
-  );
+function severityTone(severity: string): BadgeTone {
+  const normalized = severity.toLowerCase();
+  if (normalized === "high" || normalized === "critical") return "danger";
+  if (normalized === "medium" || normalized === "warning") return "warning";
+  return "success";
 }
 
-// ── Page ──
+function severityLabel(severity: string): string {
+  const normalized = severity.toLowerCase();
+  if (normalized === "critical") return "严重";
+  if (normalized === "high") return "高";
+  if (normalized === "medium" || normalized === "warning") return "中";
+  if (normalized === "low") return "低";
+  if (normalized === "info") return "信息";
+  return severity;
+}
 
 export default function AdminDashboardPage() {
   const [summary, setSummary] = useState<AdminSummary | null>(null);
@@ -124,24 +75,26 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const workspaceId = useAuthStore((s) => s.currentWorkspace?.id || "default");
+  const workspaceId = useAuthStore((state) => state.currentWorkspace?.id || "default");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryData, auditData, growthData] = await Promise.all([
+      const [summaryData, auditData, growth] = await Promise.all([
         apiFetch<AdminSummary>("/api/admin/summary"),
-        apiFetch<Array<{
-          id: string;
-          action: string;
-          user_id: string;
-          workspace_id: string;
-          resource_type: string;
-          resource_id: string;
-          detail: string;
-          timestamp: string;
-        }>>(`/api/audit?workspace_id=${encodeURIComponent(workspaceId)}&limit=10`),
+        apiFetch<
+          Array<{
+            id: string;
+            action: string;
+            user_id: string;
+            workspace_id: string;
+            resource_type: string;
+            resource_id: string;
+            detail: string;
+            timestamp: string;
+          }>
+        >(`/api/audit?workspace_id=${encodeURIComponent(workspaceId)}&limit=10`),
         apiFetch<GrowthDataPoint[]>("/api/admin/growth?weeks=12"),
       ]);
 
@@ -159,9 +112,9 @@ export default function AdminDashboardPage() {
             }))
           : [],
       );
-      setGrowthData(Array.isArray(growthData) ? growthData : []);
+      setGrowthData(Array.isArray(growth) ? growth : []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard data");
+      setError(err instanceof Error ? err.message : "加载仪表盘数据失败");
     } finally {
       setLoading(false);
     }
@@ -172,185 +125,210 @@ export default function AdminDashboardPage() {
   }, [fetchData]);
 
   return (
-    <div className="p-6 space-y-5 max-w-[1440px] mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-os-text-high tracking-tight">
-            企业仪表盘
-          </h1>
-          <p className="text-xs text-os-subtle mt-0.5">
-            组织、用户与系统健康状况总览
-          </p>
-        </div>
-        <button
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-2xs text-os-subtle hover:text-os-text hover:bg-os-elevated transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-          刷新
-        </button>
-      </div>
+    <PageShell>
+      <PageHeader
+        icon={Building2}
+        title="企业仪表盘"
+        subtitle="组织、用户、知识增长、审计事件与风险状态的企业级总览。"
+        actions={
+          <>
+            <StatusBadge status={summary?.risk_events ? "warning" : "ready"}>
+              {summary?.risk_events ? "存在风险事件" : "系统正常"}
+            </StatusBadge>
+            <OsButton type="button" variant="secondary" size="md" onClick={fetchData} disabled={loading}>
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              刷新
+            </OsButton>
+          </>
+        }
+      />
 
-      {/* Error */}
       {error && (
-        <div className="os-card p-3 rounded-lg border border-red-400/20 bg-red-400/5 text-red-400 text-xs">
+        <InfoBanner variant="danger" icon={AlertTriangle}>
           {error}
-        </div>
+        </InfoBanner>
       )}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard icon={Building2} label="Organizations" value={summary?.total_orgs ?? (loading ? "..." : 0)} accent="indigo" loading={loading} />
-        <StatCard icon={Users} label="Total Users" value={summary?.total_users ?? (loading ? "..." : 0)} accent="emerald" loading={loading} />
-        <StatCard icon={Brain} label="Memories" value={summary?.total_memories ?? (loading ? "..." : 0)} accent="violet" loading={loading} />
-        <StatCard icon={TrendingUp} label="Growth (Weekly)" value={summary?.growth_rate_weekly != null ? `${summary.growth_rate_weekly}%` : "..."} accent="cyan" loading={loading} />
-        <StatCard icon={Shield} label="Audit (30d)" value={summary?.audit_events_30d ?? (loading ? "..." : 0)} accent="amber" loading={loading} />
-        <StatCard icon={AlertTriangle} label="Risk Events" value={summary?.risk_events ?? (loading ? "..." : 0)} accent={summary?.risk_events ? "red" : "emerald"} loading={loading} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <MetricCard
+          icon={Building2}
+          label="组织"
+          value={loading ? "..." : formatNumber(summary?.total_orgs || 0)}
+          detail="组织空间"
+          accent="primary"
+        />
+        <MetricCard
+          icon={Users}
+          label="用户总数"
+          value={loading ? "..." : formatNumber(summary?.total_users || 0)}
+          detail="成员账户"
+          accent="success"
+        />
+        <MetricCard
+          icon={Brain}
+          label="记忆"
+          value={loading ? "..." : formatNumber(summary?.total_memories || 0)}
+          detail="知识资产"
+          accent="info"
+        />
+        <MetricCard
+          icon={TrendingUp}
+          label="增长"
+          value={loading ? "..." : summary?.growth_rate_weekly != null ? `${summary.growth_rate_weekly}%` : "0%"}
+          detail="周增长率"
+          accent="success"
+        />
+        <MetricCard
+          icon={Shield}
+          label="审计"
+          value={loading ? "..." : formatNumber(summary?.audit_events_30d || 0)}
+          detail="30 天事件"
+          accent="warning"
+        />
+        <MetricCard
+          icon={AlertTriangle}
+          label="风险事件"
+          value={loading ? "..." : formatNumber(summary?.risk_events || 0)}
+          detail="需要处置"
+          accent={summary?.risk_events ? "danger" : "muted"}
+        />
       </div>
 
-      {/* Charts + Recent Audit */}
       <div className={layout.grid.threeLg}>
-        {/* Growth Chart (2/3) */}
-        <div className="lg:col-span-2 os-card p-4 rounded-lg border border-os-border/30 bg-os-surface">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={14} className="text-os-accent" />
-            <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
-              Knowledge Growth (12 weeks)
-            </h2>
-          </div>
+        <OsCard className="lg:col-span-2" padding="md">
+          <SectionHeader
+            icon={TrendingUp}
+            title="知识增长"
+            subtitle="最近 12 周知识资产增长趋势，采用稳定图表容器防止空数据塌陷。"
+            className="mb-4"
+          />
           {loading ? (
-            <div className="h-64 flex items-center justify-center">
-              <div className="animate-spin w-5 h-5 border-2 border-os-accent border-t-transparent rounded-full" />
-            </div>
+            <div className="h-64 rounded-2xl bg-os-surface-muted animate-pulse" />
+          ) : error && growthData.length === 0 ? (
+            <p className="flex min-h-[256px] items-center justify-center text-sm text-os-subtle">增长数据暂不可用</p>
           ) : growthData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-os-muted text-xs">
-              No growth data available
-            </div>
+            <EmptyState
+              icon={TrendingUp}
+              title="暂无增长数据"
+              description="当后端返回增长序列后，这里会显示组织知识资产趋势。"
+              className="min-h-[256px]"
+            />
           ) : (
-            <ResponsiveContainer width="100%" height={256}>
-              <BarChart data={growthData}>
-                <CartesianGrid stroke="rgba(255,255,255,0.03)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="week" tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#52525B", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#18181B",
-                    border: "1px solid #27272A",
-                    borderRadius: "12px",
-                    fontSize: "12px",
-                    color: "#E4E4E7",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-                  }}
-                  itemStyle={{ color: "#A1A1AA" }}
-                />
-                <Bar dataKey="count" fill="#818CF8" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-64">
+              <ResponsiveChartContainer height="100%" className="border-0 bg-transparent shadow-none">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={growthData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                    <CartesianGrid stroke="#E6EAF2" strokeDasharray="3 4" vertical={false} />
+                    <XAxis dataKey="week" tick={{ fill: "#64748B", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#64748B", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      cursor={{ fill: "rgba(99,102,241,0.06)" }}
+                      contentStyle={{
+                        backgroundColor: "#FFFFFF",
+                        border: "1px solid #E2E8F0",
+                        borderRadius: "14px",
+                        fontSize: "12px",
+                        color: "#334155",
+                        boxShadow: "0 12px 30px rgba(15, 23, 42, 0.10)",
+                      }}
+                      labelStyle={{ color: "#0F172A", fontWeight: 600 }}
+                    />
+                    <Bar dataKey="count" fill="#7C8CF8" radius={[5, 5, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ResponsiveChartContainer>
+            </div>
           )}
-        </div>
+        </OsCard>
 
-        {/* Risk Summary (1/3) */}
-        <div className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={14} className="text-os-accent" />
-            <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
-              Risk Summary
-            </h2>
-          </div>
+        <OsCard padding="md">
+          <SectionHeader icon={Activity} title="风险摘要" subtitle="企业控制面状态摘要。" className="mb-4" />
           {loading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-10 bg-os-elevated rounded animate-pulse" />
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="h-12 rounded-xl bg-os-surface-muted animate-pulse" />
               ))}
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b border-os-border/30">
-                <span className="text-xs text-os-text">Risk Events</span>
-                <span className={cn("text-sm font-mono font-semibold", summary?.risk_events ? "text-red-400" : "text-emerald-400")}>
-                  {summary?.risk_events ?? 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-os-border/30">
-                <span className="text-xs text-os-text">Audit Events (30d)</span>
-                <span className="text-sm font-mono font-semibold text-os-text-high">
-                  {summary?.audit_events_30d ?? 0}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-os-border/30">
-                <span className="text-xs text-os-text">Growth Rate</span>
-                <span className={cn("text-sm font-mono font-semibold", (summary?.growth_rate_weekly ?? 0) > 0 ? "text-emerald-400" : "text-red-400")}>
-                  {summary?.growth_rate_weekly != null ? `${summary.growth_rate_weekly}%` : "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-xs text-os-text">System Status</span>
-                <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-status-breathe" />
-                  Operational
-                </span>
+            <div className="space-y-2">
+              <SummaryRow label="风险事件" value={summary?.risk_events ?? 0} danger={!!summary?.risk_events} />
+              <SummaryRow label="审计事件（30 天）" value={summary?.audit_events_30d ?? 0} />
+              <SummaryRow
+                label="增长率"
+                value={summary?.growth_rate_weekly != null ? `${summary.growth_rate_weekly}%` : "暂无"}
+                danger={(summary?.growth_rate_weekly ?? 0) < 0}
+              />
+              <div className="flex items-center justify-between rounded-xl border border-os-border bg-os-surface-tinted px-3 py-2">
+                <span className="text-sm text-os-text">系统状态</span>
+                <StatusBadge status="ready">运行正常</StatusBadge>
               </div>
             </div>
           )}
-        </div>
+        </OsCard>
       </div>
 
-      {/* Recent Audit Events */}
-      <div className="os-card p-4 rounded-lg border border-os-border/30 bg-os-surface">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield size={14} className="text-os-accent" />
-          <h2 className="text-xs font-medium text-os-text-high uppercase tracking-wider">
-            Recent Audit Events
-          </h2>
-          <span className="text-2xs text-os-muted ml-auto">
-            {auditEvents.length} entries
-          </span>
-        </div>
+      <OsCard padding="md">
+        <SectionHeader
+          icon={Shield}
+          title="最近审计事件"
+          subtitle="最近审计事件，按操作风险自动映射状态色。"
+          actions={<OsBadge variant="muted">{auditEvents.length} 条</OsBadge>}
+          className="mb-4"
+        />
 
         {loading ? (
           <div className="space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-8 bg-os-elevated rounded animate-pulse" />
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div key={item} className="h-10 rounded-xl bg-os-surface-muted animate-pulse" />
             ))}
           </div>
+        ) : error && auditEvents.length === 0 ? (
+          <p className="flex min-h-[260px] items-center justify-center text-sm text-os-subtle">审计数据暂不可用</p>
         ) : auditEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-os-muted">
-            <Shield size={32} className="mb-2 opacity-30" />
-            <p className="text-xs">No recent audit events</p>
-          </div>
+          <EmptyState
+            icon={Shield}
+            title="暂无审计事件"
+            description="当组织内出现权限、配置或资源操作时，会在这里形成审计流水。"
+            className="min-h-[260px]"
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[680px] text-sm">
               <thead>
-                <tr className="text-os-muted border-b border-os-border/30">
-                  <th className="text-left py-2 px-2 font-medium">Action</th>
-                  <th className="text-left py-2 px-2 font-medium">User</th>
-                  <th className="text-left py-2 px-2 font-medium hidden md:table-cell">Org</th>
-                  <th className="text-left py-2 px-2 font-medium">Severity</th>
-                  <th className="text-right py-2 px-2 font-medium hidden sm:table-cell">Time</th>
+                <tr className="border-b border-os-border text-xs text-os-subtle">
+                  <th className="px-3 py-2 text-left font-semibold">操作</th>
+                  <th className="px-3 py-2 text-left font-semibold">用户</th>
+                  <th className="px-3 py-2 text-left font-semibold">组织</th>
+                  <th className="px-3 py-2 text-left font-semibold">风险级别</th>
+                  <th className="px-3 py-2 text-right font-semibold">时间</th>
                 </tr>
               </thead>
               <tbody>
                 {auditEvents.map((event) => (
-                  <tr key={event.id} className="border-b border-os-border/10 hover:bg-os-elevated/50 transition-colors">
-                    <td className="py-2 px-2 text-os-text-high font-medium">{event.action}</td>
-                    <td className="py-2 px-2 text-os-text">{event.user}</td>
-                    <td className="py-2 px-2 text-os-subtle hidden md:table-cell">{event.org_id || "-"}</td>
-                    <td className={cn("py-2 px-2", severityColor(event.severity))}>
-                      {event.severity || "info"}
+                  <tr key={event.id} className="border-b border-os-border-subtle transition-colors hover:bg-os-surface-hover">
+                    <td className="px-3 py-3 font-medium text-os-text-high">{event.action}</td>
+                    <td className="px-3 py-3 text-os-text">{event.user}</td>
+                    <td className="px-3 py-3 text-os-subtle">{event.org_id || "-"}</td>
+                    <td className="px-3 py-3">
+                      <OsBadge variant={severityTone(event.severity)}>{severityLabel(event.severity || "info")}</OsBadge>
                     </td>
-                    <td className="py-2 px-2 text-os-muted text-right hidden sm:table-cell">
-                      {formatDate(event.timestamp)}
-                    </td>
+                    <td className="px-3 py-3 text-right text-os-subtle">{formatDate(event.timestamp)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </OsCard>
+    </PageShell>
+  );
+}
+
+function SummaryRow({ label, value, danger = false }: { label: string; value: string | number; danger?: boolean }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-os-border bg-white px-3 py-2 shadow-os-card">
+      <span className="text-sm text-os-text">{label}</span>
+      <span className={cn("font-mono text-sm font-semibold", danger ? "text-os-danger" : "text-os-text-high")}>{value}</span>
     </div>
   );
 }

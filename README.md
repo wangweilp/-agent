@@ -37,8 +37,26 @@
 ## Quick Start: Enterprise AI Agent Demo
 
 ```bash
-# Start backend
-python main.py
+# Activate the project virtualenv first (required — bare `python` must point to .venv)
+cd D:\dma\day2
+.\.venv\Scripts\Activate.ps1        # PowerShell
+# or: source .venv/bin/activate      # bash/Linux
+
+# Verify it points to the venv
+python -c "import sys; print(sys.executable)"   # -> D:\dma\day2\.venv\Scripts\python.exe
+
+# First-time setup — install dependencies (must match Python 3.11, see .python-version)
+# Build venv once:  python -m venv .venv   &&  .\.venv\Scripts\Activate.ps1
+# Production deps only:
+python -m pip install -r requirements.txt
+# Dev + test deps (adds pytest / pytest-asyncio on top of production deps):
+python -m pip install -r requirements-dev.txt
+
+# Run the test suite (full suite: tests/)
+python -m pytest
+
+# Start backend (ASGI entry is main:app)
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
 
 # Start frontend (in separate terminal)
 cd frontend && npm run dev
@@ -48,7 +66,14 @@ python scripts/seed_agent_demo.py --apply
 
 # Open browser
 # http://localhost:3000/agents/scenarios
+
+# API health checks
+# http://127.0.0.1:8000/health/unified
+# http://127.0.0.1:8000/openapi.json
+# http://127.0.0.1:8000/docs
 ```
+
+> **解释器说明**：本项目使用 `.venv`（Python 3.11.9）。若在项目目录直接执行 `python` 仍指到其他 Python（如 TRAE SOLO 内置 3.10），是因为该 shell 未激活 venv。执行上面的 `Activate.ps1` 即可。若已配置 PowerShell profile 自动激活（`~Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`），进入 `D:\dma\day2` 后 `python` 会自动指向 `.venv`。
 
 See [Step 20-D Demo Script](docs/STEP20D_DEMO_SCRIPT.md) for full demo walkthrough.
 

@@ -17,10 +17,10 @@ import { kernelApi, kernelSafe, type RouteResponse } from "@/lib/core-client";
 import type { Workspace, WorkspaceRole } from "@/types";
 
 const roleMeta: Record<WorkspaceRole, { icon: typeof User; label: string; color: string }> = {
-  owner:  { icon: Crown,  label: "拥有者", color: "text-amber-400 bg-amber-400/10" },
-  admin:  { icon: Shield, label: "管理员", color: "text-indigo-400 bg-indigo-400/10" },
-  member: { icon: User,   label: "成员",   color: "text-emerald-400 bg-emerald-400/10" },
-  viewer: { icon: Eye,    label: "访客",   color: "text-zinc-400 bg-zinc-400/10" },
+  owner:  { icon: Crown,  label: "拥有者", color: "text-os-warning bg-os-warning-soft" },
+  admin:  { icon: Shield, label: "管理员", color: "text-os-primary bg-os-primary-soft" },
+  member: { icon: User,   label: "成员",   color: "text-os-success bg-os-success-soft" },
+  viewer: { icon: Eye,    label: "访客",   color: "text-os-subtle bg-os-surface-muted" },
 };
 
 export default function WorkspacePage() {
@@ -56,7 +56,7 @@ export default function WorkspacePage() {
   };
 
   // Fetch workspace list via /auth/me which returns workspaces with role info
-  const { data: meData, isLoading } = useQuery({
+  const { data: meData, isLoading, isError } = useQuery({
     queryKey: ["auth-me"],
     queryFn: () => api.auth.me(),
     enabled: !!token,
@@ -95,8 +95,8 @@ export default function WorkspacePage() {
   if (!token) {
     return (
       <PageTransition>
-        <div className="flex flex-col items-center justify-center py-32 text-os-muted">
-          <Building2 size={48} className="mb-4 opacity-30" />
+        <div className="flex flex-col items-center justify-center py-32 text-os-subtle">
+          <Building2 size={48} className="mb-4 text-os-muted" />
           <p className="text-sm">请先登录</p>
           <p className="text-2xs mt-1">登录后可管理工作区</p>
         </div>
@@ -134,10 +134,10 @@ export default function WorkspacePage() {
               onChange={(e) => { setNewName(e.target.value); setCreateError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               placeholder="工作区名称"
-              className="w-full h-9 px-3 rounded-md bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+              className="w-full h-9 px-3 rounded-md bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
             />
             {createError && (
-              <p className="text-xs text-red-400">{createError}</p>
+              <p className="text-xs text-os-danger">{createError}</p>
             )}
             <div className="flex items-center gap-2 justify-end">
               <button
@@ -167,9 +167,15 @@ export default function WorkspacePage() {
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center py-24 text-os-danger">
+            <AlertCircle size={48} className="mb-4" />
+            <p className="text-sm">工作区加载失败</p>
+            <p className="text-2xs mt-1 text-os-subtle">请检查网络连接后刷新页面</p>
+          </div>
         ) : workspaces.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-os-muted">
-            <Building2 size={48} className="mb-4 opacity-30" />
+          <div className="flex flex-col items-center justify-center py-24 text-os-subtle">
+            <Building2 size={48} className="mb-4 text-os-muted" />
             <p className="text-sm">暂无工作区</p>
             <p className="text-2xs mt-1">创建一个工作区开始协作</p>
           </div>
@@ -212,7 +218,7 @@ export default function WorkspacePage() {
                           {meta.label}
                         </span>
                         {ws.members !== undefined && (
-                          <span className="text-2xs text-os-muted flex items-center gap-0.5">
+                          <span className="text-2xs text-os-subtle flex items-center gap-0.5">
                             <Users size={10} />
                             {ws.members} 成员
                           </span>
@@ -268,7 +274,7 @@ export default function WorkspacePage() {
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-xs font-semibold text-os-text-high tracking-wide">
-                    Kernel Ping
+                    内核连通测试
                   </span>
                 </div>
                 <button
@@ -296,7 +302,7 @@ export default function WorkspacePage() {
                       if (e.key === "Enter") handleKernelPing();
                     }}
                     placeholder="输入文本测试意图路由..."
-                    className="flex-1 h-9 px-3 rounded-md bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent transition-colors"
+                    className="flex-1 h-9 px-3 rounded-md bg-os-surface border border-os-border text-sm text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent transition-colors"
                   />
                   <button
                     onClick={handleKernelPing}
@@ -313,9 +319,9 @@ export default function WorkspacePage() {
 
                 {/* Error */}
                 {kernelError && (
-                  <div className="flex items-start gap-2 p-2.5 rounded-md bg-red-400/10 border border-red-400/20">
-                    <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-red-300">{kernelError}</p>
+                  <div className="flex items-start gap-2 p-2.5 rounded-md bg-os-danger-soft border border-os-danger/20">
+                    <AlertCircle size={14} className="text-os-danger shrink-0 mt-0.5" />
+                    <p className="text-xs text-os-danger">{kernelError}</p>
                   </div>
                 )}
 
@@ -323,24 +329,24 @@ export default function WorkspacePage() {
                 {kernelResult && (
                   <div className="p-3 rounded-md bg-os-accent/5 border border-os-accent/20 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xs text-os-muted">意图</span>
+                      <span className="text-2xs text-os-subtle">意图</span>
                       <span className={cn(
                         "text-xs font-mono font-semibold px-1.5 py-0.5 rounded",
                         kernelResult.intent === "CODE_EXECUTION"
-                          ? "bg-amber-400/10 text-amber-400"
-                          : "bg-purple-400/10 text-purple-400",
+                          ? "bg-os-warning-soft text-os-warning"
+                          : "bg-os-primary-soft text-os-primary",
                       )}>
                         {kernelResult.intent}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xs text-os-muted">置信度</span>
+                      <span className="text-2xs text-os-subtle">置信度</span>
                       <span className="text-xs font-mono text-os-text-high">
                         {(kernelResult.confidence * 100).toFixed(0)}%
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xs text-os-muted">原始输入</span>
+                      <span className="text-2xs text-os-subtle">原始输入</span>
                       <span className="text-xs text-os-subtle truncate max-w-[180px]">
                         {kernelResult.raw_query}
                       </span>
@@ -350,8 +356,8 @@ export default function WorkspacePage() {
 
                 {/* Empty hint */}
                 {!kernelResult && !kernelError && !kernelLoading && (
-                  <p className="text-2xs text-os-muted text-center">
-                    输入关键词如 "搜索记忆" 或 "执行代码" 测试路由
+                  <p className="text-2xs text-os-subtle text-center">
+                    输入关键词如 &quot;搜索记忆&quot; 或 &quot;执行代码&quot; 测试路由
                   </p>
                 )}
               </div>
@@ -370,7 +376,7 @@ export default function WorkspacePage() {
               ? "bg-os-accent text-white"
               : "bg-os-surface/90 border border-os-border/50 text-os-subtle hover:text-os-accent",
           )}
-          title="Kernel Ping 测试面板"
+          title="内核连通测试面板"
         >
           <Zap size={18} />
         </motion.button>

@@ -84,7 +84,8 @@ class TestRedTeamAuditIntegrity:
         from src.adapters.config import Settings
         from src.adapters.sqlite_sandbox_v2_store import SQLiteSandboxV2Store
         from src.open_platform.sandbox_v2.security_audit import SandboxV2SecurityAuditService
-        store = SQLiteSandboxV2Store(config=Settings())
+        # in-memory 隔离，避免审计事件写入真实库或受历史污染
+        store = SQLiteSandboxV2Store(config=Settings(), db_path=":memory:")
         audit = SandboxV2SecurityAuditService(store=store)
         for i in range(3):
             audit.create_audit_event(event_type="job_submitted", organization_id="org-rt", principal_id="u1")

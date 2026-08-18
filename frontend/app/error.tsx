@@ -29,7 +29,7 @@ export default function GlobalError({
     <main className="min-h-screen bg-os-base flex items-center justify-center p-4">
       <div className="w-full max-w-lg rounded-2xl border border-red-500/20 bg-os-surface/60 backdrop-blur-md p-6 shadow-os-lg">
         <div className="flex items-start gap-4 mb-5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-red-400">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-red-600">
             <AlertTriangle size={22} />
           </div>
           <div className="flex-1 min-w-0">
@@ -44,17 +44,17 @@ export default function GlobalError({
 
         {isDev && (
           <details className="mb-5 rounded-lg border border-os-border/60 bg-slate-50 p-3 group">
-            <summary className="flex cursor-pointer items-center gap-2 text-2xs font-mono text-os-muted hover:text-os-subtle">
+            <summary className="flex cursor-pointer items-center gap-2 text-2xs font-mono text-os-subtle hover:text-os-text-high">
               <Bug size={12} />
               <span>错误详情（仅开发环境）</span>
             </summary>
             <div className="mt-2 space-y-1.5 font-mono text-2xs text-os-subtle">
-              <p className="text-red-300 break-all">{error?.message || "Unknown error"}</p>
+              <p className="text-red-700 break-all">{error?.message || "未知错误"}</p>
               {error?.digest && (
-                <p className="text-os-muted">digest: {error.digest}</p>
+                <p className="text-os-subtle">digest: {error.digest}</p>
               )}
               {error?.stack && (
-                <pre className="mt-2 whitespace-pre-wrap break-all text-os-muted text-2xs leading-4 max-h-48 overflow-y-auto">
+                <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-all text-2xs leading-4 text-os-subtle">
                   {error.stack}
                 </pre>
               )}

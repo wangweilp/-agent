@@ -120,6 +120,10 @@ def bootstrap() -> Settings:
 def create_agent(settings: Settings) -> tuple[CognitiveAgent, MemoryWriteWorker, DeepSeekAdapter]:
     llm = DeepSeekAdapter(settings)
     memory_store = SQLiteStoreAdapter(settings)
+    # 多租户隔离：包装 memory store，读取按 workspace 过滤、写入按上下文盖章
+    # 存量数据都在 default workspace，包装后默认行为与原先一致，无回归。
+    from src.adapters.auth_store import WorkspaceAwareStore
+    memory_store = WorkspaceAwareStore(memory_store)
     vector_store = ChromaDBAdapter(settings)
     embedding = LocalEmbeddingProvider(settings)
 

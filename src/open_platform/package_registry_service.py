@@ -54,7 +54,7 @@ class PackageService:
             raise PackageValidationError(
                 f"Package 校验失败: {'; '.join(errors)}", errors)
         created = self._store.create(package)
-        logger.info("package_created", extra={"package_id": created.id, "name": name})
+        logger.info("package_created", extra={"package_id": created.id, "package_name": name})
         return created
 
     def submit_review(self, package_id: str) -> Package:

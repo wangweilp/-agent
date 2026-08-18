@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
+  AlertTriangle,
   Archive,
   BarChart3,
   Brain,
@@ -99,43 +100,43 @@ function aggregateByDay(
 }
 
 export default function DashboardPage() {
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const { data: summary, isLoading: summaryLoading, isError: summaryError } = useQuery({
     queryKey: ["dashboard-summary"],
     queryFn: () => api.dashboard.summary(),
     refetchInterval: 15000,
   });
 
-  const { data: topics, isLoading: topicsLoading } = useQuery({
+  const { data: topics, isLoading: topicsLoading, isError: topicsError } = useQuery({
     queryKey: ["dashboard-topics"],
     queryFn: () => api.dashboard.topics(10),
     refetchInterval: 30000,
   });
 
-  const { data: entities, isLoading: entitiesLoading } = useQuery({
+  const { data: entities, isLoading: entitiesLoading, isError: entitiesError } = useQuery({
     queryKey: ["dashboard-entities"],
     queryFn: () => api.dashboard.entities(24),
     refetchInterval: 30000,
   });
 
-  const { data: recentMemories, isLoading: recentLoading } = useQuery({
+  const { data: recentMemories, isLoading: recentLoading, isError: recentError } = useQuery({
     queryKey: ["dashboard-recent"],
     queryFn: () => api.dashboard.recent(500),
     refetchInterval: 30000,
   });
 
-  const { data: reflections, isLoading: reflectionsLoading } = useQuery({
+  const { data: reflections, isLoading: reflectionsLoading, isError: reflectionsError } = useQuery({
     queryKey: ["dashboard-reflections"],
     queryFn: () => api.dashboard.reflections(6),
     refetchInterval: 30000,
   });
 
-  const { data: weeklyReport } = useQuery({
+  const { data: weeklyReport, isError: weeklyError } = useQuery({
     queryKey: ["dashboard-weekly"],
     queryFn: () => api.dashboard.weeklyReport(),
     refetchInterval: 60000,
   });
 
-  const { data: traces } = useQuery({
+  const { data: traces, isError: tracesError } = useQuery({
     queryKey: ["dashboard-traces"],
     queryFn: () => api.dashboard.traces(),
     refetchInterval: 5000,
@@ -147,6 +148,14 @@ export default function DashboardPage() {
   }, [recentMemories]);
 
   const totalQueue = (summary?.queue_depth || 0) + (summary?.dlq_count || 0);
+  const dashboardError =
+    summaryError ||
+    topicsError ||
+    entitiesError ||
+    recentError ||
+    reflectionsError ||
+    weeklyError ||
+    tracesError;
 
   return (
     <PageTransition>
@@ -157,13 +166,19 @@ export default function DashboardPage() {
           subtitle="面向工作区的记忆增长、知识主题、运行状态与 trace 流水线总览。"
           actions={
             <>
-              <StatusBadge status={summary?.dlq_count ? "warning" : "ready"}>
-                {summary?.dlq_count ? "需要关注" : "实时监控中"}
+              <StatusBadge status={dashboardError ? "warning" : summary?.dlq_count ? "warning" : "ready"}>
+                {dashboardError ? "部分数据加载失败" : summary?.dlq_count ? "需要关注" : "实时监控中"}
               </StatusBadge>
-              <OsBadge variant="muted">15s refresh</OsBadge>
+              <OsBadge variant="muted">每 15 秒刷新</OsBadge>
             </>
           }
         />
+
+        {dashboardError && (
+          <InfoBanner icon={AlertTriangle} variant="danger" title="部分仪表盘数据加载失败">
+            当前页面可能显示不完整数据，请稍后刷新。已成功返回的数据仍会正常保留。
+          </InfoBanner>
+        )}
 
         <SaaSMetrics />
 
@@ -173,7 +188,7 @@ export default function DashboardPage() {
               icon={Brain}
               label="总记忆"
               value={summaryLoading ? "..." : formatNumber(summary?.total_memories || 0)}
-              detail="episodic / semantic / reflect"
+              detail="情景 / 语义 / 反思"
               accent="primary"
             />
           </StaggerItem>
@@ -216,7 +231,7 @@ export default function DashboardPage() {
         </div>
 
         <InfoBanner icon={Cpu} variant={totalQueue > 5 ? "warning" : "info"}>
-          当前队列深度 {summary?.queue_depth || 0}，DLQ {summary?.dlq_count || 0}。运行时面板会同步展示 worker、任务耗时与最近写入状态。
+          当前队列深度 {summary?.queue_depth || 0}，DLQ {summary?.dlq_count || 0}。运行时面板会同步展示工作进程、任务耗时与最近写入状态。
         </InfoBanner>
 
         <div className={layout.grid.threeLg}>
@@ -241,7 +256,7 @@ export default function DashboardPage() {
             <SectionHeader
               icon={Tag}
               title="热门主题"
-              subtitle="按提及次数排序，使用 rank 与微型进度条呈现。"
+              subtitle="按提及次数排序，使用排名与微型进度条呈现。"
               actions={<OsBadge variant="muted">{topics?.length || 0} 个</OsBadge>}
               className="mb-4"
             />
@@ -265,7 +280,7 @@ export default function DashboardPage() {
             <SectionHeader
               icon={Lightbulb}
               title="最近反思"
-              subtitle="展示高价值 insight，而不是松散文本堆叠。"
+              subtitle="展示高价值洞察，而不是松散文本堆叠。"
               actions={<OsBadge variant="muted">{reflections?.length || 0} 条</OsBadge>}
               className="mb-4"
             />
@@ -286,19 +301,19 @@ export default function DashboardPage() {
           </OsCard>
 
           <OsCard padding="md">
-            <SectionHeader icon={Activity} title="系统健康" subtitle="写入 worker、队列与本周统计。" className="mb-4" />
+            <SectionHeader icon={Activity} title="系统健康" subtitle="写入工作进程、队列与本周统计。" className="mb-4" />
             <div className="space-y-4">
               {summary && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-os-border bg-os-surface-tinted p-3">
-                    <span className="text-xs text-os-muted">队列待处理</span>
+                    <span className="text-xs text-os-subtle">队列待处理</span>
                     <p className={cn("mt-1 font-mono text-xl font-semibold", summary.queue_depth > 5 ? "text-os-warning" : "text-os-success")}>
                       {summary.queue_depth}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-os-border bg-os-surface-tinted p-3">
-                    <span className="text-xs text-os-muted">DLQ 积压</span>
-                    <p className={cn("mt-1 font-mono text-xl font-semibold", summary.dlq_count > 0 ? "text-os-danger" : "text-os-muted")}>
+                    <span className="text-xs text-os-subtle">DLQ 积压</span>
+                    <p className={cn("mt-1 font-mono text-xl font-semibold", summary.dlq_count > 0 ? "text-os-danger" : "text-os-subtle")}>
                       {summary.dlq_count}
                     </p>
                   </div>
@@ -310,7 +325,7 @@ export default function DashboardPage() {
               {weeklyReport && (
                 <div className="rounded-2xl border border-os-border bg-white p-4">
                   <p className="text-sm leading-6 text-os-text">{weeklyReport.message}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-os-muted">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-os-subtle">
                     <OsBadge variant="success">本周 +{weeklyReport.stats.week_new_memories} 条</OsBadge>
                     <OsBadge variant="warning">反思 {weeklyReport.stats.week_reflections} 条</OsBadge>
                   </div>
@@ -332,7 +347,7 @@ export default function DashboardPage() {
         <OsCard padding="md">
           <SectionHeader
             icon={BarChart3}
-            title="实时 Trace"
+            title="实时追踪"
             subtitle="最近的推理、工具调用、记忆读写与反思执行瀑布流。"
             actions={<OsBadge variant="muted">{traces?.length || 0} 条记录</OsBadge>}
             className="mb-4"

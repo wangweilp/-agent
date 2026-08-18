@@ -37,14 +37,14 @@ export function RecentReflections({ reflections, isLoading }: RecentReflectionsP
           className="rounded-2xl border border-os-border bg-white p-4 shadow-os-card transition-colors hover:border-os-primary/25"
         >
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-os-warning/20 bg-os-warning-soft text-os-warning">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-os-warning/20 bg-os-warning-soft text-amber-800">
               <Lightbulb size={16} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-os-text-high">{ref.topic}</p>
-              <p className="mt-1 line-clamp-3 text-sm leading-6 text-os-muted">{ref.finding}</p>
+              <p className="mt-1 line-clamp-3 text-sm leading-6 text-os-subtle">{ref.finding}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1 text-xs text-os-muted">
+                <span className="inline-flex items-center gap-1 text-xs text-os-subtle">
                   <Calendar size={12} />
                   {formatDate(ref.timestamp)}
                 </span>

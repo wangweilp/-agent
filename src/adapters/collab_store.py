@@ -191,7 +191,7 @@ class CollabStore:
         if user_id:
             where.append("user_id = ?")
             params.append(user_id)
-        sql = f"SELECT * FROM audit_logs WHERE {' AND '.join(where)} ORDER BY timestamp DESC LIMIT ?"
+        sql = f"SELECT * FROM audit_logs WHERE {' AND '.join(where)} ORDER BY timestamp DESC, rowid DESC LIMIT ?"
         params.append(limit)
         rows = self._db.execute(sql, params).fetchall()
         return [self._row_to_audit(dict(r)) for r in rows]

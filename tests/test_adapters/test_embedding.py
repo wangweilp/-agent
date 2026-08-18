@@ -1,7 +1,7 @@
 """LocalEmbeddingProvider 单元测试。"""
 import pytest
 import threading
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from src.adapters.config import Settings
 
@@ -57,6 +57,44 @@ class TestEncode:
                 "测试文本", normalize_embeddings=True, show_progress_bar=False
             )
             assert result == [0.1, 0.2, 0.3]
+
+    def test_retries_online_after_local_cache_miss(self, settings, monkeypatch):
+        """首次运行在缓存未命中时应允许下载模型。"""
+        monkeypatch.delenv("HF_HUB_OFFLINE", raising=False)
+        monkeypatch.delenv("TRANSFORMERS_OFFLINE", raising=False)
+        mock_instance = _make_mock_st()
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            side_effect=[OSError("cache miss"), mock_instance],
+        ) as mock_st:
+            from src.adapters.embedding import LocalEmbeddingProvider
+
+            provider = LocalEmbeddingProvider(settings)
+            provider.encode("首次加载")
+
+        assert mock_st.call_args_list == [
+            call("BAAI/bge-small-zh-v1.5", device="cpu", local_files_only=True),
+            call("BAAI/bge-small-zh-v1.5", device="cpu", local_files_only=False),
+        ]
+
+    def test_offline_cache_miss_explains_how_to_recover(self, settings, monkeypatch):
+        """显式离线时不应伪装为联网下载。"""
+        monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+
+        with patch(
+            "sentence_transformers.SentenceTransformer",
+            side_effect=OSError("cache miss"),
+        ) as mock_st:
+            from src.adapters.embedding import EmbeddingError, LocalEmbeddingProvider
+
+            provider = LocalEmbeddingProvider(settings)
+            with pytest.raises(EmbeddingError, match="离线模式"):
+                provider.encode("离线加载")
+
+        mock_st.assert_called_once_with(
+            "BAAI/bge-small-zh-v1.5", device="cpu", local_files_only=True,
+        )
 
     def test_loads_model_only_once(self, settings):
         mock_instance = _make_mock_st()

@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Search, GitGraph, RotateCcw, X, Brain, Activity,
-  ZoomIn, ZoomOut, Maximize, Network as NetworkIcon,
+  Activity,
+  Brain,
+  GitGraph,
+  Maximize,
+  Network as NetworkIcon,
+  RotateCcw,
+  Search,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { DataSet } from "vis-data";
 import { Network, type Data, type Edge, type Node } from "vis-network";
@@ -13,78 +21,72 @@ import { api } from "@/services/api";
 import { PageTransition } from "@/components/animations/page-transition";
 import { Skeleton } from "@/components/animations/skeleton";
 import { KnowledgeGraphBackground } from "@/components/graph/KnowledgeGraphBackground";
+import {
+  EmptyState,
+  OsBadge,
+  OsButton,
+  OsCard,
+  OsInput,
+  PageHeader,
+  PageShell,
+  RankRow,
+  StatusBadge,
+  Toolbar,
+} from "@/components/ui/os";
 import { cn, formatDate, importanceColor } from "@/lib/utils";
-import type { GraphData, EntityDetail } from "@/types";
+import type { EntityDetail, GraphData, GraphNode } from "@/types";
 
-type GraphNodeUpdate = Partial<Node> & { id: string; label?: string; title?: string; group?: string };
-type GraphEdgeUpdate = Partial<Edge> & { id: string };
-type NetworkDataBridge = {
-  body: {
-    data: {
-      nodes: {
-        update(items: GraphNodeUpdate[]): void;
-        get(): GraphNodeUpdate[];
-      };
-      edges: {
-        update(items: GraphEdgeUpdate[]): void;
-      };
-    };
-  };
+const NODE_SIZE_SCALE = 0.58;
+
+const NODE_COLORS: Record<GraphNode["type"], string> = {
+  entity: "#7C8CF8",
+  concept: "#3DBE8B",
+  memory: "#9F8CF2",
+  image: "#D99A1E",
 };
-type VisHoverParams = { node?: string };
-type VisClickParams = { nodes: string[]; edges: string[] };
 
-function networkData(network: Network) {
-  return (network as unknown as NetworkDataBridge).body.data;
+const NODE_SOFT: Record<GraphNode["type"], string> = {
+  entity: "rgba(124,140,248,0.14)",
+  concept: "rgba(61,190,139,0.14)",
+  memory: "rgba(159,140,242,0.13)",
+  image: "rgba(217,154,30,0.14)",
+};
+
+const GROUP_COLORS = ["#7C8CF8", "#3DBE8B", "#D99A1E", "#D96565", "#9F8CF2", "#2CA8C2"];
+
+const ENTITY_TYPE_OPTIONS = ["", "person", "tech", "org", "topic", "location"];
+
+function nodeColor(node: GraphNode, groupColorMap: Record<string, string>) {
+  return NODE_COLORS[node.type] || groupColorMap[node.group] || "#7C8CF8";
 }
 
-// ═══════════════════════════════════════════
-// Design Tokens — 克制 · 深空 · 智能体网络
-// ═══════════════════════════════════════════
+function entityTypeLabel(type: string) {
+  const labels: Record<string, string> = {
+    person: "人物",
+    tech: "技术",
+    org: "组织",
+    topic: "主题",
+    location: "地点",
+  };
+  return labels[type] || type || "全部实体类型";
+}
 
-const NODE_SIZE_SCALE = 0.55;
-
-const NODE_COLORS: Record<string, string> = {
-  entity:  "#7F8CFF",  // soft indigo
-  concept: "#4ADE80",  // soft emerald
-  memory:  "#A78BFA",  // soft violet
-  image:   "#FACC15",  // soft amber
-};
-
-const NODE_GLOW: Record<string, string> = {
-  entity:  "rgba(99,102,241,0.18)",
-  concept: "rgba(16,185,129,0.16)",
-  memory:  "rgba(139,92,246,0.16)",
-  image:   "rgba(217,119,6,0.14)",
-};
-
-const GROUP_COLORS = [
-  "#7F8CFF", "#4ADE80", "#FACC15", "#F87171", "#A78BFA",
-  "#38BDF8", "#FB923C", "#A3E635", "#E879F9", "#FDBA74",
-];
-
-// Edge — 蓝紫渐变主关系，灰紫次级
-const EDGE_PRIMARY   = "rgba(99,102,241,0.38)";
-const EDGE_SECONDARY = "rgba(100,116,139,0.28)";
-const EDGE_COOCCUR   = "rgba(148,163,184,0.22)";
-
-// Highlight palette — cyan accent for selection (per Zhiwei OS design system)
-const HL_BG     = "#22D3EE";
-const HL_BORDER = "#22D3EE";
-const HL_EDGE   = "#A78BFA";
-const DIM_NODE  = "rgba(148,163,184,0.18)";
-const DIM_BORDER_NODE = "rgba(148,163,184,0.12)";
-const DIM_EDGE  = "rgba(148,163,184,0.12)";
-
-// ── Sub-components ─────────────────────────────────────
+function entityVariant(type?: string) {
+  if (type === "person") return "primary";
+  if (type === "tech") return "info";
+  if (type === "org") return "success";
+  if (type === "location") return "warning";
+  return "muted";
+}
 
 function EntityDrawer({
-  entityName, onClose,
+  entityName,
+  onClose,
 }: {
   entityName: string | null;
   onClose: () => void;
 }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<EntityDetail>({
     queryKey: ["graph-entity", entityName],
     queryFn: () => api.graph.entity(entityName!),
     enabled: !!entityName,
@@ -94,440 +96,264 @@ function EntityDrawer({
     <AnimatePresence>
       {entityName && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950/20 backdrop-blur-[2px] z-40" onClick={onClose}
+          <motion.button
+            type="button"
+            aria-label="关闭实体详情"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-[2px]"
+            onClick={onClose}
           />
-          <motion.div
-            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+          <motion.aside
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-os-surface border-l border-os-border z-50 overflow-y-auto shadow-os-lg"
+            className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-md overflow-y-auto border-l border-os-border bg-os-panel shadow-os-floating"
           >
-            <div className="sticky top-0 bg-os-surface/95 backdrop-blur border-b border-os-border px-5 py-3 flex items-center justify-between z-10">
-              <h2 className="text-sm font-semibold text-os-text-high">{entityName}</h2>
-              <button onClick={onClose} className="p-1.5 rounded text-os-subtle hover:bg-os-accent/10 hover:text-os-accent">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-os-border bg-os-panel/95 px-5 py-4 backdrop-blur">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-os-subtle">实体检查器</p>
+                <h2 className="truncate text-base font-semibold text-os-text-high">{entityName}</h2>
+              </div>
+              <OsButton type="button" size="iconSm" variant="ghost" aria-label="关闭实体详情" onClick={onClose}>
                 <X size={16} />
-              </button>
+              </OsButton>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="space-y-4 p-5">
               {isLoading ? (
                 <div className="space-y-3">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-10 rounded-xl" />
+                  <Skeleton className="h-28 rounded-2xl" />
+                  <Skeleton className="h-28 rounded-2xl" />
                 </div>
               ) : data ? (
                 <>
-                  <div className="flex items-center gap-3 text-2xs">
-                    <span className="px-1.5 py-0.5 rounded bg-indigo-400/10 text-indigo-400">
-                      {data.entity_type || "entity"}
-                    </span>
-                    <span className="text-os-muted">提及 {data.mention_count} 次</span>
-                    {data.first_seen && <span className="text-os-muted">首次 {formatDate(data.first_seen)}</span>}
-                  </div>
+                  <OsCard padding="md">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <OsBadge variant={entityVariant(data.entity_type)}>{entityTypeLabel(data.entity_type)}</OsBadge>
+                      <OsBadge variant="muted">提及 {data.mention_count} 次</OsBadge>
+                      {data.first_seen && <OsBadge variant="muted">首次 {formatDate(data.first_seen)}</OsBadge>}
+                    </div>
+                  </OsCard>
 
-                  {data.recent_activity.length > 0 && (
-                    <div>
-                      <h3 className="text-2xs text-os-muted uppercase tracking-wider mb-2">最近活动</h3>
-                      <div className="space-y-1.5">
-                        {data.recent_activity.map((act) => (
-                          <div key={act.id} className="text-2xs text-os-text line-clamp-2 bg-os-elevated rounded p-2">
-                            <span className="text-os-muted">{act.timestamp.slice(0, 10)} </span>
-                            {act.content_preview}
+                  <OsCard padding="md">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-os-text-high">最近活动</h3>
+                      <OsBadge variant="muted">{data.recent_activity.length} 条</OsBadge>
+                    </div>
+                    {data.recent_activity.length > 0 ? (
+                      <div className="space-y-2">
+                        {data.recent_activity.slice(0, 6).map((act) => (
+                          <div key={act.id} className="rounded-xl border border-os-border bg-os-surface-tinted p-3">
+                            <p className="line-clamp-2 text-sm leading-6 text-os-text">{act.content_preview}</p>
+                            <p className="mt-1 text-xs text-os-subtle">{formatDate(act.timestamp)}</p>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <EmptyState title="暂无最近活动" description="实体有统计数据，但近期没有新的记忆活动。" className="min-h-[180px]" />
+                    )}
+                  </OsCard>
 
-                  {data.related_entities.length > 0 && (
-                    <div>
-                      <h3 className="text-2xs text-os-muted uppercase tracking-wider mb-2">
-                        相关实体 ({data.related_entities.length})
-                      </h3>
-                      <div className="flex flex-wrap gap-1.5">
-                        {data.related_entities.map((e) => (
-                          <span key={e.name} className="text-2xs px-2 py-1 rounded-full bg-os-elevated text-os-subtle border border-os-border">
-                            {e.name}
-                            <span className="text-os-muted ml-1">×{e.co_count}</span>
-                          </span>
+                  <OsCard padding="md">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-os-text-high">相关实体</h3>
+                      <OsBadge variant="muted">{data.related_entities.length} 个</OsBadge>
+                    </div>
+                    {data.related_entities.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {data.related_entities.map((entity) => (
+                          <OsBadge key={entity.name} variant="default">
+                            {entity.name} x{entity.co_count}
+                          </OsBadge>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <EmptyState title="暂无相关实体" description="还没有形成稳定的共现关系。" className="min-h-[160px]" />
+                    )}
+                  </OsCard>
 
-                  {data.related_memories.length > 0 && (
-                    <div>
-                      <h3 className="text-2xs text-os-muted uppercase tracking-wider mb-2">
-                        相关记忆 ({data.related_memories.length})
-                      </h3>
+                  <OsCard padding="md">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-os-text-high">相关记忆</h3>
+                      <OsBadge variant="muted">{data.related_memories.length} 条</OsBadge>
+                    </div>
+                    {data.related_memories.length > 0 ? (
                       <div className="space-y-2">
-                        {data.related_memories.slice(0, 10).map((mem) => (
-                          <div key={mem.id} className="text-xs text-os-text bg-os-elevated rounded p-2.5">
-                            <p className="line-clamp-3 leading-relaxed">{mem.content_preview}</p>
-                            <div className="flex items-center gap-2 mt-1.5 text-2xs text-os-muted">
-                              <span>{mem.timestamp.slice(0, 10)}</span>
-                              <span className={importanceColor(mem.importance)}>重要度 {mem.importance}</span>
+                        {data.related_memories.slice(0, 10).map((memory) => (
+                          <div key={memory.id} className="rounded-xl border border-os-border bg-white p-3">
+                            <p className="line-clamp-3 text-sm leading-6 text-os-text">{memory.content_preview}</p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-os-subtle">{formatDate(memory.timestamp)}</span>
+                              <span
+                                className={cn(
+                                  "font-mono text-xs",
+                                  importanceColor(memory.importance)
+                                    .replace("text-emerald-400", "text-os-success")
+                                    .replace("text-amber-400", "text-os-warning")
+                                    .replace("text-zinc-500", "text-os-subtle"),
+                                )}
+                              >
+                                重要度 {memory.importance}
+                              </span>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <EmptyState title="暂无相关记忆" description="后续写入更多上下文后会自动补齐。" className="min-h-[180px]" />
+                    )}
+                  </OsCard>
                 </>
               ) : (
-                <p className="text-xs text-os-muted text-center py-8">加载失败</p>
+                <EmptyState title="加载失败" description="实体详情暂时不可用，请稍后重试。" />
               )}
             </div>
-          </motion.div>
+          </motion.aside>
         </>
       )}
     </AnimatePresence>
   );
 }
 
-// ── BFS ─────────────────────────────────────────────────
+function buildVisData(graphData: GraphData): Data {
+  const groupColorMap: Record<string, string> = {};
+  const groups = [...new Set(graphData.nodes.map((node) => node.group).filter(Boolean))];
+  groups.forEach((group, index) => {
+    groupColorMap[group] = GROUP_COLORS[index % GROUP_COLORS.length];
+  });
 
-function bfsNeighbors(
-  nodeId: string,
-  adj: Map<string, string[]>,
-  depth: number,
-): Set<string> {
-  const visited = new Set<string>([nodeId]);
-  let frontier = [nodeId];
-  for (let d = 0; d < depth; d++) {
-    const next: string[] = [];
-    for (const id of frontier) {
-      for (const nb of adj.get(id) || []) {
-        if (!visited.has(nb)) { visited.add(nb); next.push(nb); }
-      }
-    }
-    frontier = next;
-    if (!frontier.length) break;
-  }
-  return visited;
+  const nodes = new DataSet<Node>(
+    graphData.nodes.map((node) => {
+      const color = nodeColor(node, groupColorMap);
+      return {
+        id: node.id,
+        label: node.label.length > 22 ? `${node.label.slice(0, 22)}...` : node.label,
+        title: `${node.label}\n${node.type} | 提及 ${node.memory_count} | 重要度 ${node.importance}`,
+        group: node.group || node.type,
+        value: (Math.max(node.importance, 3) + Math.min(node.memory_count, 10)) * NODE_SIZE_SCALE,
+        color: {
+          background: NODE_SOFT[node.type] || "rgba(124,140,248,0.14)",
+          border: color,
+          highlight: { background: "rgba(34,211,238,0.16)", border: "#22A8C2" },
+          hover: { background: "rgba(99,102,241,0.12)", border: color },
+        },
+        font: { color: "#334155", size: 10, face: "Inter, ui-sans-serif, system-ui" },
+        borderWidth: 1.4,
+        shape: node.type === "concept" ? "diamond" : node.type === "memory" ? "box" : "dot",
+        size: (10 + Math.min(node.memory_count * 1.8, 32)) * NODE_SIZE_SCALE,
+        shadow: { enabled: true, color: "rgba(15,23,42,0.08)", size: 8 },
+      };
+    }),
+  );
+
+  const edges = new DataSet<Edge>(
+    graphData.edges.map((edge) => ({
+      id: `${edge.source}__${edge.target}__${edge.relation}`,
+      from: edge.source,
+      to: edge.target,
+      label: edge.relation === "co_occurrence" ? "" : edge.relation.slice(0, 7),
+      title: `${edge.relation} | 权重 ${edge.weight}`,
+      value: edge.weight,
+      color: {
+        color: edge.relation === "co_occurrence" ? "rgba(148,163,184,0.24)" : "rgba(99,102,241,0.28)",
+        highlight: "#7C8CF8",
+        hover: "#7C8CF8",
+      },
+      width: Math.max(edge.weight * 0.5, 0.45),
+      smooth: { enabled: true, type: "continuous", roundness: 0.08 },
+      font: { color: "rgba(100,116,139,0.5)", size: 8, strokeWidth: 0 },
+      arrows: { to: { enabled: false } },
+    })),
+  );
+
+  return { nodes, edges };
 }
-
-// ═══════════════════════════════════════════
-// Main Page
-// ═══════════════════════════════════════════
 
 export default function GraphPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Network | null>(null);
   const graphDataRef = useRef<GraphData | null>(null);
-  const adjRef = useRef<Map<string, string[]>>(new Map());
   const [searchTerm, setSearchTerm] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
-  const [stats, setStats] = useState<GraphData["stats"] | null>(null);
-  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["graph", entityFilter],
-    queryFn: () => api.graph.get({
-      entity_type: entityFilter || undefined,
-      limit: 300,
-    }),
+    queryFn: () =>
+      api.graph.get({
+        entity_type: entityFilter || undefined,
+        limit: 300,
+      }),
     refetchInterval: 60000,
   });
 
-  // ── clearHighlight ──
-  const clearHighlight = useCallback(() => {
-    const net = networkRef.current;
-    if (!net) return;
-    setFocusNodeId(null);
-    const gd = graphDataRef.current;
-    if (!gd) return;
-
-    const groupColorMap: Record<string, string> = {};
-    let gi = 0;
-    const ugs = [...new Set(gd.nodes.map(n => n.group).filter(Boolean))];
-    for (const g of ugs) { groupColorMap[g] = GROUP_COLORS[gi % GROUP_COLORS.length]; gi++; }
-
-    networkData(net).nodes.update(gd.nodes.map(n => ({
-      id: n.id,
-      color: {
-        background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
-        border: "rgba(129,140,248,0.4)",
-        highlight: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
-        hover: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
-      },
-      borderWidth: 1,
-      font: { color: "#475569", size: 9, face: "Inter, sans-serif" },
-      shadow: false,
-    })));
-
-    networkData(net).edges.update(gd.edges.map(e => ({
-      id: `${e.source}__${e.target}__${e.relation}`,
-      color: {
-        color: e.relation === "co_occurrence" ? EDGE_COOCCUR : EDGE_SECONDARY,
-        highlight: "#A78BFA",
-        hover: "#A78BFA",
-      },
-      width: Math.max(e.weight * 0.55, 0.35),
-    })));
-  }, []);
-
-  // ── buildGraph ──
   const buildGraph = useCallback((graphData: GraphData) => {
     if (!containerRef.current) return;
-    const container = containerRef.current;
 
-    if (networkRef.current) { networkRef.current.destroy(); networkRef.current = null; }
+    networkRef.current?.destroy();
+    networkRef.current = null;
+    graphDataRef.current = graphData;
+    setSelectedNode(null);
+
     if (!graphData.nodes.length) return;
 
-    graphDataRef.current = graphData;
-
-    // adjacency
-    const adj = new Map<string, string[]>();
-    for (const e of graphData.edges) {
-      if (!adj.has(e.source)) adj.set(e.source, []);
-      if (!adj.has(e.target)) adj.set(e.target, []);
-      adj.get(e.source)!.push(e.target);
-      adj.get(e.target)!.push(e.source);
-    }
-    adjRef.current = adj;
-
-    // group colours
-    const groupColorMap: Record<string, string> = {};
-    let gi = 0;
-    const ugs = [...new Set(graphData.nodes.map(n => n.group).filter(Boolean))];
-    for (const g of ugs) { groupColorMap[g] = GROUP_COLORS[gi % GROUP_COLORS.length]; gi++; }
-
-    const nodes = new DataSet(graphData.nodes.map(n => ({
-      id: n.id,
-      label: n.label.length > 22 ? n.label.slice(0, 22) + "…" : n.label,
-      title: `<b>${n.label}</b><br/>${n.type} · 提及${n.memory_count} · 重要度${n.importance}`,
-      group: n.group || n.type,
-      value: (Math.max(n.importance, 3) + Math.min(n.memory_count, 10)) * NODE_SIZE_SCALE,
-      color: {
-        background: NODE_COLORS[n.type] || groupColorMap[n.group] || "#7F8CFF",
-        border: "rgba(129,140,248,0.4)",
-        highlight: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
-        hover: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
-      },
-      font: { color: "#475569", size: 9, face: "Inter, sans-serif" },
-      borderWidth: 1,
-      shape: n.type === "concept" ? "diamond" : n.type === "memory" ? "box" : "dot",
-      size: (9 + Math.min(n.memory_count * 2, 32)) * NODE_SIZE_SCALE,
-      shadow: { enabled: true, color: NODE_GLOW[n.type] || "rgba(127,140,255,0.2)", size: 8 },
-    })));
-
-    // ── Smooth continuous edges ──
-    const edges = new DataSet(graphData.edges.map((e, idx) => {
-      const weight = e.weight;
-      const isCooccur = e.relation === "co_occurrence";
-      return {
-        id: `${e.source}__${e.target}__${e.relation}`,
-        from: e.source,
-        to: e.target,
-        label: isCooccur ? "" : e.relation.slice(0, 6),
-        title: `${e.relation} · 权重 ${weight}`,
-        value: weight,
-        color: {
-          color: isCooccur ? EDGE_COOCCUR : EDGE_SECONDARY,
-          highlight: "#A78BFA",
-          hover: "#A78BFA",
-        },
-        width: Math.max(weight * 0.55, 0.35),
-        smooth: { enabled: true, type: "continuous", roundness: 0 },
-        font: { color: "rgba(100,116,139,0.45)", size: 7, strokeWidth: 0 },
-        arrows: { to: { enabled: false } },
-      };
-    }));
-
-    const network = new Network(container, { nodes, edges } as unknown as Data, {
+    const network = new Network(containerRef.current, buildVisData(graphData), {
+      autoResize: true,
       physics: {
         solver: "forceAtlas2Based",
         forceAtlas2Based: {
-          gravitationalConstant: -55,
-          centralGravity: 0.008,
-          springLength: 130,
+          gravitationalConstant: -50,
+          centralGravity: 0.009,
+          springLength: 132,
           springConstant: 0.06,
-          damping: 0.35,
+          damping: 0.36,
         },
-        stabilization: { iterations: 80, updateInterval: 25 },
+        stabilization: { iterations: 90, updateInterval: 25 },
       },
       interaction: {
         hover: true,
-        tooltipDelay: 180,
+        tooltipDelay: 160,
         zoomView: true,
         dragView: true,
         navigationButtons: false,
       },
       nodes: {
-        shape: "dot",
-        color: {
-          background: "rgba(129,140,248,0.1)",
-          border: "#818CF8",
-          highlight: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
-          hover: { background: "rgba(99,102,241,0.12)", border: "#22D3EE" },
-        },
-        font: { color: "#475569", face: "Inter, sans-serif" },
+        borderWidthSelected: 3,
         scaling: { min: 4 * NODE_SIZE_SCALE, max: 28 * NODE_SIZE_SCALE },
       },
       edges: {
-        color: {
-          color: "rgba(148,163,184,0.45)",
-          highlight: "#A78BFA",
-          hover: "#A78BFA",
-        },
-        smooth: { enabled: true, type: "continuous", roundness: 0 },
-        scaling: { min: 0.25, max: 6 },
+        smooth: { enabled: true, type: "continuous", roundness: 0.08 },
+        scaling: { min: 0.25, max: 5 },
+        selectionWidth: 1.8,
+        hoverWidth: 1.4,
       },
       layout: { improvedLayout: true },
     });
 
-    // ── Hover → 1-degree highlight ──
-    network.on("hoverNode", (params?: VisHoverParams) => {
-      // first reset all from any previous hover
-      clearHighlight();
-      const nodeId = params?.node;
-      if (!nodeId) return;
-      const gd = graphDataRef.current!;
-      const adjMap = adjRef.current;
-      const hl = bfsNeighbors(nodeId, adjMap, 1);
-
-      const hlEdgeIds = new Set<string>();
-      for (const e of graphData.edges) {
-        if (hl.has(e.source) && hl.has(e.target)) {
-          hlEdgeIds.add(`${e.source}__${e.target}__${e.relation}`);
-        }
-      }
-
-      networkData(network).nodes.update(gd.nodes.map(n => {
-        if (n.id === nodeId) return {
-          id: n.id,
-          color: {
-            background: HL_BG,
-            border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#22D3EE" },
-            hover: { background: "#22D3EE", border: HL_BORDER },
-          },
-          borderWidth: 2.5,
-          font: { color: "#475569", size: 11, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(99,102,241,0.30)", size: 16 },
-        };
-        if (hl.has(n.id)) return {
-          id: n.id,
-          color: {
-            background: HL_BG,
-            border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#22D3EE" },
-            hover: { background: "#22D3EE", border: HL_BORDER },
-          },
-          borderWidth: 2,
-          font: { color: "#475569", size: 10, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(99,102,241,0.22)", size: 10 },
-        };
-        return {
-          id: n.id,
-          color: {
-            background: DIM_NODE,
-            border: DIM_BORDER_NODE,
-            highlight: { background: DIM_NODE, border: DIM_BORDER_NODE },
-            hover: { background: DIM_NODE, border: DIM_BORDER_NODE },
-          },
-          borderWidth: 0.3,
-          font: { color: "rgba(148,163,184,0.35)", size: 8, face: "Inter, sans-serif" },
-          shadow: false,
-        };
-      }));
-
-      networkData(network).edges.update(graphData.edges.map(e => {
-        const eid = `${e.source}__${e.target}__${e.relation}`;
-        return hlEdgeIds.has(eid)
-          ? { id: eid, color: { color: HL_EDGE, highlight: "#A78BFA", hover: "#A78BFA" }, width: Math.max(e.weight * 0.9, 0.9) }
-          : { id: eid, color: { color: DIM_EDGE, highlight: DIM_EDGE, hover: DIM_EDGE }, width: Math.max(e.weight * 0.2, 0.15) };
-      }));
+    network.on("selectNode", (params) => {
+      const id = params.nodes[0] as string | undefined;
+      const node = graphData.nodes.find((item) => item.id === id) || null;
+      setSelectedNode(node);
+      if (node?.type === "entity") setSelectedEntity(node.label);
     });
 
-    network.on("blurNode", () => { clearHighlight(); });
-
-    // ── Click → focus with BFS-2 ──
-    network.on("click", (params?: VisClickParams) => {
-      clearHighlight();
-      if (!params) return;
-      if (params.nodes.length === 0) return;
-
-      const clickedId = params.nodes[0] as string;
-      const gd = graphDataRef.current!;
-      const adjMap = adjRef.current;
-      const hl = bfsNeighbors(clickedId, adjMap, 2);
-      setFocusNodeId(clickedId);
-
-      const clickedNode = gd.nodes.find(n => n.id === clickedId);
-      if (clickedNode?.type === "entity") setSelectedEntity(clickedNode.label);
-      else setSelectedEntity(null);
-
-      const hlEdgeIds = new Set<string>();
-      for (const e of graphData.edges) {
-        if (hl.has(e.source) && hl.has(e.target)) {
-          hlEdgeIds.add(`${e.source}__${e.target}__${e.relation}`);
-        }
-      }
-
-      networkData(network).nodes.update(gd.nodes.map(n => {
-        if (n.id === clickedId) return {
-          id: n.id,
-          color: {
-            background: HL_BG,
-            border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#22D3EE" },
-            hover: { background: "#22D3EE", border: HL_BORDER },
-          },
-          borderWidth: 3,
-          font: { color: "#475569", size: 12, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(99,102,241,0.34)", size: 20 },
-        };
-        if (hl.has(n.id)) return {
-          id: n.id,
-          color: {
-            background: HL_BG,
-            border: HL_BORDER,
-            highlight: { background: HL_BORDER, border: "#22D3EE" },
-            hover: { background: "#22D3EE", border: HL_BORDER },
-          },
-          borderWidth: 2.2,
-          font: { color: "#475569", size: 10, face: "Inter, sans-serif" },
-          shadow: { enabled: true, color: "rgba(99,102,241,0.25)", size: 12 },
-        };
-        return {
-          id: n.id,
-          color: {
-            background: DIM_NODE,
-            border: DIM_BORDER_NODE,
-            highlight: { background: DIM_NODE, border: DIM_BORDER_NODE },
-            hover: { background: DIM_NODE, border: DIM_BORDER_NODE },
-          },
-          borderWidth: 0.3,
-          font: { color: "rgba(148,163,184,0.35)", size: 8, face: "Inter, sans-serif" },
-          shadow: false,
-        };
-      }));
-
-      networkData(network).edges.update(graphData.edges.map(e => {
-        const eid = `${e.source}__${e.target}__${e.relation}`;
-        return hlEdgeIds.has(eid)
-          ? { id: eid, color: { color: HL_EDGE, highlight: "#A78BFA", hover: "#A78BFA" }, width: Math.max(e.weight * 1, 0.9) }
-          : { id: eid, color: { color: DIM_EDGE, highlight: DIM_EDGE, hover: DIM_EDGE }, width: Math.max(e.weight * 0.2, 0.15) };
-      }));
-    });
-
-    // Click empty → clear
-    network.on("click", (p?: VisClickParams) => {
-      if (p && p.nodes.length === 0 && p.edges.length === 0) clearHighlight();
+    network.on("deselectNode", () => {
+      setSelectedNode(null);
     });
 
     networkRef.current = network;
-    setStats(graphData.stats);
-  }, [clearHighlight]);
+  }, []);
 
-  useEffect(() => { if (data) buildGraph(data); }, [data, buildGraph]);
+  useEffect(() => {
+    if (data) buildGraph(data);
+  }, [data, buildGraph]);
 
   useEffect(() => {
     const onResize = () => networkRef.current?.redraw();
@@ -535,223 +361,242 @@ export default function GraphPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Esc 键关闭 focusNode 元数据侧边面板
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && focusNodeId) {
-        clearHighlight();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [focusNodeId, clearHighlight]);
+  useEffect(
+    () => () => {
+      networkRef.current?.destroy();
+      networkRef.current = null;
+    },
+    [],
+  );
 
-  useEffect(() => () => {
-    if (networkRef.current) { networkRef.current.destroy(); networkRef.current = null; }
-  }, []);
-
-  // ── Search ──
   const handleSearch = useCallback(() => {
-    if (!networkRef.current || !searchTerm.trim()) return;
-    const allNodes = networkData(networkRef.current).nodes.get();
-    const matchIds = allNodes
-      .filter((n) => (n.label || "").toLowerCase().includes(searchTerm.toLowerCase()) || (n.title || "").toLowerCase().includes(searchTerm.toLowerCase()))
-      .map((n) => n.id);
-    if (matchIds.length > 0) {
-      networkRef.current.selectNodes(matchIds, false);
-      networkRef.current.focus(matchIds[0], { scale: 1.5, animation: true });
-      setSelectedEntity(allNodes.find((n) => n.id === matchIds[0])?.label || null);
-    }
+    const graphData = graphDataRef.current;
+    const network = networkRef.current;
+    const query = searchTerm.trim().toLowerCase();
+    if (!graphData || !network || !query) return;
+
+    const matches = graphData.nodes.filter((node) => node.label.toLowerCase().includes(query));
+    if (!matches.length) return;
+
+    network.selectNodes(matches.map((node) => node.id), false);
+    network.focus(matches[0].id, { scale: 1.45, animation: { duration: 420, easingFunction: "easeInOutQuad" } });
+    setSelectedNode(matches[0]);
+    if (matches[0].type === "entity") setSelectedEntity(matches[0].label);
   }, [searchTerm]);
 
-  const zoomIn  = () => networkRef.current?.moveTo({ scale: (networkRef.current.getScale() || 1) * 1.3 });
-  const zoomOut = () => networkRef.current?.moveTo({ scale: (networkRef.current.getScale() || 1) * 0.7 });
-  const resetView = () => networkRef.current?.fit({ animation: { duration: 500, easingFunction: "easeInOutQuad" } });
+  const zoomIn = () => networkRef.current?.moveTo({ scale: (networkRef.current.getScale() || 1) * 1.25 });
+  const zoomOut = () => networkRef.current?.moveTo({ scale: (networkRef.current.getScale() || 1) * 0.8 });
+  const resetView = () => networkRef.current?.fit({ animation: { duration: 420, easingFunction: "easeInOutQuad" } });
+  const clearSelection = () => {
+    networkRef.current?.unselectAll();
+    setSelectedNode(null);
+  };
 
-  // mouse tracking for parallax
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
     if (!canvasWrapperRef.current) return;
-    const r = canvasWrapperRef.current.getBoundingClientRect();
-    setMousePos({ x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height });
+    const rect = canvasWrapperRef.current.getBoundingClientRect();
+    setMousePos({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height });
   }, []);
 
   const parallaxIntensity = ((mousePos.x - 0.5) * 2 + (mousePos.y - 0.5) * 2) * 0.5;
-
-  const entityTypeOptions = ["", "person", "tech", "org", "topic", "location"];
+  const stats = data?.stats;
+  const topEntityCounts = stats?.top_entities_count || [];
 
   return (
     <PageTransition>
-      <div className="p-6 space-y-3 max-w-[1440px] mx-auto h-[calc(100vh-4rem)] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between shrink-0">
-          <div>
-            <h1 className="text-lg font-semibold text-os-text-high tracking-tight">知识图谱</h1>
-            <p className="text-xs text-os-muted mt-0.5">
-              {stats ? `${stats.node_count} 节点 · ${stats.edge_count} 关系` : "加载中…"}
-            </p>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button onClick={zoomIn} className="p-1.5 rounded hover:bg-os-accent/10 text-os-muted hover:text-os-accent" title="放大">
-              <ZoomIn size={14} />
-            </button>
-            <button onClick={zoomOut} className="p-1.5 rounded hover:bg-os-accent/10 text-os-muted hover:text-os-accent" title="缩小">
-              <ZoomOut size={14} />
-            </button>
-            <button onClick={resetView} className="p-1.5 rounded hover:bg-os-accent/10 text-os-muted hover:text-os-accent" title="重置">
-              <RotateCcw size={14} />
-            </button>
-            {focusNodeId && (
-              <button onClick={clearHighlight} className="px-2.5 py-1 rounded text-2xs text-[#7BA5F7] bg-[#7BA5F7]/10 hover:bg-[#7BA5F7]/15 transition-colors">
-                取消聚焦
-              </button>
-            )}
-            <span className="w-px h-4 bg-os-border mx-0.5" />
-            <select
-              value={entityFilter}
-              onChange={(e) => setEntityFilter(e.target.value)}
-              className="h-7 px-2 rounded bg-os-elevated border border-os-border text-2xs text-os-text focus:outline-none focus:border-os-accent/40"
-            >
-              <option value="">全部实体类型</option>
-              {entityTypeOptions.filter(Boolean).map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <div className="relative">
-              <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-os-muted" />
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="搜索实体…"
-                className="w-36 h-7 pl-7 pr-2 bg-os-elevated border border-os-border rounded text-2xs text-os-text placeholder:text-os-muted focus:outline-none focus:border-os-accent/40"
-              />
-            </div>
-          </div>
-        </div>
+      <PageShell className="flex min-h-[calc(100vh-4rem)] flex-col !space-y-3 overflow-hidden">
+        <PageHeader
+          icon={GitGraph}
+          title="知识图谱"
+          subtitle={stats ? `${stats.node_count} 个节点 / ${stats.edge_count} 条关系。拖动画布探索实体、概念与记忆之间的连接。` : "正在加载图谱结构与实体关系。"}
+          actions={
+            <>
+              <StatusBadge status={isError ? "warning" : isLoading ? "info" : "ready"}>
+                {isError ? "图谱加载失败" : isLoading ? "同步中" : "图谱就绪"}
+              </StatusBadge>
+              <OsButton type="button" size="iconSm" variant="ghost" aria-label="放大图谱" onClick={zoomIn}>
+                <ZoomIn size={15} />
+              </OsButton>
+              <OsButton type="button" size="iconSm" variant="ghost" aria-label="缩小图谱" onClick={zoomOut}>
+                <ZoomOut size={15} />
+              </OsButton>
+              <OsButton type="button" size="iconSm" variant="ghost" aria-label="重置图谱视图" onClick={resetView}>
+                <RotateCcw size={15} />
+              </OsButton>
+            </>
+          }
+        />
 
-        {/* Stats */}
-        {stats && (
-          <div className="flex items-center gap-4 shrink-0 text-2xs text-os-muted">
-            <span className="flex items-center gap-1"><Brain size={11} className="text-[#7F8CFF]" />实体 {stats.entity_nodes || 0}</span>
-            <span className="flex items-center gap-1"><GitGraph size={11} className="text-[#4ADE80]" />概念 {stats.concept_nodes || 0}</span>
-            <span className="flex items-center gap-1"><Activity size={11} className="text-[#FACC15]" />关系 {stats.edge_count || 0}</span>
-            {stats.top_entities && stats.top_entities.length > 0 && (
-              <>
-                <span className="w-px h-3 bg-os-elevated" />
-                {stats.top_entities.slice(0, 5).map(name => (
-                  <button key={name} onClick={() => setSelectedEntity(name)}
-                    className="px-1.5 py-0.5 rounded bg-os-accent/10 text-os-accent hover:bg-os-accent/15 transition-colors">
-                    {name}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        )}
+        <Toolbar>
+          <select
+            value={entityFilter}
+            onChange={(e) => setEntityFilter(e.target.value)}
+            aria-label="筛选实体类型"
+            className="h-9 rounded-xl border border-os-border bg-white px-3 text-sm text-os-text-high outline-none focus:border-os-primary/35 focus:ring-2 focus:ring-os-primary/15"
+          >
+            {ENTITY_TYPE_OPTIONS.map((type) => (
+              <option key={type || "all"} value={type}>
+                {entityTypeLabel(type)}
+              </option>
+            ))}
+          </select>
 
-        {/* ── Canvas ── */}
+          <div className="relative min-w-0 flex-1 sm:max-w-xs">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-os-muted" />
+            <OsInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="搜索实体..."
+              className="w-full pl-9"
+              aria-label="搜索实体"
+            />
+          </div>
+
+          <OsButton type="button" size="md" variant="secondary" onClick={handleSearch}>
+            <Search size={14} />
+            搜索
+          </OsButton>
+
+          {selectedNode && (
+            <OsButton type="button" size="md" variant="soft" onClick={clearSelection}>
+              <X size={14} />
+              取消聚焦
+            </OsButton>
+          )}
+
+          <div className="ml-auto hidden items-center gap-2 lg:flex">
+            <OsBadge variant="primary">
+              <Brain size={12} />
+              实体 {stats?.entity_nodes || 0}
+            </OsBadge>
+            <OsBadge variant="success">
+              <GitGraph size={12} />
+              概念 {stats?.concept_nodes || 0}
+            </OsBadge>
+            <OsBadge variant="warning">
+              <Activity size={12} />
+              关系 {stats?.edge_count || 0}
+            </OsBadge>
+          </div>
+        </Toolbar>
+
         <div
           ref={canvasWrapperRef}
           onMouseMove={handleCanvasMouseMove}
-          className="flex-1 min-h-0 relative rounded-lg overflow-hidden border border-os-border bg-os-surface shadow-os-sm"
+          className="relative min-h-[420px] flex-1 overflow-hidden rounded-2xl border border-os-border bg-white shadow-os-elevated"
         >
-          <KnowledgeGraphBackground intensity={parallaxIntensity} focusActive={!!focusNodeId} />
+          <KnowledgeGraphBackground intensity={parallaxIntensity} focusActive={!!selectedNode} />
 
           {isLoading ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center">
-              <div className="text-center space-y-3">
-                <GitGraph size={48} className="text-os-muted mx-auto animate-pulse" />
-                <p className="text-xs text-os-muted">加载图谱数据…</p>
-              </div>
+              <EmptyState icon={GitGraph} title="正在加载图谱" description="系统正在同步节点、关系与实体统计。" className="min-h-[260px] bg-white/80" />
+            </div>
+          ) : isError ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <EmptyState
+                icon={GitGraph}
+                title="图谱加载失败"
+                description="暂时无法读取节点与关系，请检查网络连接后重试。"
+                className="min-h-[260px] bg-white/80"
+              />
             </div>
           ) : !data || data.nodes.length === 0 ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <GitGraph size={48} className="text-os-muted mx-auto opacity-20" />
-                <p className="text-xs text-os-muted">暂无图谱数据</p>
-                <p className="text-2xs text-os-muted">开始记录带有实体的记忆后，图谱将自动生成</p>
-              </div>
+              <EmptyState
+                icon={GitGraph}
+                title="暂无图谱数据"
+                description="开始记录带有实体的记忆后，图谱会自动生成并显示关系网络。"
+                className="min-h-[260px] bg-white/80"
+              />
             </div>
           ) : null}
 
-          {/* ── HUD 浮动工具栏（右上角，毛玻璃效果） ── */}
-          <div className="absolute top-3 right-3 z-20 flex flex-col gap-1.5 p-1.5 rounded-xl border border-os-border/40 bg-os-elevated/80 backdrop-blur-md shadow-os-md">
-            <button onClick={zoomIn} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="放大">
+          <div className="absolute right-3 top-3 z-20 flex flex-col gap-1.5 rounded-2xl border border-os-border bg-white/92 p-1.5 shadow-os-floating backdrop-blur">
+            <OsButton type="button" size="iconSm" variant="ghost" aria-label="放大图谱" onClick={zoomIn}>
               <ZoomIn size={15} />
-            </button>
-            <button onClick={zoomOut} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="缩小">
+            </OsButton>
+            <OsButton type="button" size="iconSm" variant="ghost" aria-label="缩小图谱" onClick={zoomOut}>
               <ZoomOut size={15} />
-            </button>
-            <button onClick={resetView} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="适应屏幕">
+            </OsButton>
+            <OsButton type="button" size="iconSm" variant="ghost" aria-label="适应屏幕" onClick={resetView}>
               <Maximize size={15} />
-            </button>
-            <div className="h-px bg-os-border/40 mx-1" />
-            <button onClick={resetView} className="w-8 h-8 rounded-lg flex items-center justify-center text-os-subtle hover:text-os-accent hover:bg-os-accent/10 transition-colors" title="重新布局">
+            </OsButton>
+            <div className="mx-1 h-px bg-os-border" />
+            <OsButton type="button" size="iconSm" variant="ghost" aria-label="重新布局" onClick={resetView}>
               <NetworkIcon size={15} />
-            </button>
+            </OsButton>
           </div>
 
-          <div
-            ref={containerRef}
-            className="w-full h-full relative z-[2]"
-            style={{ background: "transparent", minHeight: 400 }}
-          />
+          <AnimatePresence>
+            {selectedNode && (
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                transition={{ duration: 0.18 }}
+                className="absolute left-3 top-3 z-20 w-[min(20rem,calc(100%-5.5rem))]"
+              >
+                <OsCard variant="inspector" padding="md">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <OsBadge variant={entityVariant(selectedNode.type)}>{entityTypeLabel(selectedNode.type)}</OsBadge>
+                      <h2 className="mt-2 truncate text-sm font-semibold text-os-text-high">{selectedNode.label}</h2>
+                    </div>
+                    <OsButton type="button" size="iconSm" variant="ghost" aria-label="关闭节点检查器" onClick={clearSelection}>
+                      <X size={14} />
+                    </OsButton>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-os-subtle">重要度</span>
+                      <span className="font-mono font-semibold text-os-text-high">{selectedNode.importance ?? "暂无"}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-os-subtle">关联记忆</span>
+                      <span className="font-mono font-semibold text-os-text-high">{selectedNode.memory_count ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-os-subtle">分组</span>
+                      <span className="max-w-[9rem] truncate font-mono text-xs text-os-text-high">{selectedNode.group || "默认"}</span>
+                    </div>
+                  </div>
+                </OsCard>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {stats?.top_entities && stats.top_entities.length > 0 && (
+            <div className="absolute bottom-3 left-3 z-20 hidden w-72 rounded-2xl border border-os-border bg-white/92 p-3 shadow-os-floating backdrop-blur lg:block">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-os-subtle">热门实体</p>
+                <OsBadge variant="muted">{stats.top_entities.length}</OsBadge>
+              </div>
+              <div className="space-y-1">
+                {stats.top_entities.slice(0, 5).map((name, index) => {
+                  const max = Math.max(...topEntityCounts, 1);
+                  const value = topEntityCounts[index] || 0;
+                  return (
+                    <RankRow
+                      key={name}
+                      rank={index + 1}
+                      label={name}
+                      value={value ? `${value}` : undefined}
+                      percent={value ? Math.round((value / max) * 100) : undefined}
+                      onClick={() => setSelectedEntity(name)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div ref={containerRef} className="relative z-[2] h-full min-h-[420px] w-full" style={{ background: "transparent" }} />
         </div>
 
         <EntityDrawer entityName={selectedEntity} onClose={() => setSelectedEntity(null)} />
-
-        {/* ── focusNode 元数据侧边面板（左侧滑出） ── */}
-        <AnimatePresence>
-          {focusNodeId && graphDataRef.current && (() => {
-            const node = graphDataRef.current.nodes.find(n => n.id === focusNodeId);
-            if (!node) return null;
-            const nodeColor = NODE_COLORS[node.type] || "#818CF8";
-            return (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="absolute top-3 left-3 z-20 w-64 rounded-xl border border-os-border/50 bg-os-surface/90 backdrop-blur-md shadow-os-lg overflow-hidden"
-              >
-                {/* 顶部色条 — 节点类型标识 */}
-                <div className="h-0.5" style={{ background: nodeColor }} />
-                <div className="p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0">
-                      <p className="text-2xs text-os-muted uppercase tracking-wider">{node.type}</p>
-                      <p className="text-sm font-medium text-os-text-high truncate">{node.label}</p>
-                    </div>
-                    <button
-                      onClick={clearHighlight}
-                      className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-os-muted hover:text-os-accent-high hover:bg-os-elevated transition-colors"
-                    >
-                      <X size={13} />
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xs text-os-muted">重要性</span>
-                      <span className="text-xs font-mono font-medium text-os-text-high">{node.importance ?? "N/A"}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xs text-os-muted">关联记忆</span>
-                      <span className="text-xs font-mono font-medium text-os-text-high">{node.memory_count ?? 0}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xs text-os-muted">分组</span>
-                      <span className="text-xs font-mono font-medium text-os-text-high">{node.group ?? "default"}</span>
-                    </div>
-                  </div>
-                  {/* 节点 ID（截断显示） */}
-                  <div className="pt-2 border-t border-os-border/30">
-                    <p className="text-2xs text-os-muted uppercase tracking-wider mb-1">Node ID</p>
-                    <p className="text-2xs font-mono text-os-subtle truncate">{node.id}</p>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })()}
-        </AnimatePresence>
-      </div>
+      </PageShell>
     </PageTransition>
   );
 }

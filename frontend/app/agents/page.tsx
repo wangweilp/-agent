@@ -42,7 +42,7 @@ function StatCard({
     <div className="os-card p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs text-os-muted">{label}</p>
+          <p className="text-xs text-os-subtle">{label}</p>
           <p className="mt-2 text-2xl font-semibold text-os-text-high">{value}</p>
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-md bg-os-elevated text-os-accent">
@@ -125,6 +125,8 @@ export default function InternalAgentCenterPage() {
     });
   }, [agents, filter, query]);
 
+  const hasActiveFilters = Boolean(query.trim() || tagFilter || filter !== "all");
+
   const stats = useMemo(() => {
     const enabled = agents.filter((agent) => agent.enabled).length;
     const totalUsage = agents.reduce((sum, agent) => sum + agent.usage_count, 0);
@@ -173,11 +175,11 @@ export default function InternalAgentCenterPage() {
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-os-border bg-os-surface px-3 py-1 text-xs text-os-subtle">
             <Bot size={14} className="text-os-accent" />
-            企业内部 Agent 能力目录
+            企业内部智能体（Agent）能力目录
           </div>
           <h1 className="text-3xl font-semibold tracking-normal text-os-text-high">内部智能体中心</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-os-subtle">
-            企业内部 Agent 管理中心。以卡片方式浏览、筛选和执行 Agent，所有数据通过后端 Agent API 获取。
+            企业内部智能体管理中心。以卡片方式浏览、筛选和执行智能体，所有数据通过后端 Agent API 获取。
           </p>
         </div>
 
@@ -222,7 +224,7 @@ export default function InternalAgentCenterPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="搜索名称、描述、标签或 ID"
-                className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-muted focus:border-os-accent"
+                className="h-10 w-full rounded-md border border-os-border bg-os-elevated pl-9 pr-3 text-sm text-os-text-high outline-none transition-colors placeholder:text-os-subtle focus:border-os-accent"
               />
             </label>
 
@@ -267,12 +269,12 @@ export default function InternalAgentCenterPage() {
       </section>
 
       {error && (
-        <div className="mb-6 rounded-md border border-red-400/20 bg-red-400/10 p-4 text-sm leading-6 text-red-200">
+        <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
           {error}
         </div>
       )}
 
-      {loading ? (
+      {error ? null : loading ? (
         <LoadingGrid />
       ) : filteredAgents.length > 0 ? (
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -290,9 +292,13 @@ export default function InternalAgentCenterPage() {
       ) : (
         <section className="os-card flex min-h-56 flex-col items-center justify-center px-4 py-10 text-center">
           <Bot size={28} className="text-os-muted" />
-          <h2 className="mt-3 text-base font-semibold text-os-text-high">没有匹配的智能体</h2>
+          <h2 className="mt-3 text-base font-semibold text-os-text-high">
+            {hasActiveFilters ? "没有匹配的智能体" : "暂无智能体"}
+          </h2>
           <p className="mt-1 max-w-md text-sm leading-6 text-os-subtle">
-            调整搜索词、状态或标签筛选后再试。
+            {hasActiveFilters
+              ? "调整搜索词、状态或标签筛选后再试。"
+              : "当前目录尚未配置可用智能体。"}
           </p>
         </section>
       )}

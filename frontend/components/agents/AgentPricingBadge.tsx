@@ -9,10 +9,10 @@ interface AgentPricingBadgeProps {
 }
 
 const PRICING_CONFIG: Record<string, { label: string; icon: typeof BadgeCheck; color: string }> = {
-  free: { label: "免费", icon: BadgeCheck, color: "bg-emerald-400/10 text-emerald-300 border-emerald-400/20" },
-  per_use: { label: "按次计费", icon: Coins, color: "bg-amber-400/10 text-amber-300 border-amber-400/20" },
-  per_seat: { label: "按人计费", icon: DollarSign, color: "bg-violet-400/10 text-violet-300 border-violet-400/20" },
-  subscription: { label: "订阅", icon: Repeat, color: "bg-blue-400/10 text-blue-300 border-blue-400/20" },
+  free: { label: "免费", icon: BadgeCheck, color: "bg-emerald-400/10 text-emerald-700 border-emerald-400/20" },
+  per_use: { label: "按次计费", icon: Coins, color: "bg-amber-400/10 text-amber-800 border-amber-400/20" },
+  per_seat: { label: "按人计费", icon: DollarSign, color: "bg-violet-400/10 text-violet-700 border-violet-400/20" },
+  subscription: { label: "订阅", icon: Repeat, color: "bg-blue-400/10 text-blue-700 border-blue-400/20" },
 };
 
 export function AgentPricingBadge({ model, className }: AgentPricingBadgeProps) {
@@ -20,9 +20,9 @@ export function AgentPricingBadge({ model, className }: AgentPricingBadgeProps) 
   const Icon = config.icon;
 
   return (
-    <span className={cn("os-badge inline-flex items-center gap-1 border", config.color, className)}>
-      <Icon size={12} />
-      {config.label}
+    <span className={cn("os-badge inline-flex max-w-full items-center gap-1 border", config.color, className)}>
+      <Icon size={12} className="shrink-0" />
+      <span className="min-w-0 break-all">{config.label}</span>
     </span>
   );
 }

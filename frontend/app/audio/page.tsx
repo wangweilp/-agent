@@ -110,15 +110,15 @@ export default function AudioPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="os-card p-4 border-emerald-400/20 bg-emerald-400/5"
+              className="os-card border-emerald-200 bg-emerald-50 p-4"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-emerald-400">
+                <span className="text-xs font-medium text-emerald-700">
                   上传完成 — {uploadResults.total_tasks_enqueued} 个记忆任务已入队
                 </span>
                 <button
                   onClick={() => setUploadResults(null)}
-                  className="text-2xs text-os-muted hover:text-os-text"
+                  className="text-2xs text-os-subtle hover:text-os-text"
                 >
                   关闭
                 </button>
@@ -131,13 +131,13 @@ export default function AudioPage() {
                       <p className="text-os-text-high font-medium truncate">{item.filename}</p>
                       <p className="text-os-subtle">{item.analysis.summary}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-os-muted">{item.analysis.topic}</span>
-                        <span className="text-os-muted">|</span>
-                        <span className="text-os-muted">{item.analysis.sentiment}</span>
+                        <span className="text-os-subtle">{item.analysis.topic}</span>
+                        <span className="text-os-subtle">|</span>
+                        <span className="text-os-subtle">{item.analysis.sentiment}</span>
                         {item.analysis.duration_seconds > 0 && (
                           <>
-                            <span className="text-os-muted">|</span>
-                            <span className="text-os-muted">{Math.round(item.analysis.duration_seconds)}s</span>
+                            <span className="text-os-subtle">|</span>
+                            <span className="text-os-subtle">{Math.round(item.analysis.duration_seconds)}s</span>
                           </>
                         )}
                       </div>
@@ -157,7 +157,7 @@ export default function AudioPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="搜索音频记忆..."
-              className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-muted focus:outline-none focus:border-os-accent"
+              className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-xs text-os-text-high placeholder:text-os-subtle focus:outline-none focus:border-os-accent"
             />
           </div>
         </div>
@@ -168,10 +168,14 @@ export default function AudioPage() {
             {Array.from({ length: 4 }).map((_, i) => (<CardSkeleton key={i} />))}
           </div>
         ) : !memories || memories.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-os-muted">
-            <Mic size={48} className="mb-4 opacity-30" />
-            <p className="text-sm">暂无音频记忆</p>
-            <p className="text-2xs mt-1">上传音频文件开始记录</p>
+          <div className="flex flex-col items-center justify-center py-24">
+            <Mic size={48} className="mb-4 text-slate-500" />
+            <p className="text-sm text-os-text-high">
+              {query.trim() ? "未找到匹配的音频记忆" : "暂无音频记忆"}
+            </p>
+            <p className="mt-1 text-2xs text-os-subtle">
+              {query.trim() ? "请尝试调整搜索关键词" : "上传音频文件开始记录"}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -183,21 +187,21 @@ export default function AudioPage() {
                 transition={{ delay: i * 0.03 }}
                 className={cn(
                   "os-card p-4 os-card-hover transition-colors",
-                  mem.status === "archived" && "opacity-60"
+                  mem.status === "archived" && "bg-os-surface-muted"
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   {/* Icon */}
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                    mem.memory_type === "reflect" ? "bg-amber-400/10" :
-                    mem.memory_type === "semantic" ? "bg-emerald-400/10" :
-                    "bg-indigo-400/10"
+                    mem.memory_type === "reflect" ? "bg-amber-50" :
+                    mem.memory_type === "semantic" ? "bg-emerald-50" :
+                    "bg-indigo-50"
                   )}>
                     <Music size={14} className={cn(
-                      mem.memory_type === "reflect" ? "text-amber-400" :
-                      mem.memory_type === "semantic" ? "text-emerald-400" :
-                      "text-indigo-400"
+                      mem.memory_type === "reflect" ? "text-amber-700" :
+                      mem.memory_type === "semantic" ? "text-emerald-700" :
+                      "text-indigo-700"
                     )} />
                   </div>
 
@@ -208,7 +212,7 @@ export default function AudioPage() {
                         {typeLabel[mem.memory_type] || mem.memory_type}
                       </span>
                       {mem.status !== "active" && (
-                        <span className="text-2xs px-1.5 py-0.5 rounded bg-amber-400/10 text-amber-400">
+                        <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-2xs text-amber-800">
                           {statusLabel[mem.status] || mem.status}
                         </span>
                       )}
@@ -221,7 +225,7 @@ export default function AudioPage() {
                     {mem.entities.length > 0 && (
                       <div className="flex gap-1 mt-1.5 flex-wrap">
                         {mem.entities.slice(0, 5).map((e) => (
-                          <span key={e} className="text-2xs px-1 py-0.5 rounded bg-os-elevated text-os-muted">
+                          <span key={e} className="rounded bg-os-elevated px-1 py-0.5 text-2xs text-os-subtle">
                             {e}
                           </span>
                         ))}
@@ -229,7 +233,7 @@ export default function AudioPage() {
                     )}
 
                     {/* Footer */}
-                    <div className="flex items-center gap-3 mt-2 text-2xs text-os-muted">
+                    <div className="mt-2 flex items-center gap-3 text-2xs text-os-subtle">
                       <span className="flex items-center gap-1">
                         <Clock size={10} />{formatDate(mem.timestamp)}
                       </span>
@@ -249,7 +253,7 @@ export default function AudioPage() {
                         <button
                           onClick={() => archiveMutation.mutate(mem.id)}
                           disabled={archiveMutation.isPending}
-                          className="p-1.5 rounded hover:bg-os-elevated text-os-muted hover:text-amber-400 transition-colors"
+                          className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-amber-700"
                           title="归档"
                         >
                           <Archive size={13} />
@@ -257,7 +261,7 @@ export default function AudioPage() {
                         <button
                           onClick={() => deleteMutation.mutate(mem.id)}
                           disabled={deleteMutation.isPending}
-                          className="p-1.5 rounded hover:bg-os-elevated text-os-muted hover:text-red-400 transition-colors"
+                          className="p-1.5 rounded text-os-muted transition-colors hover:bg-os-elevated hover:text-red-700"
                           title="删除"
                         >
                           <Trash2 size={13} />

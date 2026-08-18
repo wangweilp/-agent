@@ -78,26 +78,26 @@ export default function ToolsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-os-text-high tracking-tight">工具中心</h1>
-            <p className="text-xs text-os-subtle mt-0.5">Tool Calling 管理与监控 — 权限分级、调用统计、性能指标</p>
+            <p className="text-xs text-os-subtle mt-0.5">工具调用（Tool Calling）管理与监控 — 权限分级、调用统计、性能指标</p>
           </div>
-          <div className="flex items-center gap-2 text-2xs text-os-muted">
+          <div className="flex items-center gap-2 text-2xs text-os-subtle">
             <Wrench size={12} />
             {defaultTools.length} 个工具
           </div>
         </div>
 
         {/* Search & Filters */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-os-muted" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="搜索工具..."
-              className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-sm text-os-text-high placeholder-os-muted outline-none focus:border-os-accent/50 transition-colors"
+              className="w-full h-9 pl-9 pr-4 bg-os-surface border border-os-border rounded-md text-sm text-os-text-high placeholder:text-os-subtle outline-none focus:border-os-accent/50 transition-colors"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto">
             {categories.map((c) => (
               <button
                 key={c}

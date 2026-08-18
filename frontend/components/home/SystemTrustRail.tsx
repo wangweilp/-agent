@@ -7,11 +7,11 @@ type TrustItem = {
 };
 
 const TRUST_ITEMS: TrustItem[] = [
-  { label: "Runtime", value: "Ready", dot: "bg-os-success" },
-  { label: "Kernel", value: "Separation", dot: "bg-os-accent" },
-  { label: "Execution", value: "Rootless", dot: "bg-os-data-cyan" },
-  { label: "Memory", value: "3 Layers", dot: "bg-os-memory-violet" },
-  { label: "Trace", value: "Full Chain", dot: "bg-os-success" },
+  { label: "运行时", value: "就绪", dot: "bg-os-success" },
+  { label: "内核", value: "分离", dot: "bg-os-accent" },
+  { label: "执行", value: "Rootless", dot: "bg-os-data-cyan" },
+  { label: "记忆", value: "三层", dot: "bg-os-memory-violet" },
+  { label: "链路", value: "全链路", dot: "bg-os-success" },
 ];
 
 export function SystemTrustRail({ className }: { className?: string }) {
@@ -35,7 +35,7 @@ export function SystemTrustRail({ className }: { className?: string }) {
               index === TRUST_ITEMS.length - 1 && "col-span-2 sm:col-span-1",
             )}
           >
-            <p className="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.08em] text-os-muted">
+            <p className="truncate text-[11px] font-medium uppercase leading-4 tracking-[0.08em] text-os-subtle">
               {item.label}
             </p>
             <p className="mt-1 flex min-w-0 items-center gap-2 text-[13px] font-semibold leading-5 text-os-text-high sm:text-sm">

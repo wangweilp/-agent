@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Skeleton } from "@/components/animations/skeleton";
 import { EmptyState, OsBadge } from "@/components/ui/os";
-import { cn, importanceColor } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { RecentMemoryItem } from "@/types";
 
 interface RecentMemoriesProps {
@@ -33,6 +33,12 @@ const memoryTypeDot: Record<string, string> = {
   procedural: "bg-os-warning",
   reflect: "bg-os-info",
 };
+
+function importanceTextTone(score: number): string {
+  if (score >= 8) return "text-emerald-700";
+  if (score >= 6) return "text-amber-800";
+  return "text-zinc-700";
+}
 
 export function RecentMemories({ memories, isLoading }: RecentMemoriesProps) {
   if (isLoading) return <Skeleton className="h-72 rounded-2xl" />;
@@ -75,7 +81,7 @@ export function RecentMemories({ memories, isLoading }: RecentMemoriesProps) {
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm leading-6 text-os-text-high">{mem.content_preview}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-xs text-os-muted">
+                    <span className="inline-flex items-center gap-1 text-xs text-os-subtle">
                       <Clock size={12} />
                       {formatDistanceToNow(new Date(mem.timestamp), { addSuffix: true, locale: zhCN })}
                     </span>
@@ -91,10 +97,10 @@ export function RecentMemories({ memories, isLoading }: RecentMemoriesProps) {
                 </div>
 
                 <div className="shrink-0 text-right">
-                  <span className={cn("font-mono text-xs font-semibold", importanceColor(mem.importance))}>
+                  <span className={cn("font-mono text-xs font-semibold", importanceTextTone(mem.importance))}>
                     {mem.importance}
                   </span>
-                  <p className="mt-0.5 text-[10px] uppercase text-os-muted">imp</p>
+                  <p className="mt-0.5 text-[10px] uppercase text-os-subtle">重要度</p>
                 </div>
               </div>
             </motion.div>

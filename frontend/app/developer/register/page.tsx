@@ -53,17 +53,17 @@ export default function RegisterPage() {
       <Link href="/developer" className="mb-4 inline-flex items-center gap-1.5 text-xs text-os-subtle hover:text-os-text-high"><ArrowLeft size={14}/>返回</Link>
       <h1 className="text-2xl font-semibold text-os-text-high mb-6">注册开发者账号</h1>
 
-      {error && <div className="mb-4 rounded-md border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-200">{error}</div>}
+      {error && <div className="mb-4 rounded-md border border-os-danger/20 bg-os-danger-soft p-3 text-sm text-os-danger">{error}</div>}
 
       <form onSubmit={handleSubmit} className="os-card p-4 space-y-4">
-        <Field label="Display Name *" value={displayName} onChange={setDisplayName} placeholder="你的开发者展示名" />
-        <Field label="Organization Name" value={orgName} onChange={setOrgName} placeholder="可选" />
-        <Field label="Website" value={website} onChange={setWebsite} placeholder="https://..." />
-        <Field label="Contact Email *" value={contactEmail} onChange={setContactEmail} placeholder="dev@example.com" type="email" />
+        <Field label="显示名称 *" value={displayName} onChange={setDisplayName} placeholder="你的开发者展示名" />
+        <Field label="组织名称" value={orgName} onChange={setOrgName} placeholder="可选" />
+        <Field label="网站" value={website} onChange={setWebsite} placeholder="https://..." />
+        <Field label="联系邮箱 *" value={contactEmail} onChange={setContactEmail} placeholder="dev@example.com" type="email" />
         <div>
-          <label className="mb-1 block text-xs font-medium text-os-subtle">Metadata (JSON, optional)</label>
+          <label className="mb-1 block text-xs font-medium text-os-subtle">元数据（JSON，可选）</label>
           <textarea rows={3} value={metaText} onChange={e => setMetaText(e.target.value)} spellCheck={false}
-            className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent"
+            className="w-full rounded-md border border-os-border bg-os-elevated px-3 py-2 font-mono text-xs text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent"
             placeholder='{"plan": "free"}' />
         </div>
         <button type="submit" disabled={submitting || !displayName || !contactEmail}
@@ -79,6 +79,6 @@ function Field({ label, value, onChange, placeholder, type = "text" }: { label: 
   return <div>
     <label className="mb-1 block text-xs font-medium text-os-subtle">{label}</label>
     <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className="h-10 w-full rounded-md border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-muted focus:border-os-accent" />
+      className="h-10 w-full rounded-md border border-os-border bg-os-elevated px-3 text-sm text-os-text-high outline-none placeholder:text-os-subtle focus:border-os-accent" />
   </div>;
 }

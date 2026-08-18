@@ -23,15 +23,21 @@ interface RedTeamResultItem {
 }
 
 const RED_TEAM_CATEGORIES = [
-  { key: "artifact_escape_tests", label: "Artifact Escape", desc: "工件逃逸测试" },
-  { key: "network_ssrf_tests", label: "Network SSRF", desc: "网络 SSRF 防护" },
-  { key: "package_supply_chain_tests", label: "Package Supply Chain", desc: "包供应链安全" },
-  { key: "kill_switch_abuse_tests", label: "Kill Switch Abuse", desc: "Kill 开关滥用" },
-  { key: "container_escape_tests", label: "Container Escape", desc: "容器逃逸" },
-  { key: "policy_fail_closed_tests", label: "Policy Fail-Closed", desc: "策略故障关闭" },
-  { key: "api_abuse_tests", label: "API Abuse", desc: "API 滥用" },
-  { key: "worker_queue_abuse_tests", label: "Worker/Queue Abuse", desc: "Worker 队列滥用" },
+  { key: "artifact_escape_tests", label: "工件逃逸", desc: "工件逃逸测试" },
+  { key: "network_ssrf_tests", label: "网络 SSRF", desc: "网络 SSRF 防护" },
+  { key: "package_supply_chain_tests", label: "软件包供应链", desc: "软件包供应链安全" },
+  { key: "kill_switch_abuse_tests", label: "终止开关滥用", desc: "终止开关滥用测试" },
+  { key: "container_escape_tests", label: "容器逃逸", desc: "容器逃逸测试" },
+  { key: "policy_fail_closed_tests", label: "策略故障关闭", desc: "策略故障关闭测试" },
+  { key: "api_abuse_tests", label: "API 滥用", desc: "API 滥用测试" },
+  { key: "worker_queue_abuse_tests", label: "工作进程/队列滥用", desc: "工作进程与队列滥用测试" },
 ] as const;
+
+const RESULT_STATUS_LABELS: Record<string, string> = {
+  passed: "已通过",
+  pending: "待处理",
+  failed: "未通过",
+};
 
 export function RedTeamResults({ governance }: Props) {
   const redTeamModule = governance?.modules.red_team_result;
@@ -52,28 +58,28 @@ export function RedTeamResults({ governance }: Props) {
       {/* ── Summary ── */}
       <div className={layout.grid.fourMd}>
         <SummaryTile
-          label="Total Tests"
+          label="测试总数"
           value={results.length}
           icon={FlaskConical}
           accent="text-os-accent"
         />
         <SummaryTile
-          label="Passed"
+          label="已通过"
           value={passedCount}
           icon={CheckCircle2}
-          accent="text-emerald-400"
+          accent="text-emerald-700"
         />
         <SummaryTile
-          label="Pending"
+          label="待处理"
           value={pendingCount}
           icon={AlertTriangle}
-          accent="text-amber-400"
+          accent="text-amber-700"
         />
         <SummaryTile
-          label="Failed"
+          label="未通过"
           value={failedCount}
           icon={XCircle}
-          accent="text-rose-400"
+          accent="text-rose-700"
         />
       </div>
 
@@ -81,16 +87,16 @@ export function RedTeamResults({ governance }: Props) {
       <div className="os-card">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-os-border">
           <div className="flex items-center gap-2">
-            <FlaskConical size={13} className="text-violet-400" />
-            <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Red-Team Test Results</h3>
+            <FlaskConical size={13} className="text-violet-700" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-os-text-high">红队测试结果</h3>
           </div>
           <span className={cn(
             "text-2xs px-2 py-0.5 rounded-full font-mono",
-            failedCount > 0 ? "bg-rose-400/10 text-rose-300"
-            : pendingCount > 0 ? "bg-amber-400/10 text-amber-300"
-            : "bg-emerald-400/10 text-emerald-300"
+            failedCount > 0 ? "bg-rose-400/10 text-rose-700"
+            : pendingCount > 0 ? "bg-amber-400/10 text-amber-700"
+            : "bg-emerald-400/10 text-emerald-700"
           )}>
-            {failedCount > 0 ? "FAILURES DETECTED" : pendingCount > 0 ? "PARTIAL" : "ALL PASSED"}
+            {failedCount > 0 ? "检测到失败" : pendingCount > 0 ? "部分完成" : "全部通过"}
           </span>
         </div>
         <div className="divide-y divide-os-border">
@@ -110,20 +116,20 @@ export function RedTeamResults({ governance }: Props) {
                   : status === "pending" ? "bg-amber-400/10"
                   : "bg-rose-400/10"
                 )}>
-                  {status === "passed" ? <ShieldCheck size={14} className="text-emerald-400" />
-                  : status === "pending" ? <AlertTriangle size={14} className="text-amber-400" />
-                  : <ShieldX size={14} className="text-rose-400" />}
+                  {status === "passed" ? <ShieldCheck size={14} className="text-emerald-700" />
+                  : status === "pending" ? <AlertTriangle size={14} className="text-amber-700" />
+                  : <ShieldX size={14} className="text-rose-700" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-os-text-high">{String(r.name || "Unknown Test")}</span>
+                    <span className="text-xs font-medium text-os-text-high">{String(r.name || "未知测试")}</span>
                     <span className={cn(
                       "text-2xs px-1.5 py-0.5 rounded font-mono ml-auto",
-                      status === "passed" ? "bg-emerald-400/10 text-emerald-300"
-                      : status === "pending" ? "bg-amber-400/10 text-amber-300"
-                      : "bg-rose-400/10 text-rose-300"
+                      status === "passed" ? "bg-emerald-400/10 text-emerald-700"
+                      : status === "pending" ? "bg-amber-400/10 text-amber-700"
+                      : "bg-rose-400/10 text-rose-700"
                     )}>
-                      {String(r.status).toUpperCase()}
+                      {RESULT_STATUS_LABELS[status] || String(r.status)}
                     </span>
                   </div>
                   {r.evidence && (
@@ -141,8 +147,8 @@ export function RedTeamResults({ governance }: Props) {
         <div className="os-card">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-os-border">
             <Activity size={12} className="text-os-accent" />
-            <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Readiness Coverage</h3>
-            <span className="text-2xs text-os-muted font-mono ml-auto">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-os-text-high">就绪项覆盖</h3>
+            <span className="ml-auto font-mono text-2xs text-os-subtle">
               {RED_TEAM_CATEGORIES.filter((c) => readiness[c.key as keyof typeof readiness] === true).length}/{RED_TEAM_CATEGORIES.length}
             </span>
           </div>
@@ -163,13 +169,13 @@ export function RedTeamResults({ governance }: Props) {
                   )} />
                   <div className="flex-1 min-w-0">
                     <p className="text-2xs font-medium text-os-text-high">{cat.label}</p>
-                    <p className="text-2xs text-os-muted">{cat.desc}</p>
+                    <p className="text-2xs text-os-subtle">{cat.desc}</p>
                   </div>
                   <span className={cn(
                     "text-2xs font-mono",
-                    ok ? "text-emerald-300" : "text-os-muted"
+                    ok ? "text-emerald-700" : "text-os-subtle"
                   )}>
-                    {ok ? "READY" : "OFF"}
+                    {ok ? "就绪" : "关闭"}
                   </span>
                 </div>
               );
@@ -182,12 +188,12 @@ export function RedTeamResults({ governance }: Props) {
       {redTeamModule && (
         <div className="os-card p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Lock size={12} className="text-amber-400" />
-            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">Red-Team Boundary</h4>
+            <Lock size={12} className="text-amber-700" />
+            <h4 className="text-2xs font-medium uppercase tracking-wider text-os-subtle">红队测试边界</h4>
           </div>
           <p className="text-2xs text-os-subtle leading-5">{redTeamModule.reason}</p>
           <div className="mt-2 rounded border border-amber-400/15 bg-amber-400/[0.03] px-3 py-2">
-            <p className="text-2xs text-amber-200/80 leading-5">{redTeamModule.recommended_next_step}</p>
+            <p className="text-2xs leading-5 text-amber-800">{redTeamModule.recommended_next_step}</p>
           </div>
         </div>
       )}
@@ -209,7 +215,7 @@ function SummaryTile({
         <Icon size={14} />
       </div>
       <div>
-        <p className="text-2xs text-os-muted">{label}</p>
+        <p className="text-2xs text-os-subtle">{label}</p>
         <p className="text-lg font-semibold text-os-text-high font-mono">{value}</p>
       </div>
     </div>

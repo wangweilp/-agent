@@ -11,7 +11,7 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   paused: { label: "等待人工", className: "bg-amber-50 text-amber-700" },
   completed: { label: "已完成", className: "bg-green-50 text-green-700" },
   failed: { label: "失败", className: "bg-red-50 text-red-700" },
-  cancelled: { label: "已取消", className: "bg-gray-50 text-gray-500" },
+  cancelled: { label: "已取消", className: "bg-gray-50 text-gray-600" },
 };
 
 export default function ExecutionHistoryPage() {
@@ -54,7 +54,7 @@ export default function ExecutionHistoryPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-1">Execution History</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-1">执行历史</h1>
       <p className="text-gray-500 mb-8">工作流执行历史与追踪</p>
 
       {/* Stats */}
@@ -96,10 +96,10 @@ export default function ExecutionHistoryPage() {
 
       {error && <div className="p-4 rounded-lg bg-red-50 text-red-700 mb-6">{error}</div>}
 
-      {loading ? (
+      {error ? null : loading ? (
         <div className="text-center py-12 text-gray-500">加载中...</div>
       ) : executions.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">暂无执行记录，请先执行工作流</div>
+        <div className="text-center py-12 text-gray-600">暂无执行记录，请先执行工作流</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -193,9 +193,9 @@ export default function ExecutionHistoryPage() {
               </button>
             </div>
             <dl className="space-y-3 text-sm">
-              <div className="flex justify-between">
+              <div className="flex items-start justify-between gap-4">
                 <dt className="text-gray-500">执行 ID</dt>
-                <dd className="font-mono text-gray-900">{selectedEx.execution_id}</dd>
+                <dd className="min-w-0 break-all text-right font-mono text-gray-900">{selectedEx.execution_id}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">工作流</dt>
@@ -204,8 +204,8 @@ export default function ExecutionHistoryPage() {
               <div className="flex justify-between">
                 <dt className="text-gray-500">状态</dt>
                 <dd>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_LABELS[selectedEx.status]?.className}`}>
-                    {STATUS_LABELS[selectedEx.status]?.label}
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(STATUS_LABELS[selectedEx.status] ?? STATUS_LABELS.draft).className}`}>
+                    {STATUS_LABELS[selectedEx.status]?.label ?? selectedEx.status}
                   </span>
                 </dd>
               </div>
@@ -238,10 +238,10 @@ export default function ExecutionHistoryPage() {
                           ? "bg-green-50 text-green-700"
                           : status === "failed"
                           ? "bg-red-50 text-red-700"
-                          : "bg-gray-50 text-gray-500"
+                          : "bg-gray-50 text-gray-600"
                       }`}
                     >
-                      {status}
+                      {STATUS_LABELS[status]?.label ?? status}
                     </span>
                   </div>
                 ))}

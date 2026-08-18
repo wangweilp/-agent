@@ -8,6 +8,7 @@ import json
 import logging
 import sqlite3
 import threading
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any
 
@@ -393,22 +394,66 @@ class WorkspaceAwareStore:
     def _ws(self) -> str:
         return WorkspaceContext.workspace_id()
 
-    # ── 写入委托给 inner ──
+    # ── 写入委托给 inner（盖章 workspace_id）──
 
     def store(self, memory: Memory) -> str:
-        return self._inner.store(memory)
+        # 盖章：写入前把当前工作区 ID 打到 memory 上（浅拷贝，不改动调用方对象）
+        stamped = replace(memory, workspace_id=self._ws)
+        return self._inner.store(stamped)
 
     def delete(self, memory_id: str) -> None:
+        # 仅允许删除当前工作区的记录
+        row = self._inner._db.execute(
+            "SELECT 1 FROM notes WHERE id = ? AND workspace_id = ?",
+            (memory_id, self._ws),
+        ).fetchone()
+        if row is None:
+            return
         self._inner.delete(memory_id)
 
     def get_by_id(self, memory_id: str) -> Memory | None:
-        return self._inner.get_by_id(memory_id)
+        # 仅返回当前工作区的记录（同时原子累加 access_count）
+        with self._inner._write_lock:
+            with self._inner._db.conn:
+                self._inner._db.execute("BEGIN IMMEDIATE")
+                row = self._inner._db.execute(
+                    "SELECT * FROM notes WHERE id = ? AND workspace_id = ?",
+                    (memory_id, self._ws),
+                ).fetchone()
+                if row is None:
+                    return None
+                now = datetime.now(timezone.utc).isoformat()
+                self._inner._db.execute(
+                    "UPDATE notes SET access_count = access_count + 1,"
+                    " last_accessed = ? WHERE id = ? AND workspace_id = ?",
+                    (now, memory_id, self._ws),
+                )
+                row = self._inner._db.execute(
+                    "SELECT * FROM notes WHERE id = ? AND workspace_id = ?",
+                    (memory_id, self._ws),
+                ).fetchone()
+        return self._inner._row_to_memory(dict(row))
 
     def update_status(self, memory_id: str, status: str) -> None:
-        self._inner.update_status(memory_id, status)
+        # 仅更新当前工作区的记录
+        with self._inner._write_lock:
+            with self._inner._db.conn:
+                self._inner._db.execute(
+                    "UPDATE notes SET status = ? WHERE id = ? AND workspace_id = ?",
+                    (status, memory_id, self._ws),
+                )
 
     def search_by_entity(self, entity_name: str) -> list[Memory]:
-        return self._inner.search_by_entity(entity_name)
+        # 实体为全局共享查找表；以 notes（记忆本体）的 workspace_id 为租户边界
+        rows = self._inner._db.execute(
+            """SELECT n.* FROM notes n
+               JOIN memory_entities me ON n.id = me.memory_id
+               JOIN entities e ON me.entity_id = e.id
+               WHERE e.name = ? AND n.workspace_id = ?
+               ORDER BY n.timestamp DESC""",
+            (entity_name, self._ws),
+        ).fetchall()
+        return [self._inner._row_to_memory(dict(r)) for r in rows]
 
     # ── 读取追加 workspace 过滤 ──
 

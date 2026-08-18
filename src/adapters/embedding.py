@@ -4,9 +4,9 @@ import os
 import threading
 from typing import TYPE_CHECKING
 
-# 彻底关闭 HuggingFace 在线检查，必须在 sentence_transformers 导入前设置
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+# Keep Hugging Face progress output out of the application logs.  Do not set
+# HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE here: those flags are process-wide and
+# would also prevent the first-run cache-miss fallback from downloading.
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 from src.adapters.config import Settings
@@ -20,6 +20,16 @@ _DEFAULT_MODEL = "BAAI/bge-small-zh-v1.5"
 _DIMENSIONS: dict[str, int] = {
     "BAAI/bge-small-zh-v1.5": 512,
 }
+_OFFLINE_ENV_VARS = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
+_TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
+
+def _offline_mode_enabled() -> bool:
+    """Return whether Hugging Face access was explicitly disabled."""
+    return any(
+        os.environ.get(name, "").strip().lower() in _TRUTHY_ENV_VALUES
+        for name in _OFFLINE_ENV_VARS
+    )
 
 
 def _detect_device() -> str:
@@ -69,23 +79,36 @@ class LocalEmbeddingProvider:
                         self._model_name,
                         self._device,
                     )
-                    # 优先本地缓存，首次运行会自动下载
-                    local_files = os.environ.get("HF_HUB_OFFLINE", "") == "1"
+                    # Always probe the local cache first to avoid an unnecessary
+                    # network check.  A cache miss falls back to Hugging Face
+                    # unless the caller explicitly enabled offline mode.
                     try:
                         self._model = SentenceTransformer(
                             self._model_name,
                             device=self._device,
-                            local_files_only=local_files,
+                            local_files_only=True,
                         )
-                    except Exception:
-                        if local_files:
-                            logger.info("本地缓存未命中，从 HF 下载模型")
+                    except Exception as cache_error:
+                        if _offline_mode_enabled():
+                            raise EmbeddingError(
+                                f"Embedding 模型 {self._model_name!r} 不在本地缓存，"
+                                "且当前处于离线模式。请预先下载模型，或移除 "
+                                "HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE 后重试。"
+                            ) from cache_error
+
+                        logger.info("本地缓存未命中，从 HF 下载模型")
+                        try:
                             self._model = SentenceTransformer(
                                 self._model_name,
                                 device=self._device,
+                                local_files_only=False,
                             )
-                        else:
-                            raise
+                        except Exception as download_error:
+                            raise EmbeddingError(
+                                f"无法加载 embedding 模型 {self._model_name!r}："
+                                "本地缓存未命中且下载失败。请检查网络、代理和 "
+                                "Hugging Face 访问权限。"
+                            ) from download_error
         return self._model
 
     def encode(self, text: str) -> list[float]:

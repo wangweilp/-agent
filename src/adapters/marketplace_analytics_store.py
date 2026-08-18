@@ -149,12 +149,13 @@ class SQLiteMarketplaceAnalyticsStore:
 
     def get_latest_metrics(self) -> AnalyticsMetrics | None:
         row = next(self._exec(
-            "SELECT * FROM analytics_metrics ORDER BY calculated_at DESC LIMIT 1"), None)
+            # calculated_at 相同（同一微秒）时按 rowid 取最新，保证确定性
+            "SELECT * FROM analytics_metrics ORDER BY calculated_at DESC, rowid DESC LIMIT 1"), None)
         return self._row_metrics(dict(row)) if row else None
 
     def get_metrics_history(self, limit: int = 10) -> list[AnalyticsMetrics]:
         rows = self._exec(
-            "SELECT * FROM analytics_metrics ORDER BY calculated_at DESC LIMIT ?", [int(limit)])
+            "SELECT * FROM analytics_metrics ORDER BY calculated_at DESC, rowid DESC LIMIT ?", [int(limit)])
         return [self._row_metrics(dict(r)) for r in rows]
 
     # ── Events ──

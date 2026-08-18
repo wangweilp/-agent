@@ -56,7 +56,7 @@ export default function ReflectionPage() {
             <h1 className="text-lg font-semibold text-os-text-high tracking-tight">反思</h1>
             <p className="text-xs text-os-subtle mt-0.5">AI 自我反思 — 矛盾检测、模式发现与深度洞察</p>
           </div>
-          <div className="flex items-center gap-2 text-2xs text-os-muted">
+          <div className="flex items-center gap-2 text-2xs text-os-subtle">
             <Sparkles size={12} className="text-amber-400" />
             {demoInsights.length} 条洞察
           </div>

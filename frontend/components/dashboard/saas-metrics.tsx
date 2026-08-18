@@ -47,7 +47,7 @@ export function SaaSMetrics() {
         icon={DollarSign}
         title="SaaS 指标"
         subtitle="营收、租户与留存指标使用与记忆指标一致的密度和状态色。"
-        actions={<OsBadge variant="muted">30s refresh</OsBadge>}
+        actions={<OsBadge variant="muted">每 30 秒刷新</OsBadge>}
       />
 
       <div className={layout.grid.fiveLg}>

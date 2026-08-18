@@ -112,7 +112,7 @@ class TestSyncConnectorConfig:
         expected_keys = {
             "id", "name", "connector_type", "credentials", "enabled",
             "last_sync_time", "last_sync_status", "etag_map", "hash_map",
-            "version_map", "created_at", "updated_at",
+            "version_map", "created_at", "updated_at", "workspace_id",
         }
         assert set(d.keys()) == expected_keys
         assert d["name"] == "test"

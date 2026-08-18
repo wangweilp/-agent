@@ -54,7 +54,7 @@ class WorkflowService:
             raise WorkflowValidationError(
                 f"Workflow 校验失败: {'; '.join(errors)}", errors)
         created = self._store.create(workflow)
-        logger.info("workflow_created", extra={"workflow_id": created.id, "name": name})
+        logger.info("workflow_created", extra={"workflow_id": created.id, "workflow_name": name})
         return created
 
     def submit_review(self, workflow_id: str) -> Workflow:

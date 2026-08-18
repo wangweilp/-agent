@@ -41,8 +41,8 @@ export function AgentCard({ agent, busy, onRun, onToggle, onClick }: AgentCardPr
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border",
               agent.enabled
-                ? "border-os-accent/30 bg-os-accent/15 text-os-accent"
-                : "border-os-border bg-os-elevated text-os-muted",
+                ? "border-os-accent/30 bg-os-accent/10 text-os-accent"
+                : "border-os-border bg-os-elevated text-os-subtle",
             )}
           >
             <Bot size={19} />
@@ -59,8 +59,8 @@ export function AgentCard({ agent, busy, onRun, onToggle, onClick }: AgentCardPr
           className={cn(
             "os-badge shrink-0",
             agent.enabled
-              ? "bg-emerald-400/10 text-emerald-300"
-              : "bg-zinc-500/10 text-os-muted",
+              ? "bg-emerald-400/10 text-emerald-700"
+              : "bg-zinc-500/10 text-os-subtle",
           )}
         >
           <span className={cn("h-1.5 w-1.5 rounded-full", agent.enabled ? "bg-emerald-400" : "bg-zinc-500")} />
@@ -71,31 +71,31 @@ export function AgentCard({ agent, busy, onRun, onToggle, onClick }: AgentCardPr
       <div className="mt-4 flex flex-wrap gap-1.5">
         {agent.tags.length > 0 ? (
           agent.tags.map((tag) => (
-            <span key={tag} className="os-badge bg-os-accent/10 text-os-accent">
-              <Tags size={10} />
-              {tag}
+            <span key={tag} className="os-badge max-w-full bg-os-accent/10 text-os-accent">
+              <Tags size={10} className="shrink-0" />
+              <span className="min-w-0 break-all">{tag}</span>
             </span>
           ))
         ) : (
-          <span className="os-badge bg-os-elevated text-os-muted">无标签</span>
+          <span className="os-badge bg-os-elevated text-os-subtle">无标签</span>
         )}
         <span className="os-badge bg-os-elevated text-os-subtle">v{agent.version}</span>
       </div>
 
       <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="rounded-md border border-os-border bg-os-elevated/50 p-3">
-          <p className="text-2xs text-os-muted">调用次数</p>
+          <p className="text-2xs text-os-subtle">调用次数</p>
           <p className="mt-1 text-base font-semibold text-os-text-high">{agent.usage_count}</p>
         </div>
         <div className="rounded-md border border-os-border bg-os-elevated/50 p-3">
-          <p className="flex items-center gap-1 text-2xs text-os-muted">
+          <p className="flex items-center gap-1 text-2xs text-os-subtle">
             <TrendingUp size={11} />
             成功率
           </p>
-          <p className="mt-1 text-base font-semibold text-emerald-300">{successPercent}%</p>
+          <p className="mt-1 text-base font-semibold text-emerald-700">{successPercent}%</p>
         </div>
         <div className="rounded-md border border-os-border bg-os-elevated/50 p-3">
-          <p className="flex items-center gap-1 text-2xs text-os-muted">
+          <p className="flex items-center gap-1 text-2xs text-os-subtle">
             <Clock size={11} />
             平均耗时
           </p>
@@ -130,8 +130,8 @@ export function AgentCard({ agent, busy, onRun, onToggle, onClick }: AgentCardPr
           className={cn(
             "inline-flex h-9 items-center justify-center gap-2 rounded-md px-3 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
             agent.enabled
-              ? "bg-red-400/10 text-red-300 hover:bg-red-400/15"
-              : "bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/15",
+              ? "bg-red-400/10 text-red-700 hover:bg-red-400/20"
+              : "bg-emerald-400/10 text-emerald-700 hover:bg-emerald-400/20",
           )}
           disabled={busy}
           onClick={(event) => {

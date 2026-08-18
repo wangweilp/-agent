@@ -26,10 +26,10 @@ interface IncidentItem {
 }
 
 const SEVERITY_STYLE: Record<string, { color: string; bg: string; border: string }> = {
-  critical: { color: "text-rose-300", bg: "bg-rose-400/10", border: "border-rose-400/25" },
-  high: { color: "text-amber-300", bg: "bg-amber-400/10", border: "border-amber-400/25" },
-  medium: { color: "text-sky-300", bg: "bg-sky-400/10", border: "border-sky-400/25" },
-  low: { color: "text-emerald-300", bg: "bg-emerald-400/10", border: "border-emerald-400/25" },
+  critical: { color: "text-rose-700", bg: "bg-rose-400/10", border: "border-rose-400/25" },
+  high: { color: "text-amber-700", bg: "bg-amber-400/10", border: "border-amber-400/25" },
+  medium: { color: "text-sky-700", bg: "bg-sky-400/10", border: "border-sky-400/25" },
+  low: { color: "text-emerald-700", bg: "bg-emerald-400/10", border: "border-emerald-400/25" },
 };
 
 export function IncidentStream({ governance }: Props) {
@@ -48,28 +48,28 @@ export function IncidentStream({ governance }: Props) {
       {/* ── Summary tiles ── */}
       <div className={layout.grid.fourMd}>
         <SummaryTile
-          label="Total Incidents"
+          label="事件总数"
           value={incidents.length}
           icon={AlertOctagon}
           accent="text-os-accent"
         />
         <SummaryTile
-          label="Critical"
+          label="严重"
           value={counts.critical || 0}
           icon={ShieldAlert}
-          accent="text-rose-400"
+          accent="text-rose-700"
         />
         <SummaryTile
-          label="High"
+          label="高风险"
           value={counts.high || 0}
           icon={Bug}
-          accent="text-amber-400"
+          accent="text-amber-700"
         />
         <SummaryTile
-          label="Resolved"
+          label="已解决"
           value={incidents.filter((i) => String(i.status).toLowerCase() === "closed" || String(i.status).toLowerCase() === "resolved").length}
           icon={ShieldCheck}
-          accent="text-emerald-400"
+          accent="text-emerald-700"
         />
       </div>
 
@@ -77,20 +77,20 @@ export function IncidentStream({ governance }: Props) {
       <div className="os-card">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-os-border">
           <div className="flex items-center gap-2">
-            <Activity size={13} className="text-rose-400" />
-            <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">Incident Stream</h3>
-            <span className="text-2xs text-os-muted font-mono">{incidents.length}</span>
+            <Activity size={13} className="text-rose-700" />
+            <h3 className="text-xs font-semibold text-os-text-high uppercase tracking-wider">安全事件流</h3>
+            <span className="font-mono text-2xs text-os-subtle">{incidents.length}</span>
           </div>
-          <span className="text-2xs text-os-muted font-mono">
+          <span className="font-mono text-2xs text-os-subtle">
             {incidentModule?.mode || "metadata-only"}
           </span>
         </div>
 
         {incidents.length === 0 ? (
           <div className="px-4 py-12 text-center">
-            <ShieldCheck size={24} className="mx-auto text-emerald-400/40 mb-2" />
-            <p className="text-xs text-os-muted">无安全事件</p>
-            <p className="text-2xs text-os-muted mt-1">系统运行正常</p>
+            <ShieldCheck size={24} className="mx-auto mb-2 text-emerald-700" />
+            <p className="text-xs text-os-subtle">无安全事件</p>
+            <p className="mt-1 text-2xs text-os-subtle">系统运行正常</p>
           </div>
         ) : (
           <div className="divide-y divide-os-border max-h-[480px] overflow-y-auto">
@@ -120,11 +120,11 @@ export function IncidentStream({ governance }: Props) {
                           {severity.toUpperCase()}
                         </span>
                         <span className="text-xs font-medium text-os-text-high truncate">
-                          {String(inc.title || inc.name || "Untitled Incident")}
+                          {String(inc.title || inc.name || "未命名事件")}
                         </span>
                         <span className={cn(
                           "text-2xs px-1.5 py-0.5 rounded font-mono ml-auto shrink-0",
-                          isOpen ? "bg-amber-400/10 text-amber-300" : "bg-emerald-400/10 text-emerald-300"
+                          isOpen ? "bg-amber-400/10 text-amber-700" : "bg-emerald-400/10 text-emerald-700"
                         )}>
                           {status}
                         </span>
@@ -136,7 +136,7 @@ export function IncidentStream({ governance }: Props) {
                         </p>
                       )}
 
-                      <div className="flex items-center gap-3 text-2xs text-os-muted">
+                      <div className="flex items-center gap-3 text-2xs text-os-subtle">
                         {inc.related_runtime && (
                           <span className="flex items-center gap-1">
                             <Zap size={9} />
@@ -150,9 +150,9 @@ export function IncidentStream({ governance }: Props) {
                           </span>
                         )}
                         {inc.metadata_only && (
-                          <span className="flex items-center gap-1 text-amber-300/70">
+                          <span className="flex items-center gap-1 text-amber-700">
                             <Lock size={9} />
-                            metadata
+                            元数据
                           </span>
                         )}
                       </div>
@@ -169,14 +169,14 @@ export function IncidentStream({ governance }: Props) {
       {incidentModule && (
         <div className="os-card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <ShieldAlert size={12} className="text-os-muted" />
-            <h4 className="text-2xs font-medium text-os-muted uppercase tracking-wider">Incident Store 治理</h4>
+            <ShieldAlert size={12} className="text-os-subtle" />
+            <h4 className="text-2xs font-medium uppercase tracking-wider text-os-subtle">事件存储治理</h4>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-2xs mb-3">
-            <MetaItem label="Status" value={incidentModule.status} />
-            <MetaItem label="Mode" value={incidentModule.mode} />
-            <MetaItem label="Risk" value={incidentModule.risk_level} />
-            <MetaItem label="Enabled" value={incidentModule.enabled ? "true" : "false"} />
+            <MetaItem label="状态" value={incidentModule.status} />
+            <MetaItem label="模式" value={incidentModule.mode} />
+            <MetaItem label="风险" value={incidentModule.risk_level} />
+            <MetaItem label="是否启用" value={incidentModule.enabled ? "true" : "false"} />
           </div>
           <div className="rounded border border-os-border bg-os-elevated/40 px-3 py-2">
             <p className="text-2xs text-os-subtle leading-5">{incidentModule.recommended_next_step}</p>
@@ -201,7 +201,7 @@ function SummaryTile({
         <Icon size={14} />
       </div>
       <div>
-        <p className="text-2xs text-os-muted">{label}</p>
+        <p className="text-2xs text-os-subtle">{label}</p>
         <p className="text-lg font-semibold text-os-text-high font-mono">{value}</p>
       </div>
     </div>
@@ -211,7 +211,7 @@ function SummaryTile({
 function MetaItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-os-border bg-os-elevated/40 px-2 py-1.5">
-      <p className="text-os-muted">{label}</p>
+      <p className="text-os-subtle">{label}</p>
       <p className="text-os-text-high font-mono mt-0.5 truncate">{value}</p>
     </div>
   );

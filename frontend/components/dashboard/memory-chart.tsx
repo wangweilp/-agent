@@ -72,7 +72,7 @@ export function MemoryChart({ data, isLoading }: MemoryChartProps) {
         </ResponsiveChartContainer>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 text-xs text-os-muted">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-os-subtle">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-sm bg-[#7C8CF8]" />
           情景记忆

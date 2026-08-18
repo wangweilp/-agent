@@ -92,9 +92,9 @@ const SOURCE_STYLE: Record<EventSource, SourceStyle> = {
 };
 
 const SEVERITY_STYLE: Record<EventSeverity, { dot: string; text: string; label: string }> = {
-  info: { dot: "bg-os-muted", text: "text-os-muted", label: "info" },
-  warn: { dot: "bg-os-warning", text: "text-os-warning", label: "warn" },
-  critical: { dot: "bg-os-danger", text: "text-os-danger", label: "critical" },
+  info: { dot: "bg-os-muted", text: "text-os-subtle", label: "信息" },
+  warn: { dot: "bg-os-warning", text: "text-os-warning", label: "警告" },
+  critical: { dot: "bg-os-danger", text: "text-os-danger", label: "严重" },
 };
 
 const CAUSE_LABELS: Record<CauseType, string> = {
@@ -108,9 +108,9 @@ const CAUSE_LABELS: Record<CauseType, string> = {
 type TabId = "stream" | "replay" | "causal";
 
 const TABS: { id: TabId; label: string; icon: LucideIcon; hint: string }[] = [
-  { id: "stream", label: "Live Stream", icon: Radio, hint: "实时事件流" },
-  { id: "replay", label: "Trace Replay", icon: Play, hint: "链路回放" },
-  { id: "causal", label: "Causal Chain", icon: GitBranch, hint: "因果链树" },
+  { id: "stream", label: "实时事件流", icon: Radio, hint: "实时事件流" },
+  { id: "replay", label: "追踪回放", icon: Play, hint: "链路回放" },
+  { id: "causal", label: "因果链", icon: GitBranch, hint: "因果链树" },
 ];
 
 export default function CausalKernelPage() {
@@ -139,12 +139,12 @@ export default function CausalKernelPage() {
       <PageShell>
         <PageHeader
           icon={BrainCircuit}
-          title="Zhiwei OS Causal Kernel"
-          subtitle="事件驱动内核层：因果关系追踪、Trace 回放与跨模块事件统一。"
+          title="知维 OS 因果内核"
+          subtitle="事件驱动内核层：因果关系追踪、追踪记录回放与跨模块事件统一。"
           actions={
             <>
               <StatusBadge status="ready">
-                {stats.storedEvents} events | {stats.traceCount} traces
+                {stats.storedEvents} 个事件 · {stats.traceCount} 条追踪记录
               </StatusBadge>
               <OsButton onClick={simulateEventFlow} size="sm" variant="soft">
                 <Zap size={13} />
@@ -164,14 +164,14 @@ export default function CausalKernelPage() {
                 value={stats.bySource[source]}
                 icon={cfg.icon}
                 accent={cfg.metricAccent}
-                detail="event source"
+                detail="事件来源"
               />
             );
           })}
         </div>
 
         <InfoBanner variant="info" title="因果内核边界">
-          Event Bus 不等同于日志系统或普通消息队列。每个事件携带 parent_event_id 与 cause_type，形成可回放、可解释的因果链。
+          事件总线（Event Bus）不等同于日志系统或普通消息队列。每个事件携带 parent_event_id 与 cause_type，形成可回放、可解释的因果链。
         </InfoBanner>
 
         <Toolbar className="overflow-x-auto">
@@ -219,7 +219,7 @@ function LiveStreamTab() {
   return (
     <div className="space-y-4">
       <Toolbar>
-        <span className="mr-1 text-xs font-medium text-os-muted">来源</span>
+        <span className="mr-1 text-xs font-medium text-os-subtle">来源</span>
         <FilterChip active={filterSource === "all"} onClick={() => setFilterSource("all")} label="全部" />
         {(Object.keys(SOURCE_STYLE) as EventSource[]).map((src) => (
           <FilterChip
@@ -230,7 +230,7 @@ function LiveStreamTab() {
           />
         ))}
         <div className="ml-auto flex items-center gap-2">
-          <span className="font-mono text-xs text-os-muted">{total} received</span>
+          <span className="font-mono text-xs text-os-subtle">已接收 {total} 条</span>
           <OsButton onClick={clear} size="sm" variant="ghost">
             清空
           </OsButton>
@@ -273,9 +273,9 @@ function ReplayTab() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
       <OsCard padding="none" className="overflow-hidden">
-        <PanelTitle icon={Layers} title="Trace 列表" count={traces.length} />
+        <PanelTitle icon={Layers} title="追踪记录列表" count={traces.length} />
         {traces.length === 0 ? (
-          <EmptyState icon={Layers} title="暂无 Trace" description="生成示例事件后，这里会出现可回放链路。" className="m-4" />
+          <EmptyState icon={Layers} title="暂无追踪记录" description="生成示例事件后，这里会出现可回放链路。" className="m-4" />
         ) : (
           <div className="max-h-[620px] divide-y divide-os-border overflow-y-auto">
             {traces.map((tid) => (
@@ -299,11 +299,11 @@ function ReplayTab() {
       <OsCard padding="none" className="overflow-hidden">
         <PanelTitle icon={Play} title="回放链路" detail={selectedTrace ?? undefined} count={events.length} />
         {!selectedTrace ? (
-          <EmptyState icon={Play} title="选择一个 Trace" description="左侧选择 Trace 后可查看按时间排序的事件链。" className="m-4" />
+          <EmptyState icon={Play} title="选择一条追踪记录" description="从左侧选择追踪记录后，可查看按时间排序的事件链。" className="m-4" />
         ) : isLoading ? (
-          <EmptyState icon={RefreshCw} title="加载中" description="正在从因果内核读取 Trace 事件。" className="m-4" />
+          <EmptyState icon={RefreshCw} title="加载中" description="正在从因果内核读取追踪事件。" className="m-4" />
         ) : events.length === 0 ? (
-          <EmptyState icon={Clock} title="该 Trace 暂无事件" description="Trace 存在但当前没有可回放事件。" className="m-4" />
+          <EmptyState icon={Clock} title="该追踪记录暂无事件" description="追踪记录存在，但当前没有可回放事件。" className="m-4" />
         ) : (
           <ul className="divide-y divide-os-border">
             {events.map((event, idx) => (
@@ -352,7 +352,7 @@ function CausalChainTab() {
                     </span>
                     <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
                   </div>
-                  <div className="mt-1 truncate font-mono text-[11px] text-os-muted">{event.event_id}</div>
+                  <div className="mt-1 truncate font-mono text-[11px] text-os-subtle">{event.event_id}</div>
                 </button>
               );
             })}
@@ -364,7 +364,7 @@ function CausalChainTab() {
         <PanelTitle icon={GitBranch} title="因果链树" detail={selectedEventId?.slice(0, 18)} />
         <div className="min-h-[420px] p-4">
           {!chain ? (
-            <EmptyState icon={GitBranch} title="选择根事件查看链路" description="因果链树会展示父事件、子事件、cause_type 与 payload 摘要。" />
+            <EmptyState icon={GitBranch} title="选择根事件查看链路" description="因果链树会展示父事件、子事件、cause_type 与载荷摘要。" />
           ) : (
             <CausalNode node={chain} />
           )}
@@ -404,13 +404,13 @@ function CausalNode({ node }: { node: CausalChainNode }) {
             {source.label}
           </span>
           <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
-          <span className="shrink-0 text-xs text-os-muted">{formatDate(event.timestamp)}</span>
+          <span className="shrink-0 text-xs text-os-subtle">{formatDate(event.timestamp)}</span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-os-muted">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-os-subtle">
           <span className="font-mono">{event.event_id.slice(0, 12)}</span>
           <span className={source.text}>{CAUSE_LABELS[event.causal.cause_type]}</span>
           <span className={severity.text}>{severity.label}</span>
-          <span className="font-mono">payload: {Object.keys(event.payload as object).join(", ") || "empty"}</span>
+          <span className="font-mono">载荷：{Object.keys(event.payload as object).join(", ") || "空"}</span>
         </div>
       </motion.div>
       {expanded && node.children.length > 0 && (
@@ -443,17 +443,17 @@ function EventRow({ event }: { event: SystemEvent }) {
         </span>
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
         {event.causal.parent_event_id && (
-          <span className="hidden items-center gap-0.5 rounded-full bg-os-surface-muted px-2 py-0.5 text-[11px] text-os-muted sm:flex">
+          <span className="hidden items-center gap-0.5 rounded-full bg-os-surface-muted px-2 py-0.5 text-[11px] text-os-subtle sm:flex">
             <ChevronRight size={10} />
-            child
+            子事件
           </span>
         )}
-        <span className="shrink-0 text-xs text-os-muted">{formatDate(event.timestamp)}</span>
+        <span className="shrink-0 text-xs text-os-subtle">{formatDate(event.timestamp)}</span>
       </div>
-      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-os-muted">
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-os-subtle">
         <span className="font-mono">{event.event_id.slice(0, 12)}</span>
         <span className="font-mono">{event.trace_id.slice(0, 22)}</span>
-        <span className={severity.text}>{event.severity}</span>
+        <span className={severity.text}>{severity.label}</span>
         <span className={source.text}>{CAUSE_LABELS[event.causal.cause_type]}</span>
       </div>
     </motion.li>
@@ -472,25 +472,25 @@ function ReplayEventRow({ event, index }: { event: SystemEvent; index: number })
       className="px-4 py-3"
     >
       <div className="flex min-w-0 items-center gap-2">
-        <span className="w-8 shrink-0 font-mono text-xs text-os-muted">#{index + 1}</span>
+        <span className="w-8 shrink-0 font-mono text-xs text-os-subtle">#{index + 1}</span>
         <span className={cn("h-2 w-2 shrink-0 rounded-full", severity.dot)} />
         <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", source.badge)}>
           {source.label}
         </span>
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-os-text-high">{event.type}</span>
-        <span className="shrink-0 text-xs text-os-muted">{formatDate(event.timestamp)}</span>
+        <span className="shrink-0 text-xs text-os-subtle">{formatDate(event.timestamp)}</span>
       </div>
-      <div className="mt-2 ml-10 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-os-muted">
+      <div className="mt-2 ml-10 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-os-subtle">
         <span className="font-mono">{event.event_id.slice(0, 12)}</span>
-        <span className={severity.text}>{event.severity}</span>
+        <span className={severity.text}>{severity.label}</span>
         {event.causal.parent_event_id ? (
-          <span className="font-mono text-os-primary">parent {event.causal.parent_event_id.slice(0, 12)}</span>
+          <span className="font-mono text-os-primary">父事件 {event.causal.parent_event_id.slice(0, 12)}</span>
         ) : (
-          <span className="font-semibold text-os-success">ROOT</span>
+          <span className="font-semibold text-os-success">根节点</span>
         )}
       </div>
-      <p className="mt-1 ml-10 truncate font-mono text-[11px] text-os-muted">
-        payload: {JSON.stringify(event.payload).slice(0, 140)}
+      <p className="mt-1 ml-10 truncate font-mono text-[11px] text-os-subtle">
+        载荷：{JSON.stringify(event.payload).slice(0, 140)}
         {JSON.stringify(event.payload).length > 140 && "..."}
       </p>
     </motion.li>
@@ -512,8 +512,8 @@ function PanelTitle({
     <div className="flex min-h-11 items-center gap-2 border-b border-os-border px-4">
       <Icon size={14} className="text-os-primary" />
       <h2 className="text-sm font-semibold text-os-text-high">{title}</h2>
-      {detail && <span className="min-w-0 truncate font-mono text-[11px] text-os-muted">{detail}</span>}
-      {typeof count === "number" && <span className="ml-auto font-mono text-xs text-os-muted">{count}</span>}
+      {detail && <span className="min-w-0 truncate font-mono text-[11px] text-os-subtle">{detail}</span>}
+      {typeof count === "number" && <span className="ml-auto font-mono text-xs text-os-subtle">{count}</span>}
     </div>
   );
 }

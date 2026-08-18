@@ -50,10 +50,10 @@ export function ReflectionPanel() {
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-violet-400" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Sparkles size={14} className="text-violet-700" />
           <h2 className="text-sm font-semibold text-os-text-high">反思引擎日志</h2>
-          <span className="text-2xs text-os-muted">conflict detection · merge decision · overwrite history</span>
+          <span className="text-2xs text-os-subtle">冲突检测 · 合并决策 · 覆盖历史</span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export function ReflectionPanel() {
           value={stats.highConfidence}
           icon={<Target size={12} />}
           accent="emerald"
-          subtitle="confidence ≥ 0.8"
+          subtitle="置信度 ≥ 0.8"
         />
         <StatCard
           label="独立主题"
@@ -91,17 +91,17 @@ export function ReflectionPanel() {
         <div className="lg:col-span-2 space-y-3">
           <div className="rounded-md border border-os-border bg-os-surface/30 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Lightbulb size={13} className="text-violet-400" />
+              <Lightbulb size={13} className="text-violet-700" />
               <h3 className="text-xs font-semibold text-os-text-high">洞察列表</h3>
-              <span className="text-2xs text-os-muted ml-auto">{insights?.length || 0} insights</span>
+              <span className="ml-auto text-2xs text-os-subtle">{insights?.length || 0} 条洞察</span>
             </div>
 
             {isLoading ? (
-              <div className="flex items-center justify-center py-8 text-2xs text-os-muted gap-2">
+              <div className="flex items-center justify-center py-8 text-2xs text-os-subtle gap-2">
                 <Loader2 size={14} className="animate-spin" /> 加载洞察...
               </div>
             ) : !insights || insights.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-2xs text-os-muted">
+              <div className="flex flex-col items-center justify-center py-8 text-2xs text-os-subtle">
                 <Sparkles size={20} className="mb-2 opacity-50" />
                 暂无反思洞察
               </div>
@@ -110,11 +110,11 @@ export function ReflectionPanel() {
                 {groupedByTopic.map(([topic, items]) => (
                   <div key={topic} className="space-y-2">
                     {/* 主题标题 */}
-                    <div className="flex items-center gap-2 sticky top-0 bg-os-surface/80 backdrop-blur-sm py-1 z-10">
+                    <div className="sticky top-0 z-10 flex min-w-0 items-center gap-2 bg-os-surface/80 py-1 backdrop-blur-sm">
                       <div className="w-1 h-3 rounded-full bg-violet-400" />
-                      <span className="text-xs font-medium text-os-text-high">{topic}</span>
-                      <span className="text-2xs text-os-muted">·</span>
-                      <span className="text-2xs text-os-muted">{items.length} findings</span>
+                      <span className="min-w-0 truncate text-xs font-medium text-os-text-high">{topic}</span>
+                      <span className="text-2xs text-os-subtle">·</span>
+                      <span className="text-2xs text-os-subtle">{items.length} 条发现</span>
                     </div>
 
                     {/* 洞察列表 */}
@@ -132,19 +132,19 @@ export function ReflectionPanel() {
 
                           <div className="rounded-md border border-os-border/50 bg-os-base/40 p-2.5">
                             <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="text-xs text-os-text leading-relaxed flex-1">
+                              <p className="min-w-0 flex-1 break-words text-xs leading-relaxed text-os-text">
                                 {insight.finding}
                               </p>
                               <ConfidenceBadge confidence={insight.confidence} />
                             </div>
-                            <div className="flex items-center gap-2 text-2xs text-os-muted">
+                            <div className="flex items-center gap-2 text-2xs text-os-subtle">
                               <span>{formatDate(insight.timestamp)}</span>
                               {insight.related_memories.length > 0 && (
                                 <>
                                   <span>·</span>
                                   <span className="flex items-center gap-0.5">
                                     <GitMerge size={9} />
-                                    {insight.related_memories.length} related
+                                    {insight.related_memories.length} 项相关记忆
                                   </span>
                                 </>
                               )}
@@ -165,20 +165,20 @@ export function ReflectionPanel() {
           {/* 反思记忆流 */}
           <div className="rounded-md border border-os-border bg-os-surface/30 p-3">
             <div className="flex items-center gap-2 mb-3">
-              <Brain size={12} className="text-violet-400" />
+              <Brain size={12} className="text-violet-700" />
               <h3 className="text-2xs font-semibold text-os-text-high">反思记忆流</h3>
             </div>
             {!recentReflections || recentReflections.length === 0 ? (
-              <div className="text-2xs text-os-muted py-4 text-center">暂无反思记忆</div>
+              <div className="text-2xs text-os-subtle py-4 text-center">暂无反思记忆</div>
             ) : (
               <ul className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
                 {recentReflections.map((r) => (
                   <li key={r.id} className="rounded border border-os-border/50 bg-os-base/40 p-2">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-2xs font-medium text-violet-300 truncate">{r.topic}</span>
+                      <span className="text-2xs font-medium text-violet-700 truncate">{r.topic}</span>
                       <span className={cn(
                         "text-2xs font-mono shrink-0",
-                        r.importance >= 8 ? "text-emerald-400" : r.importance >= 6 ? "text-amber-400" : "text-zinc-500",
+                        r.importance >= 8 ? "text-emerald-700" : r.importance >= 6 ? "text-amber-800" : "text-zinc-500",
                       )}>
                         {r.importance}
                       </span>
@@ -186,7 +186,7 @@ export function ReflectionPanel() {
                     <p className="text-2xs text-os-subtle leading-relaxed line-clamp-2 mb-1">
                       {r.finding}
                     </p>
-                    <div className="flex items-center gap-1.5 text-2xs text-os-muted">
+                    <div className="flex items-center gap-1.5 text-2xs text-os-subtle">
                       <span>{formatDate(r.timestamp)}</span>
                       {r.entities.length > 0 && (
                         <>
@@ -204,25 +204,25 @@ export function ReflectionPanel() {
           {/* 冲突解决器（元数据展示） */}
           <div className="rounded-md border border-violet-400/20 bg-violet-400/[0.02] p-3">
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle size={12} className="text-violet-400" />
+              <AlertTriangle size={12} className="text-violet-700" />
               <h3 className="text-2xs font-semibold text-os-text-high">冲突解决策略</h3>
             </div>
             <ul className="space-y-1.5 text-2xs text-os-subtle">
               <li className="flex items-start gap-1.5">
-                <span className="text-violet-400 mt-0.5">▸</span>
+                <span className="text-violet-700 mt-0.5">▸</span>
                 <span><span className="text-os-text font-medium">冲突检测:</span> 同实体高重要度记忆重复写入时触发</span>
               </li>
               <li className="flex items-start gap-1.5">
-                <span className="text-violet-400 mt-0.5">▸</span>
-                <span><span className="text-os-text font-medium">合并决策:</span> 保留高 importance 记忆为主体，低 importance 合并入</span>
+                <span className="text-violet-700 mt-0.5">▸</span>
+                <span><span className="font-medium text-os-text">合并决策：</span>保留高重要度记忆为主体，合并低重要度记忆</span>
               </li>
               <li className="flex items-start gap-1.5">
-                <span className="text-violet-400 mt-0.5">▸</span>
-                <span><span className="text-os-text font-medium">覆盖历史:</span> 合并后 secondary 记忆状态置为 merged，保留可追溯</span>
+                <span className="text-violet-700 mt-0.5">▸</span>
+                <span><span className="font-medium text-os-text">覆盖历史：</span>合并后将次要记忆状态置为 merged，保留可追溯记录</span>
               </li>
               <li className="flex items-start gap-1.5">
-                <span className="text-violet-400 mt-0.5">▸</span>
-                <span><span className="text-os-text font-medium">反思触发:</span> 周期性扫描活跃记忆，生成洞察并写入 reflect 类型</span>
+                <span className="text-violet-700 mt-0.5">▸</span>
+                <span><span className="font-medium text-os-text">反思触发：</span>周期性扫描活跃记忆，生成洞察并写入反思（reflect）类型</span>
               </li>
             </ul>
           </div>
@@ -244,21 +244,21 @@ function StatCard({
   subtitle?: string;
 }) {
   const accentMap = {
-    violet: "text-violet-400",
-    emerald: "text-emerald-400",
-    amber: "text-amber-400",
-    cyan: "text-cyan-400",
+    violet: "text-violet-700",
+    emerald: "text-emerald-700",
+    amber: "text-amber-800",
+    cyan: "text-cyan-700",
   };
   return (
     <div className="rounded-md border border-os-border bg-os-surface/30 p-3">
-      <div className="flex items-center gap-1.5 text-2xs text-os-muted mb-1">
+      <div className="flex items-center gap-1.5 text-2xs text-os-subtle mb-1">
         <span className={accentMap[accent]}>{icon}</span>
         {label}
       </div>
       <div className={cn("text-lg font-bold tabular-nums", accentMap[accent])}>
         {value}
       </div>
-      {subtitle && <div className="text-2xs text-os-muted mt-0.5">{subtitle}</div>}
+      {subtitle && <div className="text-2xs text-os-subtle mt-0.5">{subtitle}</div>}
     </div>
   );
 }
@@ -267,9 +267,9 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   const pct = (confidence * 100).toFixed(0);
   const color = confidence >= 0.8 ? "emerald" : confidence >= 0.6 ? "amber" : "rose";
   const colorMap = {
-    emerald: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
-    amber: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-    rose: "bg-rose-400/10 text-rose-400 border-rose-400/20",
+    emerald: "bg-emerald-400/10 text-emerald-700 border-emerald-400/20",
+    amber: "bg-amber-400/10 text-amber-800 border-amber-400/20",
+    rose: "bg-rose-400/10 text-rose-700 border-rose-400/20",
   };
   return (
     <span className={cn(

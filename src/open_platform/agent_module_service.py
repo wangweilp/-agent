@@ -41,7 +41,7 @@ class AgentModuleService:
         if errors:
             raise AgentModuleValidationError(f"校验失败: {'; '.join(errors)}", errors)
         created = self._store.create(m)
-        logger.info("agent_module_created", extra={"module_id": created.id, "name": name})
+        logger.info("agent_module_created", extra={"module_id": created.id, "module_name": name})
         return created
 
     def submit_review(self, module_id: str) -> AgentModule:

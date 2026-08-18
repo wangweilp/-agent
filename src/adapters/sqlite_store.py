@@ -267,8 +267,8 @@ class SQLiteStoreAdapter:
                 self._db.execute(
                     """INSERT INTO notes (id, content, summary, source, timestamp,
                        importance, entities_json, relations_json, memory_type,
-                       status, archived_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       status, archived_at, workspace_id)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                        ON CONFLICT(id) DO UPDATE SET
                        content=excluded.content, summary=excluded.summary,
                        source=excluded.source, timestamp=excluded.timestamp,
@@ -286,6 +286,7 @@ class SQLiteStoreAdapter:
                         memory.memory_type,
                         memory.status,
                         archived_at,
+                        memory.workspace_id or "default",
                     ),
                 )
 
@@ -478,6 +479,7 @@ class SQLiteStoreAdapter:
             last_accessed=last_accessed,
             status=row.get("status", "active"),
             archived_at=archived_at,
+            workspace_id=row.get("workspace_id") or "default",
         )
 
     def close(self) -> None:

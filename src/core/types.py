@@ -18,6 +18,7 @@ class Memory:
     last_accessed: datetime | None = None
     status: str = "active"  # "active" | "archived" | "merged" | "deleted"
     archived_at: datetime | None = None
+    workspace_id: str = "default"
 
 
 @dataclass

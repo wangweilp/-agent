@@ -27,9 +27,21 @@ const METRIC_LABELS: Record<string, string> = {
 };
 
 const SEVERITY_STYLES: Record<string, string> = {
-  info: "bg-blue-400/10 text-blue-400 border-blue-400/20",
-  warning: "bg-amber-400/10 text-amber-400 border-amber-400/20",
-  critical: "bg-red-400/10 text-red-400 border-red-400/20",
+  info: "bg-os-info-soft text-os-info border-os-info/20",
+  warning: "bg-os-warning-soft text-os-warning border-os-warning/20",
+  critical: "bg-os-danger-soft text-os-danger border-os-danger/20",
+};
+
+const SEVERITY_LABELS: Record<string, string> = {
+  info: "信息",
+  warning: "警告",
+  critical: "严重",
+};
+
+const CHANNEL_LABELS: Record<string, string> = {
+  system: "系统通知",
+  email: "邮件",
+  both: "系统通知与邮件",
 };
 
 const SEVERITY_ICONS: Record<string, React.ReactNode> = {
@@ -42,6 +54,7 @@ export default function AlertsPage() {
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [events, setEvents] = useState<AlertEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -54,6 +67,7 @@ export default function AlertsPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [r, e] = await Promise.all([
         api.alerts.listRules(),
@@ -63,6 +77,7 @@ export default function AlertsPage() {
       setEvents(e);
     } catch (err) {
       console.error("Failed to fetch alerts:", err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -123,14 +138,14 @@ export default function AlertsPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">告警管理</h1>
           <p className="text-sm text-muted-foreground">
             配置阈值告警规则，监控系统健康状态
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => api.alerts.seedPresets().then(fetchData)}
             className="rounded-lg border px-3 py-1.5 text-sm hover:bg-accent"
@@ -153,26 +168,33 @@ export default function AlertsPage() {
           <h2 className="text-sm font-semibold">告警规则 ({rules.length})</h2>
         </div>
         <div className="divide-y">
-          {rules.length === 0 && (
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              正在加载告警规则...
+            </div>
+          ) : loadError ? (
+            <div className="p-8 text-center text-sm text-os-danger">
+              告警规则加载失败，请稍后重试
+            </div>
+          ) : rules.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
               暂无告警规则，点击「初始化预设规则」快速创建
             </div>
-          )}
-          {rules.map((rule) => (
-            <div key={rule.id} className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-3">
+          ) : rules.map((rule) => (
+            <div key={rule.id} className="flex flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <span
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${SEVERITY_STYLES[rule.severity]}`}
                 >
                   {SEVERITY_ICONS[rule.severity]}
-                  {rule.severity.toUpperCase()}
+                  {SEVERITY_LABELS[rule.severity] || rule.severity}
                 </span>
                 <div>
                   <p className="text-sm font-medium">{rule.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {METRIC_LABELS[rule.metric] || rule.metric} {rule.condition} {rule.threshold}
                     {" · "}冷却 {rule.cooldown_minutes} 分钟
-                    {" · "}通知: {rule.channel}
+                    {" · "}通知：{CHANNEL_LABELS[rule.channel] || rule.channel}
                   </p>
                 </div>
               </div>
@@ -210,14 +232,21 @@ export default function AlertsPage() {
           <h2 className="text-sm font-semibold">告警历史 ({events.length})</h2>
         </div>
         <div className="divide-y">
-          {events.length === 0 && (
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              正在加载告警历史...
+            </div>
+          ) : loadError ? (
+            <div className="p-8 text-center text-sm text-os-danger">
+              告警历史加载失败，请稍后重试
+            </div>
+          ) : events.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">
               暂无告警历史
             </div>
-          )}
-          {events.map((event) => (
-            <div key={event.id} className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-3">
+          ) : events.map((event) => (
+            <div key={event.id} className="flex flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
                 <span
                   className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${SEVERITY_STYLES[event.severity]}`}
                 >
@@ -226,15 +255,15 @@ export default function AlertsPage() {
                 <div>
                   <p className="text-sm">{event.message}</p>
                   <p className="text-xs text-muted-foreground">
-                    {event.rule_name} · {event.metric} · {new Date(event.triggered_at).toLocaleString("zh-CN")}
-                    {event.acknowledged && <span className="ml-2 text-green-500">✓ 已确认</span>}
+                    {event.rule_name} · {METRIC_LABELS[event.metric] || event.metric} · {new Date(event.triggered_at).toLocaleString("zh-CN")}
+                    {event.acknowledged && <span className="ml-2 text-os-success">✓ 已确认</span>}
                   </p>
                 </div>
               </div>
               {!event.acknowledged && (
                 <button
                   onClick={() => handleAcknowledge(event.id)}
-                  className="flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-green-500 hover:bg-green-500/10"
+                  className="flex items-center gap-1 rounded-lg border px-2 py-1 text-xs text-os-success hover:bg-os-success-soft"
                 >
                   <CheckCircle className="h-3 w-3" />
                   确认
@@ -257,7 +286,7 @@ export default function AlertsPage() {
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm bg-background"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="如: memory-limit"
+                  placeholder="例如：memory-limit"
                 />
               </div>
               <div>
@@ -289,9 +318,9 @@ export default function AlertsPage() {
                     value={form.severity}
                     onChange={(e) => setForm({ ...form, severity: e.target.value })}
                   >
-                    <option value="info">Info</option>
-                    <option value="warning">Warning</option>
-                    <option value="critical">Critical</option>
+                    <option value="info">信息</option>
+                    <option value="warning">警告</option>
+                    <option value="critical">严重</option>
                   </select>
                 </div>
                 <div>

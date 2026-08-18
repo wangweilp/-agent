@@ -66,7 +66,7 @@ function DistributionPie({ items }: { items: { memory_type: string; count: numbe
             ))}
           </Pie>
           <Tooltip contentStyle={tooltipStyle} itemStyle={tooltipItemStyle} />
-          <Legend wrapperStyle={{ fontSize: 11, color: "#A1A1AA" }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#52525B" }} />
         </PieChart>
       </ResponsiveContainer>
     </div>
@@ -90,8 +90,8 @@ export function TabMemoryHealth() {
 
       <div className={layout.grid.fourMd}>
         <KpiCard icon={Brain} label="总记忆" value={formatCompact(data?.total_memories ?? 0)} accent="indigo" sub="全量" />
-        <KpiCard icon={Activity} label="活跃记忆" value={formatCompact(data?.active_memories ?? 0)} accent="emerald" sub="active" />
-        <KpiCard icon={Target} label="命中率" value={formatPercent(data?.hit_rate ?? 0)} accent="violet" sub="Hit Rate" />
+        <KpiCard icon={Activity} label="活跃记忆" value={formatCompact(data?.active_memories ?? 0)} accent="emerald" sub="活跃" />
+        <KpiCard icon={Target} label="命中率" value={formatPercent(data?.hit_rate ?? 0)} accent="violet" sub="检索命中率" />
         <KpiCard icon={GitBranch} label="净增长" value={formatDelta(data?.net_growth ?? 0)} accent="cyan" sub={`${days} 天`} />
       </div>
 

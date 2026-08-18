@@ -56,15 +56,25 @@ const NODE_LABELS: Record<WorkflowNode["node_type"], string> = {
 };
 
 const NODE_COLORS: Record<WorkflowNode["node_type"], string> = {
-  agent: "border-blue-500 bg-blue-500/10 text-blue-400",
-  human: "border-yellow-500 bg-yellow-500/10 text-yellow-400",
-  condition: "border-purple-500 bg-purple-500/10 text-purple-400",
-  parallel: "border-cyan-500 bg-cyan-500/10 text-cyan-400",
-  tool: "border-orange-500 bg-orange-500/10 text-orange-400",
-  memory: "border-green-500 bg-green-500/10 text-green-400",
-  knowledge_graph: "border-pink-500 bg-pink-500/10 text-pink-400",
-  start: "border-gray-500 bg-gray-500/10 text-os-subtle",
-  end: "border-gray-500 bg-gray-500/10 text-os-subtle",
+  agent: "border-blue-200 bg-blue-50 text-blue-700",
+  human: "border-yellow-200 bg-yellow-50 text-yellow-800",
+  condition: "border-purple-200 bg-purple-50 text-purple-700",
+  parallel: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  tool: "border-orange-200 bg-orange-50 text-orange-700",
+  memory: "border-green-200 bg-green-50 text-green-700",
+  knowledge_graph: "border-pink-200 bg-pink-50 text-pink-700",
+  start: "border-gray-200 bg-gray-50 text-gray-700",
+  end: "border-gray-200 bg-gray-50 text-gray-700",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "等待中",
+  draft: "草稿",
+  running: "运行中",
+  paused: "等待人工",
+  completed: "已完成",
+  failed: "失败",
+  cancelled: "已取消",
 };
 
 function NodeCard({ node }: { node: WorkflowNode }) {
@@ -73,35 +83,35 @@ function NodeCard({ node }: { node: WorkflowNode }) {
   const label = NODE_LABELS[node.node_type] || node.node_type;
 
   return (
-    <div className={`p-4 rounded-xl border ${colorClass} bg-os-surface`}>
+    <div className={`rounded-xl border p-4 ${colorClass}`}>
       <div className="flex items-center gap-2 mb-1">
         <Icon className="w-4 h-4" />
-        <span className="text-xs uppercase tracking-wider opacity-70">{label}</span>
+        <span className="text-xs uppercase tracking-wider">{label}</span>
         {node.status && node.status !== "pending" && (
           <span
             className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
               node.status === "completed"
-                ? "bg-green-500/20 text-green-300"
+                ? "bg-green-50 text-green-700"
                 : node.status === "failed"
-                  ? "bg-red-500/20 text-red-300"
+                  ? "bg-red-50 text-red-700"
                   : node.status === "running"
-                    ? "bg-blue-500/20 text-blue-300"
-                    : "bg-gray-500/20 text-os-text"
+                    ? "bg-blue-50 text-blue-700"
+                    : "bg-gray-50 text-gray-700"
             }`}
           >
-            {node.status}
+            {STATUS_LABELS[node.status] ?? node.status}
           </span>
         )}
       </div>
       <p className="font-medium text-os-text-high">{node.name}</p>
       {node.description && (
-        <p className="text-xs opacity-70 mt-1">{node.description}</p>
+        <p className="mt-1 text-xs text-os-subtle">{node.description}</p>
       )}
       {node.agent_id && (
-        <p className="text-xs opacity-50 mt-1">智能体: {node.agent_id}</p>
+        <p className="mt-1 text-xs text-os-subtle">智能体：{node.agent_id}</p>
       )}
       {node.next_nodes.length > 0 && (
-        <p className="text-xs opacity-40 mt-2">
+        <p className="mt-2 text-xs text-os-subtle">
           → {node.next_nodes.length} 个下游节点
         </p>
       )}
@@ -111,12 +121,12 @@ function NodeCard({ node }: { node: WorkflowNode }) {
 
 function ExecutionCard({ execution }: { execution: WorkflowExecution }) {
   const statusColors: Record<string, string> = {
-    draft: "bg-gray-500/20 text-os-text",
-    running: "bg-blue-500/20 text-blue-300",
-    paused: "bg-yellow-500/20 text-yellow-300",
-    completed: "bg-green-500/20 text-green-300",
-    failed: "bg-red-500/20 text-red-300",
-    cancelled: "bg-gray-500/20 text-os-muted",
+    draft: "bg-gray-50 text-gray-700",
+    running: "bg-blue-50 text-blue-700",
+    paused: "bg-yellow-50 text-yellow-800",
+    completed: "bg-green-50 text-green-700",
+    failed: "bg-red-50 text-red-700",
+    cancelled: "bg-gray-50 text-gray-700",
   };
 
   return (
@@ -128,15 +138,15 @@ function ExecutionCard({ execution }: { execution: WorkflowExecution }) {
         <span
           className={`text-xs px-2 py-0.5 rounded-full ${statusColors[execution.status] || ""}`}
         >
-          {execution.status}
+          {STATUS_LABELS[execution.status] ?? execution.status}
         </span>
-        <span className="text-xs text-os-muted">
+        <span className="text-xs text-os-subtle">
           {execution.duration_ms > 0 ? `${execution.duration_ms.toFixed(0)}ms` : ""}
         </span>
       </div>
       <p className="text-sm text-os-subtle truncate">{execution.execution_id}</p>
       {execution.error && (
-        <p className="text-xs text-red-400 mt-1 truncate">{execution.error}</p>
+        <p className="mt-1 truncate text-xs text-red-700">{execution.error}</p>
       )}
     </Link>
   );
@@ -176,7 +186,7 @@ export default function WorkflowDetailPage() {
     if (!id) return;
     setExecuting(true);
     try {
-      const result = await executeWorkflow(id);
+      await executeWorkflow(id);
       await fetchData();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "执行失败");
@@ -188,7 +198,7 @@ export default function WorkflowDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-700" />
       </div>
     );
   }
@@ -217,17 +227,17 @@ export default function WorkflowDetailPage() {
       </Link>
 
       {/* 头部 */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-            <GitBranch className="w-7 h-7 text-purple-400" />
+            <GitBranch className="w-7 h-7 text-purple-700" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-os-text-high mb-1">
               {workflow.name}
             </h1>
             <p className="text-os-subtle max-w-lg">{workflow.description}</p>
-            <div className="flex items-center gap-3 mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
               <span className="text-xs px-2.5 py-1 rounded-full bg-os-elevated text-os-text border border-os-border">
                 v{workflow.version}
               </span>
@@ -268,16 +278,18 @@ export default function WorkflowDetailPage() {
       {/* 节点流程可视化 */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-os-text-high mb-4 flex items-center gap-2">
-          <GitBranch className="w-5 h-5 text-purple-400" />
+          <GitBranch className="w-5 h-5 text-purple-700" />
           工作流节点
         </h2>
         <div className={layout.grid.threeLgMd}>
-          {nodes.map((node, i) => (
+          {nodes.length === 0 ? (
+            <p className="py-8 text-sm text-os-subtle">暂无工作流节点</p>
+          ) : nodes.map((node, i) => (
             <div key={node.node_id} className="relative">
               <NodeCard node={node} />
               {i < nodes.length - 1 && (
                 <div className="hidden md:flex justify-center py-1">
-                  <span className="text-os-muted text-lg">↓</span>
+                  <span className="text-lg text-os-subtle">↓</span>
                 </div>
               )}
             </div>
@@ -297,7 +309,7 @@ export default function WorkflowDetailPage() {
           </button>
         </div>
         {executions.length === 0 ? (
-          <p className="text-os-muted text-sm py-8 text-center">
+          <p className="py-8 text-center text-sm text-os-subtle">
             暂无执行记录
           </p>
         ) : (
@@ -312,9 +324,9 @@ export default function WorkflowDetailPage() {
       {/* 原始数据 */}
       <details className="rounded-xl bg-os-surface border border-os-border shadow-os-sm p-6">
         <summary className="text-sm text-os-subtle cursor-pointer hover:text-os-text">
-          工作流详情 (JSON)
+          工作流详情（JSON）
         </summary>
-        <pre className="mt-4 text-xs text-os-muted overflow-x-auto max-h-96">
+        <pre className="mt-4 max-h-96 overflow-x-auto text-xs text-os-text">
           {JSON.stringify(workflow, null, 2)}
         </pre>
       </details>

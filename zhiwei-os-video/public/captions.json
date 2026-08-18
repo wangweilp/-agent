@@ -1,0 +1,520 @@
+[
+  {
+    "text": "当人工智能从一次性问答，",
+    "startMs": 270,
+    "endMs": 2423,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "走向长期参与组织运营，",
+    "startMs": 2423,
+    "endMs": 4397,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "新的问题正在出现。",
+    "startMs": 4397,
+    "endMs": 6012,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "智能体会遗忘，",
+    "startMs": 5962,
+    "endMs": 7195,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "决策过程难以追踪，",
+    "startMs": 7195,
+    "endMs": 8781,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "工具调用存在风险，",
+    "startMs": 8781,
+    "endMs": 10367,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "分散的数据与系统，",
+    "startMs": 10367,
+    "endMs": 11953,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "也难以形成真正的组织智能。",
+    "startMs": 11953,
+    "endMs": 14243,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS，",
+    "startMs": 15270,
+    "endMs": 16415,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "是面向组织的 AI 认知操作系统与智",
+    "startMs": 16415,
+    "endMs": 19852,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "能体开放平台。",
+    "startMs": 19852,
+    "endMs": 21188,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "它将记忆、推理、执行、治理与可观测能",
+    "startMs": 21138,
+    "endMs": 24946,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "力整合在统一架构中，",
+    "startMs": 24946,
+    "endMs": 27062,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "为企业级智能体提供持续运行的认知基础",
+    "startMs": 27062,
+    "endMs": 30870,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "设施。",
+    "startMs": 30870,
+    "endMs": 31505,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS 为智能体建立分层长期记忆",
+    "startMs": 32270,
+    "endMs": 36041,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "体系。",
+    "startMs": 36041,
+    "endMs": 36670,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "对话、任务、事件和知识，",
+    "startMs": 36620,
+    "endMs": 39133,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "不再随着会话结束而消失，",
+    "startMs": 39133,
+    "endMs": 41645,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "而是逐步沉淀为可检索、可关联、可反思",
+    "startMs": 41645,
+    "endMs": 45414,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "的组织记忆。",
+    "startMs": 45414,
+    "endMs": 46670,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "智能体可以理解历史、延续上下文，",
+    "startMs": 46670,
+    "endMs": 50003,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "并在长期协作中不断积累经验。",
+    "startMs": 50003,
+    "endMs": 52920,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "面对复杂业务，",
+    "startMs": 55270,
+    "endMs": 56618,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "智能体不仅要给出答案，",
+    "startMs": 56618,
+    "endMs": 58735,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "更需要解释答案从何而来。",
+    "startMs": 58735,
+    "endMs": 61045,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS 通过因果内核记录任务中的",
+    "startMs": 60995,
+    "endMs": 64519,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "关键事件、推理关系和执行路径，",
+    "startMs": 64519,
+    "endMs": 67456,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "把不可见的决策过程转化为清晰的因果链",
+    "startMs": 67456,
+    "endMs": 70979,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "路。",
+    "startMs": 70979,
+    "endMs": 71371,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "每一次判断、每一次工具调用和每一个结",
+    "startMs": 71371,
+    "endMs": 74886,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "果，",
+    "startMs": 74886,
+    "endMs": 75276,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "都能够被追踪、审计与复盘。",
+    "startMs": 75276,
+    "endMs": 77815,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "当智能体开始调用工具、操作数据和执行",
+    "startMs": 78270,
+    "endMs": 81965,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "任务，",
+    "startMs": 81965,
+    "endMs": 82581,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "安全就不能依赖事后补救。",
+    "startMs": 82581,
+    "endMs": 85045,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS 提供运行时安全治理，",
+    "startMs": 84995,
+    "endMs": 88239,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "通过模拟运行、默认拒绝、策略校验、隔",
+    "startMs": 88239,
+    "endMs": 91889,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "离策略与审计追踪，",
+    "startMs": 91889,
+    "endMs": 93714,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "为智能体建立明确边界。",
+    "startMs": 93714,
+    "endMs": 95945,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "当前能力聚焦安全控制面与模拟运行，",
+    "startMs": 95945,
+    "endMs": 99619,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "并持续向生产级执行环境演进。",
+    "startMs": 99619,
+    "endMs": 102645,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS 不只是单个智能体的运行工",
+    "startMs": 103270,
+    "endMs": 106166,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "具，",
+    "startMs": 106166,
+    "endMs": 106488,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "更是一套面向组织的管理平台。",
+    "startMs": 106488,
+    "endMs": 108741,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "管理者可以统一管理组织、用户、策略、",
+    "startMs": 108691,
+    "endMs": 112002,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "审计与部署状态，",
+    "startMs": 112002,
+    "endMs": 113473,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "在同一控制平面中完成权限配置、资源管",
+    "startMs": 113473,
+    "endMs": 116784,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "理和运行治理。",
+    "startMs": 116784,
+    "endMs": 118072,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "让智能体真正进入企业流程，",
+    "startMs": 118072,
+    "endMs": 120262,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "而不是成为彼此孤立的应用。",
+    "startMs": 120262,
+    "endMs": 122452,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "通过开放 API、SDK 与开发者工",
+    "startMs": 123270,
+    "endMs": 126933,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "具，",
+    "startMs": 126933,
+    "endMs": 127340,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "企业可以将记忆引擎、因果内核和安全控",
+    "startMs": 127340,
+    "endMs": 131002,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "制能力快速接入现有业务系统。",
+    "startMs": 131002,
+    "endMs": 133851,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "开发者无需重复搭建底层认知基础设施，",
+    "startMs": 133801,
+    "endMs": 137357,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "即可创建具备长期记忆、可控执行和持续",
+    "startMs": 137357,
+    "endMs": 140912,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "进化能力的智能体应用。",
+    "startMs": 140912,
+    "endMs": 143085,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "从企业知识助手、智能客服，",
+    "startMs": 144270,
+    "endMs": 146554,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "到运营分析、研发协作和组织决策，",
+    "startMs": 146554,
+    "endMs": 149364,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS 可以支撑不同类型的智能体",
+    "startMs": 149364,
+    "endMs": 152526,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "持续学习和协同工作。",
+    "startMs": 152526,
+    "endMs": 154283,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "组织中的经验不再散落于文档、系统和个",
+    "startMs": 154233,
+    "endMs": 157363,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "人记忆中，",
+    "startMs": 157363,
+    "endMs": 158232,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "而是逐步形成能够被智能体理解和使用的",
+    "startMs": 158232,
+    "endMs": 161362,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "认知资产。",
+    "startMs": 161362,
+    "endMs": 162231,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "我们相信，",
+    "startMs": 163270,
+    "endMs": 164161,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "未来的组织不仅需要更多智能体，",
+    "startMs": 164161,
+    "endMs": 166835,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "更需要一个能够承载记忆、治理行动、理",
+    "startMs": 166835,
+    "endMs": 170043,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "解因果并持续进化的数字大脑。",
+    "startMs": 170043,
+    "endMs": 172538,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "知维 OS，",
+    "startMs": 172488,
+    "endMs": 173599,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "AI 认知操作系统与智能体开放平台。",
+    "startMs": 173599,
+    "endMs": 176931,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "让每一个组织，",
+    "startMs": 176931,
+    "endMs": 178176,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "拥有不会遗忘的大脑。",
+    "startMs": 178176,
+    "endMs": 179954,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

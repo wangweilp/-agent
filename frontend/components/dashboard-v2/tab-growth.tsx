@@ -21,6 +21,12 @@ const RANGES = [
 ];
 
 const FUNNEL_COLORS = ["#818CF8", "#34D399", "#FBBF24", "#F87171", "#22D3EE", "#A78BFA"];
+const FUNNEL_STAGE_LABELS: Record<string, string> = {
+  registered: "已注册",
+  activated: "已激活",
+  trial: "试用中",
+  paid: "已付费",
+};
 
 const tooltipStyle = {
   backgroundColor: "#18181B",
@@ -60,7 +66,7 @@ function CohortTable({ rows }: { rows: { cohort_date: string; cohort_size: numbe
     <div className="overflow-x-auto">
       <table className="w-full text-2xs">
         <thead>
-          <tr className="text-os-muted border-b border-os-border">
+          <tr className="text-os-subtle border-b border-os-border">
             <th className="text-left font-medium py-2 px-2">队列日期</th>
             <th className="text-right font-medium py-2 px-2">规模</th>
             <th className="text-right font-medium py-2 px-2">D1</th>
@@ -72,10 +78,10 @@ function CohortTable({ rows }: { rows: { cohort_date: string; cohort_size: numbe
             <tr key={r.cohort_date} className="border-b border-os-border/50 hover:bg-os-elevated/50">
               <td className="py-1.5 px-2 text-os-text font-mono">{r.cohort_date || "—"}</td>
               <td className="py-1.5 px-2 text-right text-os-text font-mono">{r.cohort_size}</td>
-              <td className={cn("py-1.5 px-2 text-right font-mono", r.d1 >= 40 ? "text-emerald-400" : r.d1 >= 20 ? "text-amber-400" : "text-os-subtle")}>
+              <td className={cn("py-1.5 px-2 text-right font-mono", r.d1 >= 40 ? "text-emerald-700" : r.d1 >= 20 ? "text-amber-800" : "text-os-subtle")}>
                 {formatPercent(r.d1)}
               </td>
-              <td className={cn("py-1.5 px-2 text-right font-mono", r.d7 >= 30 ? "text-emerald-400" : r.d7 >= 15 ? "text-amber-400" : "text-os-subtle")}>
+              <td className={cn("py-1.5 px-2 text-right font-mono", r.d7 >= 30 ? "text-emerald-700" : r.d7 >= 15 ? "text-amber-800" : "text-os-subtle")}>
                 {formatPercent(r.d7)}
               </td>
             </tr>
@@ -90,7 +96,7 @@ function FunnelChart({ stages }: { stages: { stage: string; count: number }[] })
   if (!stages || stages.length === 0) {
     return <EmptyState message="暂无漏斗数据" />;
   }
-  const data = stages.map((s) => ({ name: s.stage, count: s.count }));
+  const data = stages.map((s) => ({ name: FUNNEL_STAGE_LABELS[s.stage] ?? s.stage, count: s.count }));
   return (
     <div style={{ height: 220 }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -143,12 +149,12 @@ export function TabGrowth() {
       </div>
 
       <div className={layout.grid.twoLg}>
-        <SectionCard title="留存队列 (Cohort)" icon={<Layers size={14} />}>
+        <SectionCard title="留存队列" icon={<Layers size={14} />}>
           <QueryState isLoading={isLoading} isError={isError} onRetry={() => refetch()} skeleton={<div className="h-48 rounded bg-os-elevated shimmer-bg" />}>
             <CohortTable rows={data?.retention_cohort ?? []} />
           </QueryState>
         </SectionCard>
-        <SectionCard title="激活漏斗 (Funnel)" icon={<Filter size={14} />}>
+        <SectionCard title="激活漏斗" icon={<Filter size={14} />}>
           <QueryState isLoading={isLoading} isError={isError} onRetry={() => refetch()} skeleton={<div className="h-48 rounded bg-os-elevated shimmer-bg" />}>
             <FunnelChart stages={data?.funnel ?? []} />
           </QueryState>
