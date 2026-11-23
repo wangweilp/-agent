@@ -1,22 +1,17 @@
 # 知维 OS · Zhiwei OS
 
-知维 OS 是一个带长期记忆的 AI 工作台。你可以在对话后检索保存的记忆，在知识图谱中查看关联，也可以让多个 Agent 按工作流协作。例如，「会议纪要转培训」场景将一份纪要依次交给会议、知识和培训 Agent，并记录每一步的执行结果。
+知维 OS 是一个带长期记忆的 AI 工作台。你可以检索对话中保存的记忆，在知识图谱中查看它们的关联，或运行「会议纪要转培训」工作流，查看多个 Agent 如何协作。
 
 ![知维 OS 工作台首页](zhiwei-os-video/public/ui/home.png)
 
-## 从哪里开始
+**后端** · Python / FastAPI　　**前端** · Next.js / React　　**记忆存储** · SQLite / ChromaDB
 
-| 想做什么 | 打开哪个页面 |
-| --- | --- |
-| 与助手对话，再查看保存的记忆 | `/chat`、`/memory` |
-| 查看知识之间的关联 | `/graph` |
-| 体验会议纪要转培训，查看工作流执行记录 | `/agents/scenarios`、`/agents/executions` |
-| 浏览和安装 Agent | `/agent-marketplace` |
-| 查看数据源同步任务 | `/sync` |
+[后端入口](main.py) · [前端页面](frontend/app) · [架构设计](docs/ARCHITECTURE.md) · [会议纪要转培训演示](docs/STEP20D_DEMO_SCRIPT.md)
 
-## 本地运行
+<details>
+<summary><strong>本地运行 · Windows PowerShell</strong></summary>
 
-以下命令使用 Windows PowerShell。准备 Python 3.11、Node.js 20 或 22 和 npm，然后克隆仓库。使用 GitHub 的 **Code → Download ZIP** 也可以，解压后在包含 `main.py` 的目录打开终端。
+准备 Python 3.11、Node.js 20 或 22 和 npm。如果使用 **Code → Download ZIP**，解压后直接在包含 `main.py` 的目录开始第 1 步。
 
 ```powershell
 git clone https://github.com/wangweilp/-agent.git zhiwei-os
@@ -48,13 +43,14 @@ npm ci
 npm run dev
 ```
 
-打开 [本地工作台](http://localhost:3000)。要体验多 Agent 协作，进入[业务场景](http://localhost:3000/agents/scenarios)，按[企业 Agent 演示指南](docs/STEP20D_DEMO_SCRIPT.md)运行示例。
+打开[本地工作台](http://localhost:3000)，进入[业务场景](http://localhost:3000/agents/scenarios)体验多 Agent 协作。
 
-## 开发与验证
+</details>
 
-后端入口是 `main.py`。`src/core/` 定义核心类型和协议，`src/adapters/` 对接模型与存储，`src/api/` 提供 HTTP 接口。`src/sync/` 实现同步任务的调度、执行与恢复。前端位于 `frontend/`，使用 Next.js、React 和 TypeScript。
+<details>
+<summary><strong>开发与测试</strong></summary>
 
-在项目根目录运行同步任务的回归测试，覆盖工作进程中断后的恢复、取消任务、并发重复执行和跨租户隔离。
+后端核心类型位于 `src/core/`，模型与存储适配器位于 `src/adapters/`，HTTP 接口位于 `src/api/`。以下命令验证同步任务的恢复、取消、并发执行与租户隔离。
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q tests/test_sync/test_p1_lifecycle.py tests/test_sync/test_cross_tenant_isolation.py
@@ -62,9 +58,8 @@ npm run dev
 
 完整后端测试使用 `python -m pytest`（先激活虚拟环境）。前端测试在 `frontend/` 下运行 `npm test`，类型检查使用 `npm run typecheck`。
 
-## 项目文档
+[接口路由清单](docs/API_ROUTE_INVENTORY.md) · [Agent 市场](docs/STEP21_MARKETPLACE_DEMO_SCRIPT.md) · [开发者平台](docs/STEP22_OPEN_PLATFORM_DEMO_SCRIPT.md)
 
-- [架构设计](docs/ARCHITECTURE.md)
-- [Agent 市场演示](docs/STEP21_MARKETPLACE_DEMO_SCRIPT.md)
-- [开发者开放平台演示](docs/STEP22_OPEN_PLATFORM_DEMO_SCRIPT.md)
-- [开发过程、分阶段说明与运行记录](DEVELOPMENT_NOTES.md)
+历史验收记录见 [Step 24 Runtime Safety Layer](docs/STEP24_RUNTIME_ARCHITECTURE_SUMMARY.md) 和 [Step 25 发布清单](docs/STEP25_RELEASE_CHECKLIST.md)。25-C、25-J、25-K 已完成 ✅。这两个阶段的执行边界为 **external execution blocked · no production sandbox · no third-party code execution**。当前运行时边界见[治理说明](docs/runtime-governance-boundary.md)。
+
+</details>

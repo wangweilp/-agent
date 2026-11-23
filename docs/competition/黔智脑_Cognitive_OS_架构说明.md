@@ -409,8 +409,8 @@ npm run dev
 
 - Enterprise Agent、Marketplace、Open Platform 已有分阶段完成记录和专项测试。
 - Runtime Governance 已有 metadata-only 边界说明和前端 Runtime Admin 页面。
-- Sandbox V2 Step 15 报告记录：Sandbox V2 专项测试 772 passed、红队测试 159 passed、监控告警新增测试 45 passed、前端 build 编译通过。
-- `FIX_REPORT.md` 记录：近期 API 路由 smoke、生产后端 readiness、Runtime Governance summary、账户权益和记忆恢复修复均有针对性验证。
+- Sandbox V2 专项测试 772 passed、红队测试 159 passed、监控告警新增测试 45 passed、前端 build 编译通过。[Step 15 历史报告](https://github.com/wangweilp/-agent/blob/72cd627413e0605fc7799a8965340e0fd3e57198/SANDBOX_V2_STEP15_REPORT.md)
+- API 路由 smoke、生产后端 readiness、Runtime Governance summary、账户权益和记忆恢复修复均有针对性验证。[历史修复记录](https://github.com/wangweilp/-agent/blob/72cd627413e0605fc7799a8965340e0fd3e57198/FIX_REPORT.md)
 - 同时也记录了已知边界：全量测试曾出现少量与时间边界或顺序相关的失败，前端 lint 曾受无关历史文件影响。
 
 本次架构说明生成是文档交付，不运行全量测试，不改变项目业务代码。
@@ -486,7 +486,7 @@ npm run dev
 | 测试 | `tests/` |
 | 部署 | `deployment/`、`docker-compose.production.example.yml`、`docker-compose.sandbox-v2.example.yml` |
 | 既有架构文档 | `docs/ARCHITECTURE.md`、`docs/DESIGN.md`、`docs/ROADMAP.md` |
-| Runtime/Sandbox 边界 | `docs/runtime-governance-boundary.md`、`docs/production-readiness.md`、`SANDBOX_AUDIT_REPORT.md` |
+| Runtime/Sandbox 边界 | `docs/runtime-governance-boundary.md`、`docs/production-readiness.md` |
 
 ---
 
