@@ -36,7 +36,7 @@
 
 ```bash
 # 使用提供的 docker compose
-docker compose -f docker-compose.sandbox-v2.example.yml up -d postgres
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml up -d postgres
 ```
 
 ### 3.2 配置环境变量
@@ -76,7 +76,7 @@ python scripts/check_sandbox_v2_production_readiness.py
 ### 4.1 启动 Redis
 
 ```bash
-docker compose -f docker-compose.sandbox-v2.example.yml up -d redis
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml up -d redis
 ```
 
 ### 4.2 配置环境变量
@@ -106,7 +106,7 @@ python scripts/check_sandbox_v2_production_readiness.py
 ### 5.1 启动 MinIO
 
 ```bash
-docker compose -f docker-compose.sandbox-v2.example.yml up -d minio
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml up -d minio
 ```
 
 ### 5.2 创建 Bucket
@@ -143,20 +143,20 @@ python scripts/check_sandbox_v2_production_readiness.py
 
 ---
 
-## 六、如何运行 docker-compose.sandbox-v2.example.yml
+## 六、如何运行 deployment/docker/docker-compose.sandbox-v2.example.yml
 
 ```bash
 # 启动所有生产后端
-docker compose -f docker-compose.sandbox-v2.example.yml up -d
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml up -d
 
 # 检查健康状态
-docker compose -f docker-compose.sandbox-v2.example.yml ps
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml ps
 
 # 停止
-docker compose -f docker-compose.sandbox-v2.example.yml down
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml down
 
 # 停止并删除数据卷
-docker compose -f docker-compose.sandbox-v2.example.yml down -v
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml down -v
 ```
 
 **注意**: docker compose 文件仅为参考样例，不强制使用。

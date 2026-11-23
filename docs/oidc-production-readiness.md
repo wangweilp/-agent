@@ -180,4 +180,4 @@ Step 21 Runtime Admin 端点返回每子能力的 `enabled / disabled / ready / 
 - `src/open_platform/sandbox_v2/service.py` — `get_oidc_validation_readiness` + `validate_oidc_id_token`
 - `src/api/sandbox_v2.py` — 2 个新 API + readiness 字段同步
 - `src/api/runtime_admin_router.py` — Runtime Admin 新增 Step 21 readiness 端点
-- `.env.sandbox-v2.example` — 新增 8 个 Step 21 环境变量示例
+- `config/.env.sandbox-v2.example` — 新增 8 个 Step 21 环境变量示例

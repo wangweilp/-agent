@@ -1,14 +1,17 @@
 """第三阶段 E2E：Sync 完整闭环（等待执行完成，不提前删除）。
 验证真实链路：login -> create connector -> test -> create job -> run -> 轮询执行到 completed -> 资源/变更落库 -> 清理。
+运行前通过环境变量 E2E_SYNC_EMAIL 和 E2E_SYNC_PASSWORD 提供本地测试账号。
 """
 import json
+import os
 import sys
 import time
+from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 BASE = "http://127.0.0.1:8000"
-ROOT = "D:/dma/day2/data/sync_roots/e2e"
+ROOT = str(Path(__file__).resolve().parents[1] / "data" / "sync_roots" / "e2e")
 
 
 def call(method, path, token=None, body=None):
@@ -32,9 +35,13 @@ def call(method, path, token=None, body=None):
 
 
 def main():
+    email = os.environ.get("E2E_SYNC_EMAIL")
+    password = os.environ.get("E2E_SYNC_PASSWORD")
+    if not email or not password:
+        sys.exit("请设置 E2E_SYNC_EMAIL 和 E2E_SYNC_PASSWORD，再运行同步审计。")
     print("=== 1. 登录 ===")
     code, resp = call("POST", "/auth/login", body={
-        "email": "471417088@qq.com", "password": "471417088lP"})
+        "email": email, "password": password})
     if code != 200:
         print("FAIL login:", resp); sys.exit(1)
     token = resp["access_token"]

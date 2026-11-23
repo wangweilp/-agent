@@ -188,13 +188,13 @@ def _check_docs_present() -> dict[str, bool]:
 
 
 def _check_env_template() -> bool:
-    """检查 .env.sandbox-v2.example 是否存在。"""
-    return (PROJECT_ROOT / ".env.sandbox-v2.example").is_file()
+    """检查 config/.env.sandbox-v2.example 是否存在。"""
+    return (PROJECT_ROOT / "config/.env.sandbox-v2.example").is_file()
 
 
 def _check_docker_compose_example() -> bool:
-    """检查 docker-compose.sandbox-v2.example.yml 是否存在。"""
-    return (PROJECT_ROOT / "docker-compose.sandbox-v2.example.yml").is_file()
+    """检查 deployment/docker/docker-compose.sandbox-v2.example.yml 是否存在。"""
+    return (PROJECT_ROOT / "deployment/docker/docker-compose.sandbox-v2.example.yml").is_file()
 
 
 def _check_os() -> dict[str, Any]:
@@ -247,9 +247,9 @@ def run_readiness_check() -> dict[str, Any]:
     if not container_runtime_ok:
         warns.append(f"Container runtime not available: {container_runtime_msg}")
     if not env_template_ok:
-        warns.append(".env.sandbox-v2.example not found")
+        warns.append("config/.env.sandbox-v2.example not found")
     if not compose_ok:
-        warns.append("docker-compose.sandbox-v2.example.yml not found")
+        warns.append("deployment/docker/docker-compose.sandbox-v2.example.yml not found")
     missing_docs = [k for k, v in docs_present.items() if not v]
     if missing_docs:
         warns.append(f"Missing docs: {', '.join(missing_docs)}")
@@ -350,8 +350,8 @@ def print_human_summary(result: dict[str, Any]) -> None:
     print()
 
     # Templates
-    print(f"  [{'[OK]' if result['env_template_present'] else '[FAIL]'}] .env.sandbox-v2.example: {'present' if result['env_template_present'] else 'MISSING'}")
-    print(f"  [{'[OK]' if result['docker_compose_example_present'] else '[FAIL]'}] docker-compose.sandbox-v2.example.yml: {'present' if result['docker_compose_example_present'] else 'MISSING'}")
+    print(f"  [{'[OK]' if result['env_template_present'] else '[FAIL]'}] config/.env.sandbox-v2.example: {'present' if result['env_template_present'] else 'MISSING'}")
+    print(f"  [{'[OK]' if result['docker_compose_example_present'] else '[FAIL]'}] deployment/docker/docker-compose.sandbox-v2.example.yml: {'present' if result['docker_compose_example_present'] else 'MISSING'}")
     print()
 
     # Blockers

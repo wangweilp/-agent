@@ -17,9 +17,9 @@
 - 支持 --rollback 回滚（仅删除新增列，不删数据）
 
 用法:
-    python migrate_open_platform_to_multitenant.py          # 执行迁移
-    python migrate_open_platform_to_multitenant.py --dry-run # 预览
-    python migrate_open_platform_to_multitenant.py --db path/to/custom.db  # 指定数据库
+    python scripts/migrate_open_platform_to_multitenant.py          # 执行迁移
+    python scripts/migrate_open_platform_to_multitenant.py --dry-run # 预览
+    python scripts/migrate_open_platform_to_multitenant.py --db path/to/custom.db  # 指定数据库
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger("migration")
 
 # ── 默认数据库路径 ──
-DEFAULT_DB_PATH = Path(__file__).resolve().parent / "data" / "agent_memory.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "agent_memory.db"
 
 # ── 创建 audit trail 表 ──
 _AUDIT_DDL = """

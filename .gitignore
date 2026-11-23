@@ -19,3 +19,13 @@ node_modules/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+
+# Local test output and sandbox reports
+/.coverage
+/.coverage.*
+/.sandbox_v2_load_reports/
+/.sandbox_v2_perf_reports/
+/runtime_capability_enforcement_report.json
+/stdout.txt
+/stderr.txt
+/.env.sandbox-v2

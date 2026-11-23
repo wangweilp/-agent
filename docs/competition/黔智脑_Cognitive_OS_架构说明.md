@@ -484,7 +484,7 @@ npm run dev
 | 前端服务 | `frontend/services/` |
 | 前端类型 | `frontend/types/` |
 | 测试 | `tests/` |
-| 部署 | `deployment/`、`docker-compose.production.example.yml`、`docker-compose.sandbox-v2.example.yml` |
+| 部署 | `deployment/`、`docker-compose.production.example.yml`、`deployment/docker/docker-compose.sandbox-v2.example.yml` |
 | 既有架构文档 | `docs/ARCHITECTURE.md`、`docs/DESIGN.md`、`docs/ROADMAP.md` |
 | Runtime/Sandbox 边界 | `docs/runtime-governance-boundary.md`、`docs/production-readiness.md` |
 

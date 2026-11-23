@@ -25,8 +25,8 @@
 ## 三、如何启动 docker-compose
 
 ```bash
-docker compose -f docker-compose.sandbox-v2.example.yml up -d
-docker compose -f docker-compose.sandbox-v2.example.yml ps
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml up -d
+docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml ps
 ```
 
 ---

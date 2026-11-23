@@ -160,7 +160,7 @@ def run_backend_integration_check() -> dict[str, Any]:
         ]
     else:
         result["next_steps"] = [
-            "Start docker-compose: docker compose -f docker-compose.sandbox-v2.example.yml up -d",
+            "Start docker-compose: docker compose --project-directory . -f deployment/docker/docker-compose.sandbox-v2.example.yml up -d",
             "Configure environment variables in .env.sandbox-v2",
             f"Resolve {len(result['blockers'])} blocker(s) before running integration tests",
         ]

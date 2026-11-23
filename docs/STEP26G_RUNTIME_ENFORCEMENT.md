@@ -92,7 +92,7 @@ _run_enforcement_26g.py        → spike runner → JSON report
 | `src/open_platform/runtime_capability_subagent.py` | Enforcement sub-agent |
 | `tests/test_open_platform/test_runtime_capability_subagent.py` | 25 enforcement tests |
 | `docs/STEP26G_RUNTIME_ENFORCEMENT.md` | This document |
-| `runtime_capability_enforcement_report.json` | Full enforcement JSON report |
+| [Archived enforcement report](https://github.com/wangweilp/-agent/blob/78267fade3a16488fd41a77b0f99114418cfd69e/runtime_capability_enforcement_report.json) | Full JSON report for this stage |
 
 ## Security Boundary
 

@@ -110,11 +110,11 @@ class TestRequiredFiles:
     """验证 Step 10 需要的所有文件存在。"""
 
     def test_env_template_exists(self):
-        env_template = PROJECT_ROOT / ".env.sandbox-v2.example"
+        env_template = PROJECT_ROOT / "config/.env.sandbox-v2.example"
         assert env_template.is_file(), f"{env_template} not found"
 
     def test_docker_compose_example_exists(self):
-        compose = PROJECT_ROOT / "docker-compose.sandbox-v2.example.yml"
+        compose = PROJECT_ROOT / "deployment/docker/docker-compose.sandbox-v2.example.yml"
         assert compose.is_file(), f"{compose} not found"
 
     def test_config_module_exists(self):
@@ -153,10 +153,10 @@ class TestRequiredFiles:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestEnvTemplate:
-    """验证 .env.sandbox-v2.example 内容正确。"""
+    """验证 config/.env.sandbox-v2.example 内容正确。"""
 
     def test_env_template_contains_safe_defaults(self):
-        env_path = PROJECT_ROOT / ".env.sandbox-v2.example"
+        env_path = PROJECT_ROOT / "config/.env.sandbox-v2.example"
         content = env_path.read_text(encoding="utf-8")
         # 验证关键安全配置存在且默认值正确
         assert "SANDBOX_V2_FAIL_CLOSED=true" in content
@@ -169,7 +169,7 @@ class TestEnvTemplate:
         assert "SANDBOX_V2_AUTO_PULL_IMAGES=false" in content
 
     def test_env_template_has_all_sections(self):
-        env_path = PROJECT_ROOT / ".env.sandbox-v2.example"
+        env_path = PROJECT_ROOT / "config/.env.sandbox-v2.example"
         content = env_path.read_text(encoding="utf-8")
         sections = [
             "Sandbox v2 Core",
@@ -185,7 +185,7 @@ class TestEnvTemplate:
             assert section in content, f"Section '{section}' not found in env template"
 
     def test_env_template_does_not_contain_real_secrets(self):
-        env_path = PROJECT_ROOT / ".env.sandbox-v2.example"
+        env_path = PROJECT_ROOT / "config/.env.sandbox-v2.example"
         content = env_path.read_text(encoding="utf-8")
         # 检查没有明显的真实密码（不含占位符/示例值）
         assert "S3_ACCESS_KEY=" in content  # 空值是好的
@@ -257,24 +257,24 @@ class TestDockerComposeExample:
     """验证 docker compose example 内容合理。"""
 
     def test_compose_file_is_valid_yaml(self):
-        compose_path = PROJECT_ROOT / "docker-compose.sandbox-v2.example.yml"
+        compose_path = PROJECT_ROOT / "deployment/docker/docker-compose.sandbox-v2.example.yml"
         content = compose_path.read_text(encoding="utf-8")
         # 基本 YAML 结构检查
         assert "services:" in content
         assert "postgres:" in content or "redis:" in content or "minio:" in content
 
     def test_compose_uses_placeholders_not_real_secrets(self):
-        compose_path = PROJECT_ROOT / "docker-compose.sandbox-v2.example.yml"
+        compose_path = PROJECT_ROOT / "deployment/docker/docker-compose.sandbox-v2.example.yml"
         content = compose_path.read_text(encoding="utf-8")
         assert "CHANGE_ME" in content, "Compose should use placeholder passwords"
 
     def test_compose_has_healthchecks(self):
-        compose_path = PROJECT_ROOT / "docker-compose.sandbox-v2.example.yml"
+        compose_path = PROJECT_ROOT / "deployment/docker/docker-compose.sandbox-v2.example.yml"
         content = compose_path.read_text(encoding="utf-8")
         assert "healthcheck:" in content
 
     def test_compose_has_warning_about_not_for_production(self):
-        compose_path = PROJECT_ROOT / "docker-compose.sandbox-v2.example.yml"
+        compose_path = PROJECT_ROOT / "deployment/docker/docker-compose.sandbox-v2.example.yml"
         content = compose_path.read_text(encoding="utf-8")
         assert "example" in content.lower() or "参考" in content or "不要" in content
 

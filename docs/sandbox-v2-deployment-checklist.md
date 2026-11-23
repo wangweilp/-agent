@@ -10,7 +10,7 @@
 
 ### 一、环境变量审查
 
-- [ ] `.env.sandbox-v2` 已从 `.env.sandbox-v2.example` 创建并审查
+- [ ] `.env.sandbox-v2` 已从 `config/.env.sandbox-v2.example` 创建并审查
 - [ ] `SANDBOX_V2_FAIL_CLOSED=true` — 确认 fail-closed
 - [ ] `SANDBOX_V2_DEFAULT_ACTION=deny` — 确认默认 deny
 - [ ] `SANDBOX_V2_MODE=simulation` — 确认默认 simulation 模式
@@ -140,18 +140,18 @@
 - [ ] `docs/sandbox-v2-operations-runbook.md` 已阅读并理解
 - [ ] `docs/sandbox-v2-incident-response.md` 已阅读并理解
 - [ ] `docs/sandbox-v2-deployment-checklist.md` 已完成（本文件）
-- [ ] `.env.sandbox-v2.example` 已审查
-- [ ] `docker-compose.sandbox-v2.example.yml` 已审查（如需生产后端迁移）
+- [ ] `config/.env.sandbox-v2.example` 已审查
+- [ ] `deployment/docker/docker-compose.sandbox-v2.example.yml` 已审查（如需生产后端迁移）
 
 ### 十五、Performance / Capacity (Step 16)
 
 - [ ] Performance tests 默认关闭
   ```bash
-  grep SANDBOX_V2_PERF_TESTS_ENABLED .env.sandbox-v2.example
+  grep SANDBOX_V2_PERF_TESTS_ENABLED config/.env.sandbox-v2.example
   ```
 - [ ] Benchmark 大规模运行默认关闭
   ```bash
-  grep SANDBOX_V2_RUN_PERFORMANCE_BENCHMARKS .env.sandbox-v2.example
+  grep SANDBOX_V2_RUN_PERFORMANCE_BENCHMARKS config/.env.sandbox-v2.example
   ```
 - [ ] Smoke 脚本默认 skipped，不创建大数据
   ```bash

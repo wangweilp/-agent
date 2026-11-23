@@ -621,8 +621,8 @@ def create_sandbox_v2_router(
         project_root = Path(__file__).resolve().parent.parent.parent
 
         docs_dir = project_root / "docs"
-        env_template_ok = (project_root / ".env.sandbox-v2.example").is_file()
-        compose_ok = (project_root / "docker-compose.sandbox-v2.example.yml").is_file()
+        env_template_ok = (project_root / "config/.env.sandbox-v2.example").is_file()
+        compose_ok = (project_root / "deployment/docker/docker-compose.sandbox-v2.example.yml").is_file()
         readiness_script_ok = (project_root / "scripts" / "check_sandbox_v2_production_readiness.py").is_file()
 
         deployment_checklist_ok = (docs_dir / "sandbox-v2-deployment-checklist.md").is_file()
@@ -661,7 +661,7 @@ def create_sandbox_v2_router(
         warns: list[str] = []
 
         if not env_template_ok:
-            blockers.append(".env.sandbox-v2.example is missing")
+            blockers.append("config/.env.sandbox-v2.example is missing")
         if not hardening_docs_ok:
             blockers.append("Production hardening doc is missing")
         if not deployment_checklist_ok:
@@ -675,7 +675,7 @@ def create_sandbox_v2_router(
         if not readiness_script_ok:
             warns.append("Production readiness script is missing")
         if not compose_ok:
-            warns.append("docker-compose.sandbox-v2.example.yml is missing")
+            warns.append("deployment/docker/docker-compose.sandbox-v2.example.yml is missing")
 
         # ── Step 12: Backend readiness ──
         try:
